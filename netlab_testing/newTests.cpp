@@ -15,8 +15,11 @@
 #include "../netlab/L2_ARP.h"
 #include "../netlab/L4.h"
 #include "../netlab/L4_TCP.h"
+#include "../netlab/HWAddress.hpp"
 
 using namespace std;
+
+typedef netlab::HWAddress<> mac_addr;
 
 class newTests : public ::testing::Test {
 
@@ -57,8 +60,8 @@ protected:
 		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "(arp and ether src aa:aa:aa:aa:aa:aa) or (tcp port 8888 and not ether src bb:bb:bb:bb:bb:bb)"),
 		datalink_server(inet_server),
 		datalink_client(inet_client),
-		arp_server(inet_server, 10, 10000),
-		arp_client(inet_client, 10, 10000)
+		arp_server(inet_server, 10, 10),
+		arp_client(inet_client, 10, 10)
 	{
 
 	}
@@ -113,17 +116,17 @@ protected:
 
 		////----------------------
 		//// Bind the socket.
-		//ListenSocket->bind((SOCKADDR*)&service, sizeof(service));
+		ListenSocket->bind((SOCKADDR*)&service, sizeof(service));
 
 		////----------------------
 		//// Listen for incoming connection requests 
 		//// on the created socket
 		//// 
-		//ListenSocket->listen(5);
+		ListenSocket->listen(5);
 
 		////----------------------
 		//// Create a SOCKET for connecting to server
-		//ConnectSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_client));
+		ConnectSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_client));
 
 		//----------------------
 		// The sockaddr_in structure specifies the address family,
@@ -151,26 +154,33 @@ protected:
 
 TEST_F(newTests, arpTest) {
 
+	//----------------------
+	// Before 3-way handshake, we expect the entry to be nullptr.
+	L2_ARP* arp_p = inet_client.arp();
+	auto entry = arp_p->arplookup(inet_server.nic()->ip_addr().s_addr, false);
 
-	/*std::shared_ptr<std::vector<byte>> m = std::make_shared<std::vector<byte>>(std::initializer_list<byte>{
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 69, 0, 0, 60, 34, 107,
-			0, 0, 64, 6, 68, 57, 10, 0, 0, 15,
-			10, 0, 0, 10, 19, 136, 34, 184, 168, 13,
-			160, 45, 0, 0, 0, 0, 160, 2, 255, 255,
-			28, 215, 0, 0, 2, 4, 5, 180, 1, 3,
-			3, 1, 1, 1, 8, 10, 205, 205, 205, 206,
-			0, 0, 0, 0
-	});
+	ASSERT_EQ(entry, nullptr);
 
-	std::vector<byte>::iterator it = std::find(m->begin(), m->end(), static_cast<byte>(69));
+	//----------------------
+	// Connect to server.
+	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
 
+	//----------------------
+	// Test if destination's address was saved in ARP cache.
 	
+	arp_p = inet_client.arp();
+	entry = arp_p->arplookup(inet_server.nic()->ip_addr().s_addr, false);
+	mac_addr expected_mac_addr("aa:aa:aa:aa:aa:aa");
+	cout << entry->getLaMac().to_string() << "       " << expected_mac_addr.to_string() << endl;
+	ASSERT_EQ(entry->getLaMac().to_string(), expected_mac_addr.to_string());
 
-	datalink_client.ether_output(m, it, reinterpret_cast<struct sockaddr*>(ListenSocket), ro->ro_rt);*/
+	//----------------------
+	// Test if saved entry was removed from cache as expected.
+	
+	std::this_thread::sleep_for(chrono::seconds((uint32_t)arp_p->getArptDown() ));
+	entry = arp_p->arplookup(inet_server.nic()->ip_addr().s_addr, false);
 
-
-
+	ASSERT_EQ(entry, nullptr);
 }
 
 
@@ -228,3 +238,25 @@ TEST_F(newTests, arpTest) {
 
 // Need to have 2 cases - one with 1 client and 1 server, 2 packets sent
 // and one with 2 clients and 1 server, 2 total packets sent, 1 from each client
+
+
+
+
+
+
+
+/*std::shared_ptr<std::vector<byte>> m = std::make_shared<std::vector<byte>>(std::initializer_list<byte>{
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 69, 0, 0, 60, 34, 107,
+			0, 0, 64, 6, 68, 57, 10, 0, 0, 15,
+			10, 0, 0, 10, 19, 136, 34, 184, 168, 13,
+			160, 45, 0, 0, 0, 0, 160, 2, 255, 255,
+			28, 215, 0, 0, 2, 4, 5, 180, 1, 3,
+			3, 1, 1, 1, 8, 10, 205, 205, 205, 206,
+			0, 0, 0, 0
+	});
+
+	std::vector<byte>::iterator it = std::find(m->begin(), m->end(), static_cast<byte>(69));
+
+
+	datalink_client.ether_output(m, it, reinterpret_cast<struct sockaddr*>(ListenSocket), nullptr);*/

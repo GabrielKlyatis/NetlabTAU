@@ -2,6 +2,8 @@
 #define L2_ARP_H_
 #include "NIC.h"
 #include "inet_os.hpp"
+#include "gtest/gtest.h"
+#include "../netlab_testing/pch.h"
 
 /*!
     \class	L2_ARP
@@ -223,6 +225,8 @@ protected:
 private:
 	unsigned long	arp_maxtries;   /*!< The arp max tries before resend, default is 10 (once declared down, don't send for 10 secs). */
 	unsigned int	arpt_down;		/*!< The arp timeout for an entry. */
+
+	FRIEND_TEST(newTests, arpTest);
 };
 
 /************************************************************************/
