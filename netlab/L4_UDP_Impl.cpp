@@ -50,8 +50,10 @@ int L4_UDP_Impl::udp_output(const struct udp_output_args& args) {
 	std::shared_ptr<std::vector<byte>>& m(args.m);
 	std::vector<byte>::iterator& it(args.it);
 
+	struct udphdr* udp(reinterpret_cast<struct udphdr*>(&m->data()[it - m->begin()]));
+	
+
+
 }
 
-int L4_UDP_Impl::pr_output(const struct pr_output_args& args) {
-
-}
+int L4_UDP_Impl::pr_output(const struct pr_output_args& args) { return udp_output(*reinterpret_cast<const struct udp_output_args*>(&args)); };

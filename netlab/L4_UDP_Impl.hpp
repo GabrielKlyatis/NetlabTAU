@@ -84,6 +84,7 @@ public:
 
 				\return	The output stream, when #ip was inserted and printed.
 			*/
+
 			friend std::ostream& operator<<(std::ostream& out, const struct pseudo_header::ipovly& ip);
 
 			struct L4_UDP::pseudo_header* ih_next, * ih_prev;			/*!< for protocol sequence q's */

@@ -530,7 +530,7 @@ public:
 private:
 	enum time_stamp
 	{
-		MAX_TIME_STAMP = 1500000	/*!<	25 minutes	*/
+		MAX_TIME_STAMP = 10000	/*!<	25 minutes	*/
 	}; 
 
 	mac_addr							la_mac;		/*!< The la MAC address */

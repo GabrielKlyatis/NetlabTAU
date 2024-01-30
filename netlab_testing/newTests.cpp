@@ -60,8 +60,8 @@ protected:
 		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "(arp and ether src aa:aa:aa:aa:aa:aa) or (tcp port 8888 and not ether src bb:bb:bb:bb:bb:bb)"),
 		datalink_server(inet_server),
 		datalink_client(inet_client),
-		arp_server(inet_server, 10, 10),
-		arp_client(inet_client, 10, 10)
+		arp_server(inet_server, 10, 10000),
+		arp_client(inet_client, 10, 10000)
 	{
 
 	}
@@ -174,89 +174,21 @@ TEST_F(newTests, arpTest) {
 	cout << entry->getLaMac().to_string() << "       " << expected_mac_addr.to_string() << endl;
 	ASSERT_EQ(entry->getLaMac().to_string(), expected_mac_addr.to_string());
 
+	//-----------------------
+	// Test if packet is stored while the arp resolves the address.
+
+	/*do {
+		
+		ASSERT_EQ(entry->empty(), false);
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+
+	} while (entry->valid());*/
+
 	//----------------------
 	// Test if saved entry was removed from cache as expected.
 	
-	std::this_thread::sleep_for(chrono::seconds((uint32_t)arp_p->getArptDown() ));
+	std::this_thread::sleep_for(chrono::seconds((uint32_t)arp_p->getArptDown()));
 	entry = arp_p->arplookup(inet_server.nic()->ip_addr().s_addr, false);
-
-	ASSERT_EQ(entry, nullptr);
+	
+	ASSERT_EQ(entry->valid(), false);
 }
-
-
-//TEST_F(newTests, arpTest2) {
-//
-//	size_t size = 32, num = 5;
-//
-//	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac()); // server
-//	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
-//
-//	//----------------------
-//	// Connect to server.
-//	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-//
-//	//----------------------
-//	// Create a SOCKET for accepting incoming requests.
-//	AcceptSocket = nullptr;
-//
-//	//----------------------
-//	// Accept the connection.
-//	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
-//
-//
-//	std::string send_msg(size, 'T');
-//	std::thread([ConnectSocket, send_msg, num, size]()
-//		{
-//			typedef std::chrono::nanoseconds nanoseconds;
-//			typedef std::chrono::duration<double> seconds;
-//			typedef std::random_device generator;
-//			generator gen;
-//			std::exponential_distribution<> dist(3);
-//
-//			for (size_t i = 0; i < num; i++)
-//			{
-//				ConnectSocket->send(send_msg, size, size);
-//				std::this_thread::sleep_for(std::chrono::duration_cast<nanoseconds>(seconds(dist(gen))));
-//			}
-//
-//		}).detach();
-//
-//		typedef std::chrono::nanoseconds nanoseconds;
-//		typedef std::chrono::duration<double> seconds;
-//		typedef std::random_device generator;
-//		generator gen;
-//		std::exponential_distribution<> dist(3);
-//		std::string ret("");
-//		for (size_t i = 0; i < num; i++)
-//		{
-//			AcceptSocket->recv(ret, size);
-//			std::this_thread::sleep_for(std::chrono::duration_cast<nanoseconds>(seconds(dist(gen))));
-//		}
-//
-//}
-
-
-// Need to have 2 cases - one with 1 client and 1 server, 2 packets sent
-// and one with 2 clients and 1 server, 2 total packets sent, 1 from each client
-
-
-
-
-
-
-
-/*std::shared_ptr<std::vector<byte>> m = std::make_shared<std::vector<byte>>(std::initializer_list<byte>{
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 69, 0, 0, 60, 34, 107,
-			0, 0, 64, 6, 68, 57, 10, 0, 0, 15,
-			10, 0, 0, 10, 19, 136, 34, 184, 168, 13,
-			160, 45, 0, 0, 0, 0, 160, 2, 255, 255,
-			28, 215, 0, 0, 2, 4, 5, 180, 1, 3,
-			3, 1, 1, 1, 8, 10, 205, 205, 205, 206,
-			0, 0, 0, 0
-	});
-
-	std::vector<byte>::iterator it = std::find(m->begin(), m->end(), static_cast<byte>(69));
-
-
-	datalink_client.ether_output(m, it, reinterpret_cast<struct sockaddr*>(ListenSocket), nullptr);*/
