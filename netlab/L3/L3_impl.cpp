@@ -138,9 +138,9 @@ std::ostream& operator<<(std::ostream &out, const L3::iphdr &ip)
 		" , HeaderLength = 0x" << static_cast<USHORT>(ip.ip_hl()) <<
 		" , DiffServicesCP = 0x" << std::setfill('0') << std::setw(2) << ((static_cast<uint8_t>(ip.ip_tos) >> 2) << 2) <<
 		" , ExpCongestionNot = 0x" << (static_cast<uint8_t>(ip.ip_tos) << 6) <<
-		" , TotalLength = " << std::dec << static_cast<uint16_t>(ip.ip_len) <<
+		" , TotalLength = " << std::dec << static_cast<uint16_t>(ntohs(ip.ip_len)) <<
 		" , Identification = 0x" << std::setfill('0') << std::setw(4) << std::hex << static_cast<uint16_t>(ip.ip_id) <<
-		" , FragmentOffset = " << std::dec << static_cast<uint16_t>(ip.ip_off) <<
+		" , FragmentOffset = " << std::dec << static_cast<uint16_t>((ntohs(ip.ip_off)) <<
 		" , TTL = " << static_cast<uint16_t>(ip.ip_ttl) <<
 		" , Protocol = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint16_t>(ip.ip_p) <<
 		" , Checksum = 0x" << std::setfill('0') << std::setw(4) << std::hex << static_cast<uint16_t>(ip.ip_sum) <<
@@ -542,8 +542,8 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	 *	The source address may not be set, in which case it is selected after a route to the destination
 	 *	has been located (Figure 8.25).
 	 */
-	if (opt) 
-		ip_insertoptions(m, it, opt, hlen);
+	//if (opt) 
+	//	ip_insertoptions(m, it, opt, hlen);
 
 	struct iphdr *ip(reinterpret_cast<struct iphdr *>(&m->data()[it - m->begin()]));
 
@@ -553,7 +553,7 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	if ((flags & (IP_FORWARDING | IP_RAWOUTPUT)) == 0) 
 	{
 		ip->ip_v(IPVERSION);
-		ip->ip_off &= iphdr::IP_DF;
+		//ip->ip_off &= iphdr::IP_DF;
 		ip->ip_id = htons(ip_id++);
 		ip->ip_hl(hlen >> 2);
 	}
@@ -779,78 +779,124 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	if (len < 8)
 		return done(ro, iproute, flags, EMSGSIZE);
 
-#ifdef NETLAB_L3_FRAGMENTATION
+	if (true)
 	{
-		int mhlen, firstlen = len;
-		/*
-		* Loop through length of segment after first fragment,
-		* make new header and copy data of each part and link onto chain.
-		*/
-		m0 = m;
-		mhlen = sizeof(struct iphdr);
-		for (off = hlen + len; off < (u_short)ip->ip_len; off += len) {
-			MGETHDR(m, M_DONTWAIT, MT_HEADER);
-			if (m == 0) {
-				error = ENOBUFS;
-				goto sendorfree;
+		std::cout << "Fragmentation!!!!!" << std::endl;
+		u_short fragment_size = inet.nic()->if_mtu() - 20 - 14; // mtu - ip header - eth header
+		u_short total_len = ntohs(ip->ip_len);
+		for (u_short off = hlen; off < total_len; off += fragment_size)
+		{
+			u_short fragment_data_len = std::min(fragment_size, static_cast<u_short>(total_len - off));
+			std::cout << "Fragment Size: " << fragment_size << ", Data Length: " << fragment_data_len << std::endl;
+			// allocate new packet 
+			std::shared_ptr<std::vector<byte>> m_fragment(new std::vector<byte>(fragment_data_len + sizeof(struct L2::ether_header) + sizeof(struct L3::iphdr)));
+			std::vector<byte>::iterator it_fragment(m_fragment->begin() + sizeof(struct L2::ether_header));
+
+			// copy data
+			//it_fragment += sizeof(L3::iphdr);
+			//memcpy(&(*it_fragment), &(*it), fragment_data_len);
+			//it_fragment -= sizeof(L3::iphdr);
+
+			// copy ip header
+			struct iphdr fragment_ip_header;
+			memcpy(&fragment_ip_header, ip, sizeof(struct iphdr));
+
+			// update hdr
+			fragment_ip_header.ip_off = ((off - hlen) >> 3);
+
+			// Set the More Fragments (MF) flag
+			fragment_ip_header.ip_off |= L3::iphdr::IP_MF;
+			if (off + fragment_size >= total_len)
+			{
+				// This is the last fragment, clear the More Fragments (MF) flag
+				fragment_ip_header.ip_off &= ~L3::iphdr::IP_MF;
 			}
-			m->m_data += max_linkhdr;
-			mhip = mtod(m, struct iphdr *);
-			*mhip = *ip;
-			if (hlen > sizeof(struct iphdr)) {
-				mhlen = ip_optcopy(ip, mhip) + sizeof(struct iphdr);
-				mhip->ip_hl = mhlen >> 2;
-			}
-			m->m_len = mhlen;
-			mhip->ip_off = ((off - hlen) >> 3) + (ip->ip_off & ~IP_MF);
-			if (ip->ip_off & IP_MF)
-				mhip->ip_off |= IP_MF;
-			if (off + len >= (u_short)ip->ip_len)
-				len = (u_short)ip->ip_len - off;
-			else
-				mhip->ip_off |= IP_MF;
-			mhip->ip_len = htons((u_short)(len + mhlen));
-			m->m_next = m_copy(m0, off, len);
-			if (m->m_next == 0) {
-				(void)m_free(m);
-				error = ENOBUFS;	/* ??? */
-				ipstat.ips_odropped++;
-				goto sendorfree;
-			}
-			m->m_pkthdr.len = mhlen + len;
-			m->m_pkthdr.rcvif = (struct ifnet *)0;
-			mhip->ip_off = htons((u_short)mhip->ip_off);
-			mhip->ip_sum = 0;
-			mhip->ip_sum = in_cksum(m, mhlen);
-			*mnext = m;
-			mnext = &m->m_nextpkt;
-			ipstat.ips_ofragments++;
+			fragment_ip_header.ip_off = htons(fragment_ip_header.ip_off);
+			fragment_ip_header.ip_len = htons(fragment_data_len + hlen);
+			fragment_ip_header.ip_sum = 0;
+			fragment_ip_header.ip_sum = in_cksum(&(*it_fragment), hlen);
+
+			memcpy(&(*it_fragment), &fragment_ip_header, sizeof(struct iphdr));
+
+			std::cout << "fragment header\n" << fragment_ip_header << "\n";
+			std::cout << "fragment header\n" << &(*it_fragment) << "\n";
+		
+			//send
+			inet.datalink()->ether_output(m_fragment,it_fragment, reinterpret_cast<struct sockaddr*>(dst), ro->ro_rt);
 		}
-		/*
-		* Update first fragment by trimming what's been copied out
-		* and updating header, then send each fragment (in order).
-		*/
-		m = m0;
-		m_adj(m, hlen + firstlen - (u_short)ip->ip_len);
-		m->m_pkthdr.len = hlen + firstlen;
-		ip->ip_len = htons((u_short)m->m_pkthdr.len);
-		ip->ip_off = htons((u_short)(ip->ip_off | IP_MF));
-		ip->ip_sum = 0;
-		ip->ip_sum = in_cksum(m, hlen);
-	sendorfree:
-		for (m = m0; m; m = m0) {
-			m0 = m->m_nextpkt;
-			m->m_nextpkt = 0;
-			if (error == 0)
-				error = (*ifp->if_output)(ifp, m,
-				(struct sockaddr *)dst, ro->ro_rt);
-			else
-				m_freem(m);
-		}
-		if (error == 0)
-			ipstat.ips_fragmented++;
 	}
-#endif
+//#ifdef NETLAB_L3_FRAGMENTATION
+//	{
+//		int mhlen, firstlen = len;
+//		/*
+//		* Loop through length of segment after first fragment,
+//		* make new header and copy data of each part and link onto chain.
+//		*/
+//		m0 = m;
+//		mhlen = sizeof(struct iphdr);
+//		for (off = hlen + len; off < (u_short)ip->ip_len; off += len) {
+//			MGETHDR(m, M_DONTWAIT, MT_HEADER);
+//			if (m == 0) {
+//				error = ENOBUFS;
+//				goto sendorfree;
+//			}
+//			m->m_data += max_linkhdr;
+//			mhip = mtod(m, struct iphdr *);
+//			*mhip = *ip;
+//			if (hlen > sizeof(struct iphdr)) {
+//				mhlen = ip_optcopy(ip, mhip) + sizeof(struct iphdr);
+//				mhip->ip_hl = mhlen >> 2;
+//			}
+//			m->m_len = mhlen;
+//			mhip->ip_off = ((off - hlen) >> 3) + (ip->ip_off & ~IP_MF);
+//			if (ip->ip_off & IP_MF)
+//				mhip->ip_off |= IP_MF;
+//			if (off + len >= (u_short)ip->ip_len)
+//				len = (u_short)ip->ip_len - off;
+//			else
+//				mhip->ip_off |= IP_MF;
+//			mhip->ip_len = htons((u_short)(len + mhlen));
+//			m->m_next = m_copy(m0, off, len);
+//			if (m->m_next == 0) {
+//				(void)m_free(m);
+//				error = ENOBUFS;	/* ??? */
+//				ipstat.ips_odropped++;
+//				goto sendorfree;
+//			}
+//			m->m_pkthdr.len = mhlen + len;
+//			m->m_pkthdr.rcvif = (struct ifnet *)0;
+//			mhip->ip_off = htons((u_short)mhip->ip_off);
+//			mhip->ip_sum = 0;
+//			mhip->ip_sum = in_cksum(m, mhlen);
+//			*mnext = m;
+//			mnext = &m->m_nextpkt;
+//			ipstat.ips_ofragments++;
+//		}
+//		/*
+//		* Update first fragment by trimming what's been copied out
+//		* and updating header, then send each fragment (in order).
+//		*/
+//		m = m0;
+//		m_adj(m, hlen + firstlen - (u_short)ip->ip_len);
+//		m->m_pkthdr.len = hlen + firstlen;
+//		ip->ip_len = htons((u_short)m->m_pkthdr.len);
+//		ip->ip_off = htons((u_short)(ip->ip_off | IP_MF));
+//		ip->ip_sum = 0;
+//		ip->ip_sum = in_cksum(m, hlen);
+//	sendorfree:
+//		for (m = m0; m; m = m0) {
+//			m0 = m->m_nextpkt;
+//			m->m_nextpkt = 0;
+//			if (error == 0)
+//				error = (*ifp->if_output)(ifp, m,
+//				(struct sockaddr *)dst, ro->ro_rt);
+//			else
+//				m_freem(m);
+//		}
+//		if (error == 0)
+//			ipstat.ips_fragmented++;
+//	}
+//#endif
 	
 	return done(ro, iproute, flags, 0);
 }

@@ -1989,7 +1989,7 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 		*	m_copy just references that cluster and doesn't make a copy of the data.
 		*/
 		std::copy(so.so_snd.begin(), so.so_snd.begin() + len, it + hdrlen);
-
+		
 		/*
 		*	Set PSH flag:
 		*	If TCP is sending everything it has from the send buffer, the PSH flag is set.
@@ -2302,12 +2302,7 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 	*	set. This means that a process cannot issue a connect to a broadcast address, even if it
 	*	sets the SO_BROADCAST socket option.
 	*/
-	int error(
-		inet.inetsw(protosw::SWPROTO_IP_RAW)->
-		pr_output(
-		*dynamic_cast<const struct pr_output_args*>(
-		&L3_impl::ip_output_args(m, it, tp.t_inpcb->inp_options, &tp.t_inpcb->inp_route, so.so_options & SO_DONTROUTE, nullptr)
-		)));
+	int error(inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*dynamic_cast<const struct pr_output_args*>(&L3_impl::ip_output_args(m, it, tp.t_inpcb->inp_options, &tp.t_inpcb->inp_route, so.so_options & SO_DONTROUTE, nullptr))));
 	if (error)
 		return out(tp, error);
 

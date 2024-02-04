@@ -998,9 +998,9 @@ struct L3::iphdr {
 
 	ip_v_hl_pack ip_v_hl;		/*!< version then header length, in a ip_v_hl_pack. \note The IP header length is in 4-bytes unit */
 	u_char	ip_tos;				/*!< type of service \see IPTOS_ */
-	short	ip_len;				/*!< total length, including data */
+	u_short	ip_len;				/*!< total length, including data */
 	u_short	ip_id;				/*!< identification */
-	short	ip_off;				/*!< fragment offset field \see IP_ */
+	u_short	ip_off;				/*!< fragment offset field \see IP_ */
 	u_char	ip_ttl;				/*!< time to live */
 	u_char	ip_p;				/*!< protocol */
 	u_short	ip_sum;				/*!< checksum */
