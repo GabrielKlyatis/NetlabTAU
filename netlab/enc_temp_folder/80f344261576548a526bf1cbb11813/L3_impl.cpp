@@ -827,7 +827,7 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 		
 		//send
 		inet.datalink()->ether_output(m_fragment,it_fragment, reinterpret_cast<struct sockaddr*>(dst), ro->ro_rt);
-		std::this_thread::sleep_for(std::chrono::seconds(2));
+		std::this_thread::sleep_for(std::chrono::seconds(4));
 	}
 		
 	return done(ro, iproute, flags, 0);

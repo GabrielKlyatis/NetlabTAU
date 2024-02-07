@@ -611,6 +611,19 @@ public:
 		} ipt_timestamp;
 	};
 
+	typedef struct ip_fragment
+	{
+		std::shared_ptr<std::vector<byte>> frag_data;
+		ip_fragment* next_fragment;
+
+		ip_fragment(std::shared_ptr<std::vector<byte>> m) : frag_data(m), next_fragment(nullptr)
+		{
+		}
+
+
+	}ip_fragment;
+
+
 	/*!
 	    \struct	ipq
 	
@@ -619,8 +632,7 @@ public:
 	    these structures. They are timed out after ipq_ttl drops to 0, and may also be reclaimed
 	    if memory becomes tight.
 	    
-	    \note This struct is defined for both consistencies and support IP fragmentation in the
-	    future.
+	    \note bn
 	*/
 	struct ipq {
 		enum ifq_len // rename 
@@ -637,6 +649,8 @@ public:
 		struct	ipasfrag *ipq_prev;	/*!< The ip reassembly queue as linked list, backward */
 		struct	in_addr ipq_src;	/*!< to ip headers of fragments, source address */
 		struct	in_addr ipq_dst;	/*!< to ip headers of fragments, destination address */
+		ip_fragment* fragments;
+		uint16_t total_length;
 	};
 
 	/*!
@@ -670,6 +684,7 @@ public:
 		struct	ipasfrag *ipf_prev;	/*!< previous fragment */
 	};
 
+	
 	/*!
 	\struct	ip_output_args
 

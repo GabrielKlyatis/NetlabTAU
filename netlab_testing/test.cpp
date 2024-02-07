@@ -1,16 +1,17 @@
 #include "pch.h"
-#include "../netlab/inet_os.hpp"
+#include "../netlab/infra/inet_os.hpp"
 
-#include "../netlab/NIC.h"
-#include "../netlab/L2.h"
-#include "../netlab/L2_ARP.h"
-#include "../netlab/L4.h"
-#include "../netlab/L4_TCP.h"
+#include "../netlab/L1/NIC.h"
+#include "../netlab/L2/L2.h"
+#include "../netlab/L2/L2_ARP.h"
+#include "../netlab/L4/L4.h"
+#include "../netlab/L4/L4_TCP.h"
+#include "../netlab/L3/L3.h"
 
 #include <iostream>
 
-#include "../netlab/NIC_Cable.h"
-#include "../netlab/L0_buffer.h"
+#include "../netlab/L1/NIC_Cable.h"
+#include "../netlab/L0/L0_buffer.h"
 
 
 #include <iostream>
@@ -19,6 +20,8 @@
 #include <string>
 #include <cstdlib>
 #include <pthread.h>
+
+#define NIC_CABLE_DEBUG
 
 using namespace std;
 
@@ -35,7 +38,7 @@ TEST(test1, TestName) {
     nullptr,             // Using my real machine broadcast address.
     true,                // Setting the NIC to be in promisc mode
     "(arp and ether src bb:bb:bb:bb:bb:bb) or (tcp port 8888 and not ether "
-    "src aa:aa:aa:aa:aa:aa)"); // Declaring a filter to make a cleaner testing.
+    "src aa:aa:aa:aa:aa:aa) or (ip src 10.0.0.15)"); // Declaring a filter to make a cleaner testing.
 
     /* Declaring the server's datalink using my L2_impl */
     L2_impl datalink_server(inet_server);
@@ -66,9 +69,6 @@ TEST(test1, TestName) {
     inet_server
     .domaininit(); // This calls each pr_init() for each defined protocol.
 
-    arp_server.insertPermanent(nic_server.ip_addr().s_addr,
-                                nic_server.mac()); // Inserting my address
-
     /* Client is declared similarly: */
     inet_os inet_client = inet_os();
     NIC nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr,
@@ -78,19 +78,59 @@ TEST(test1, TestName) {
 
     L2_impl datalink_client(inet_client);
     L2_ARP_impl arp_client(inet_client, 10, 10000);
+    L3_impl* ip = new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR);
     inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
     inet_client.inetsw(new L4_TCP_impl(inet_client), protosw::SWPROTO_TCP);
-    inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW,
-                                    protosw::PR_ATOMIC | protosw::PR_ADDR),
-                        protosw::SWPROTO_IP_RAW);
+    inet_client.inetsw(ip,protosw::SWPROTO_IP_RAW);
     inet_client.domaininit();
-    arp_client.insertPermanent(nic_client.ip_addr().s_addr,
-                                nic_client.mac()); // My
+
+    
+    arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // My
+
+    //arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac()); // server
+    //arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
+
+
+    auto s = (uint8_t)sizeof(struct L3::iphdr);
+    vector<byte>  a (3000, 8);
+    L3::iphdr ipHeader;
+
+    struct	in_addr ip_src;		/*!< source and */
+    struct	in_addr ip_dst;		/*!< dest address */
+
+    ipHeader.ip_v(4);
+    ipHeader.ip_hl(5);
+    ipHeader.ip_tos = L3::iphdr::IPTOS_LOWDELAY;
+    ipHeader.ip_len = htons(s + 3000);
+    ipHeader.ip_id = htons(12345);
+    ipHeader.ip_off = htons(0);
+    ipHeader.ip_ttl = 64;
+    ipHeader.ip_p = 4; // UDP
+    ipHeader.ip_dst = nic_server.ip_addr();
+    ipHeader.ip_src = nic_client.ip_addr();
+   
+    cout << ipHeader;
 
     /* Spawning both sniffers, 0U means continue forever */
     inet_server.connect(0U);
     inet_client.connect(0U);
 
+    netlab::L5_socket_impl* AcceptSocket = nullptr;
+
+    std::vector<byte> ipHeaderBytes(reinterpret_cast<byte*>(&ipHeader), reinterpret_cast<byte*>(&ipHeader) + sizeof(L3::iphdr));
+    for (int i = 1000; i < 3000; ++i)
+    {
+        a[i] = (i > 2000) ? 10 : 9 ;
+    }
+    a.insert(a.begin(), ipHeaderBytes.begin(), ipHeaderBytes.end());
+    std::shared_ptr<std::vector<byte>> m = std::make_shared<std::vector<byte>>(a);
+    std::vector<byte>::iterator        it = m->begin();
+    std::shared_ptr<std::vector<byte>> c = std::make_shared<std::vector<byte>>();
+    //const struct ip_output_args args (m,m->begin(), nullptr, nullptr,0 , nullptr);
+    L3_impl::ip_output_args ip_args(m, it, c, nullptr, 0, nullptr);
+    
+
+   
     // The socket address to be passed to bind
     sockaddr_in service;
 
@@ -136,22 +176,35 @@ TEST(test1, TestName) {
 
     //----------------------
     // Create a SOCKET for accepting incoming requests.
-    netlab::L5_socket_impl* AcceptSocket = nullptr;
+   
 
     //----------------------
     // Accept the connection.
     AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
+    inet_server.stop_fasttimo();
+    inet_server.stop_slowtimo();
+    ListenSocket->shutdown(SD_RECEIVE);
+
+    ip->pr_output(*dynamic_cast<const struct protosw::pr_output_args*>(&ip_args));
+
+
     inet_client.stop_fasttimo();
     inet_client.stop_slowtimo();
 
-    inet_server.stop_fasttimo();
-    inet_server.stop_slowtimo();
+    
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ListenSocket->shutdown(SD_RECEIVE);
+
     EXPECT_EQ(1, 1);
     EXPECT_TRUE(true);
+
+
+
+
+
+
+
 }
 
 //TEST(test2, TestName)
