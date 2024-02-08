@@ -140,7 +140,7 @@ std::ostream& operator<<(std::ostream &out, const L3::iphdr &ip)
 		" , ExpCongestionNot = 0x" << (static_cast<uint8_t>(ip.ip_tos) << 6) <<
 		" , TotalLength = " << std::dec << static_cast<uint16_t>(ip.ip_len) <<
 		" , Identification = 0x" << std::setfill('0') << std::setw(4) << std::hex << static_cast<uint16_t>(ip.ip_id) <<
-		" , FragmentOffset = " << std::dec << static_cast<uint16_t>(ip.ip_off) <<
+		" , FragmentOffset = " << std::dec << ip.ip_off <<
 		" , TTL = " << static_cast<uint16_t>(ip.ip_ttl) <<
 		" , Protocol = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint16_t>(ip.ip_p) <<
 		" , Checksum = 0x" << std::setfill('0') << std::setw(4) << std::hex << static_cast<uint16_t>(ip.ip_sum) <<
@@ -285,13 +285,14 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 	*
 	* Convert fields to host representation.
 	*/
-	if ((ip.ip_len = htons(ip.ip_len)) < hlen)
+	if ((ip.ip_len = ntohs(ip.ip_len)) < hlen)
 		return;
-	ip.ip_id = htons(ip.ip_id);
-	ip.ip_off = htons(ip.ip_off);
+	ip.ip_id = ntohs(ip.ip_id);
+	ip.ip_off = ntohs(ip.ip_off );
 
+#define NETLAB_L3_DEBUG
 #ifdef NETLAB_L3_DEBUG
-	print(ip, htons(checksum));
+	print(ip, ntohs(checksum));
 #endif
 
 	/*
@@ -542,8 +543,8 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	 *	The source address may not be set, in which case it is selected after a route to the destination
 	 *	has been located (Figure 8.25).
 	 */
-	if (opt) 
-		ip_insertoptions(m, it, opt, hlen);
+	//if (opt) 
+	//	ip_insertoptions(m, it, opt, hlen);
 
 	struct iphdr *ip(reinterpret_cast<struct iphdr *>(&m->data()[it - m->begin()]));
 
@@ -553,7 +554,7 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	if ((flags & (IP_FORWARDING | IP_RAWOUTPUT)) == 0) 
 	{
 		ip->ip_v(IPVERSION);
-		ip->ip_off &= iphdr::IP_DF;
+		//ip->ip_off &= iphdr::IP_DF;
 		ip->ip_id = htons(ip_id++);
 		ip->ip_hl(hlen >> 2);
 	}
@@ -779,79 +780,51 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	if (len < 8)
 		return done(ro, iproute, flags, EMSGSIZE);
 
-#ifdef NETLAB_L3_FRAGMENTATION
+	// IP FRAGMENTATION
+	// TODO: check if allignment is needed
+	u_short fragment_size = ((inet.nic()->if_mtu() - sizeof(struct iphdr) - sizeof(struct L2::ether_header)) >> 3) << 3; // mtu - ip header - eth header
+	u_short total_len = ntohs(ip->ip_len);
+	it = it + sizeof(L3::iphdr); // move the iterator to data saction
+
+	// iterate fragments
+	for (u_short off = hlen; off < total_len; off += fragment_size)
 	{
-		int mhlen, firstlen = len;
-		/*
-		* Loop through length of segment after first fragment,
-		* make new header and copy data of each part and link onto chain.
-		*/
-		m0 = m;
-		mhlen = sizeof(struct iphdr);
-		for (off = hlen + len; off < (u_short)ip->ip_len; off += len) {
-			MGETHDR(m, M_DONTWAIT, MT_HEADER);
-			if (m == 0) {
-				error = ENOBUFS;
-				goto sendorfree;
-			}
-			m->m_data += max_linkhdr;
-			mhip = mtod(m, struct iphdr *);
-			*mhip = *ip;
-			if (hlen > sizeof(struct iphdr)) {
-				mhlen = ip_optcopy(ip, mhip) + sizeof(struct iphdr);
-				mhip->ip_hl = mhlen >> 2;
-			}
-			m->m_len = mhlen;
-			mhip->ip_off = ((off - hlen) >> 3) + (ip->ip_off & ~IP_MF);
-			if (ip->ip_off & IP_MF)
-				mhip->ip_off |= IP_MF;
-			if (off + len >= (u_short)ip->ip_len)
-				len = (u_short)ip->ip_len - off;
-			else
-				mhip->ip_off |= IP_MF;
-			mhip->ip_len = htons((u_short)(len + mhlen));
-			m->m_next = m_copy(m0, off, len);
-			if (m->m_next == 0) {
-				(void)m_free(m);
-				error = ENOBUFS;	/* ??? */
-				ipstat.ips_odropped++;
-				goto sendorfree;
-			}
-			m->m_pkthdr.len = mhlen + len;
-			m->m_pkthdr.rcvif = (struct ifnet *)0;
-			mhip->ip_off = htons((u_short)mhip->ip_off);
-			mhip->ip_sum = 0;
-			mhip->ip_sum = in_cksum(m, mhlen);
-			*mnext = m;
-			mnext = &m->m_nextpkt;
-			ipstat.ips_ofragments++;
+		// calculate data lengt
+		u_short fragment_data_len = std::min(fragment_size, static_cast<u_short>(total_len - off));
+		
+		// allocate new packet and iterator
+		std::shared_ptr<std::vector<byte>> m_fragment(new std::vector<byte>(fragment_data_len + sizeof(struct L2::ether_header) + sizeof(struct L3::iphdr)));
+		std::vector<byte>::iterator it_fragment(m_fragment->begin() + sizeof(struct L2::ether_header));
+
+		// copy data
+		memcpy(&(*(it_fragment + sizeof(L3::iphdr))), &(*(it)), fragment_data_len);
+		it += fragment_data_len;
+
+
+		// copy ip header
+		struct iphdr fragment_ip_header;
+		memcpy(&fragment_ip_header, ip, sizeof(struct iphdr));
+
+		// update hdr
+		fragment_ip_header.ip_off = ((off - hlen) >> 3);
+		fragment_ip_header.ip_off |= L3::iphdr::IP_MF;  // Set the More Fragments (MF) flag
+		if (off + fragment_size >= total_len)
+		{
+			// This is the last fragment, clear the More Fragments (MF) flag
+			fragment_ip_header.ip_off &= ~L3::iphdr::IP_MF;
 		}
-		/*
-		* Update first fragment by trimming what's been copied out
-		* and updating header, then send each fragment (in order).
-		*/
-		m = m0;
-		m_adj(m, hlen + firstlen - (u_short)ip->ip_len);
-		m->m_pkthdr.len = hlen + firstlen;
-		ip->ip_len = htons((u_short)m->m_pkthdr.len);
-		ip->ip_off = htons((u_short)(ip->ip_off | IP_MF));
-		ip->ip_sum = 0;
-		ip->ip_sum = in_cksum(m, hlen);
-	sendorfree:
-		for (m = m0; m; m = m0) {
-			m0 = m->m_nextpkt;
-			m->m_nextpkt = 0;
-			if (error == 0)
-				error = (*ifp->if_output)(ifp, m,
-				(struct sockaddr *)dst, ro->ro_rt);
-			else
-				m_freem(m);
-		}
-		if (error == 0)
-			ipstat.ips_fragmented++;
+		fragment_ip_header.ip_off = htons(fragment_ip_header.ip_off);
+		fragment_ip_header.ip_len = htons(fragment_data_len + hlen);
+		fragment_ip_header.ip_sum = 0;
+		fragment_ip_header.ip_sum = in_cksum(&(*it_fragment), hlen);
+
+		memcpy(&(*it_fragment), &fragment_ip_header, sizeof(struct iphdr));
+		
+		//send
+		inet.datalink()->ether_output(m_fragment,it_fragment, reinterpret_cast<struct sockaddr*>(dst), ro->ro_rt);
+		std::this_thread::sleep_for(std::chrono::seconds(2));
 	}
-#endif
-	
+		
 	return done(ro, iproute, flags, 0);
 }
 
@@ -1199,7 +1172,7 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 	* if the packet was previously fragmented,
 	* but it's not worth the time; just let them time out.)
 	*/
-	if (ip.ip_off & ~iphdr::IP_DF) {
+	if (~(ip.ip_off & iphdr::IP_DF)) {
 
 		/*
 		*	Net/3 keeps incomplete datagrams on the global doubly linked list, ipq. The name
@@ -1217,18 +1190,50 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		* of this datagram.
 		*/
 		struct ipq *fp;
+
 		bool found(false);
 		for (fp = ipq_t.next; fp != &ipq_t; fp = fp->next)
+		{
+			if (fp == nullptr)
+			{
+				break;
+			}
+
 			if (ip.ip_id == fp->ipq_id &&
 				ip.ip_src.s_addr == fp->ipq_src.s_addr &&
 				ip.ip_dst.s_addr == fp->ipq_dst.s_addr &&
-				ip.ip_p == fp->ipq_p) 
+				ip.ip_p == fp->ipq_p)
 			{
 				found = true;
 				break;
 			}
-		if (!found)
-			fp = nullptr;
+		}
+
+		if (found)
+		{
+			ip_fragment* pointer = fp->fragments;
+			while (pointer->next_fragment != nullptr)
+			{
+				pointer = pointer->next_fragment;
+			}
+			fp->total_length += ip.ip_len - sizeof(iphdr);
+			pointer->next_fragment = new ip_fragment(m);
+		}
+		else
+		{
+			fp = new struct ipq(); // need to free memory
+			fp->ipq_id = ip.ip_id;
+			fp->ipq_src.s_addr = ip.ip_src.s_addr;
+			fp->ipq_dst.s_addr = ip.ip_dst.s_addr;
+			fp->ipq_p = ip.ip_p;
+			fp->total_length = ip.ip_len - sizeof(iphdr);
+			fp->fragments = new ip_fragment(m);
+
+			ipq* last_ipq = &ipq_t;
+			last_ipq->next = fp;
+
+		}
+			
 
 		/*
 		*	At found, the packet is modified by ours to facilitate reassembly:
@@ -1260,10 +1265,6 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		if (ip.ip_off & iphdr::IP_MF)
 			reinterpret_cast<struct ipasfrag *>(&ip)->ipf_mff |= 1;
 
-		/*
-		*	ip_off is multiplied by 8 to convert from 8-byte to 1-byte units.
-		*/
-		ip.ip_off <<= 3;
 
 		/*
 		*	ipf_mff and ip_off determine if ours should attempt reassembly. Figure
@@ -1277,16 +1278,44 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		*
 		* If datagram marked as having more fragments
 		* or if this is not the first fragment,
-		* attempt reassembly; if it succeeds, proceed.
+		* attempt reassembly; if it succeeds, proceed. ???????
+		* 
+		* if no more frags try to reasmble
 		*/
-		if (reinterpret_cast<struct ipasfrag *>(&ip)->ipf_mff & 1 || ip.ip_off) 
+		if (((ip.ip_off & iphdr::IP_MF) == 0) && ip.ip_p == 4) // for now support only in udp
 		{
-#ifdef NETLAB_L3_FRAGMENTATION
-			ip = ip_reass((struct ipasfrag *)&ip, fp);
-			if (ip == 0)
-				goto next;
-			m = dtom(ip);
-#endif
+			// attempt to reasmble
+			ip_fragment* pointer = fp->fragments;
+			size_t ethr_ip_header_size = sizeof(struct L2::ether_header) + sizeof(struct L3::iphdr);
+
+			// create the reasmble buffer & iterator
+			std::shared_ptr<std::vector<byte>> m_reasemble_packet(new std::vector<byte>(ethr_ip_header_size + fp->total_length));
+			std::vector<byte>::iterator it_reasemble(m_reasemble_packet->begin());
+			
+			// copy ethernet and ip header 
+			memcpy(&(*it_reasemble), &(*pointer->frag_data->begin()), ethr_ip_header_size);
+			struct iphdr* ip_header = reinterpret_cast<struct iphdr*>(&(*(it_reasemble + sizeof(struct L2::ether_header)))); // point to start of iphdr
+			ip_header->ip_len = sizeof(struct L3::iphdr) + fp->total_length; // reasmble ip length
+
+			while (pointer != nullptr)
+			{
+				// fragment iterator
+				std::vector<byte>::iterator it_fragment(pointer->frag_data->begin());
+				struct iphdr* fragment_ip_header(reinterpret_cast<struct iphdr*>(&(*(it_fragment + sizeof(struct L2::ether_header)))));
+
+				// copy fragment data section
+				uint16_t fragment_offset = fragment_ip_header->ip_off  << 3; // multiply by 8
+				uint16_t fragment_length = fragment_ip_header->ip_len ;
+				memcpy(&(*(it_reasemble + ethr_ip_header_size + fragment_offset)), &(*(it_fragment + ethr_ip_header_size)), fragment_length);
+			
+				// next fragment and free memory
+				ip_fragment* tmp = pointer;
+				pointer = pointer->next_fragment;
+				delete tmp;
+			}
+
+			// assign new packet
+			m = m_reasemble_packet;
 		}
 	}
 	else
