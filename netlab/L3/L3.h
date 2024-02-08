@@ -611,6 +611,19 @@ public:
 		} ipt_timestamp;
 	};
 
+	typedef struct ip_fragment
+	{
+		std::shared_ptr<std::vector<byte>> frag_data;
+		ip_fragment* next_fragment;
+
+		ip_fragment(std::shared_ptr<std::vector<byte>> m) : frag_data(m), next_fragment(nullptr)
+		{
+		}
+
+
+	}ip_fragment;
+
+
 	/*!
 	    \struct	ipq
 	
@@ -619,8 +632,7 @@ public:
 	    these structures. They are timed out after ipq_ttl drops to 0, and may also be reclaimed
 	    if memory becomes tight.
 	    
-	    \note This struct is defined for both consistencies and support IP fragmentation in the
-	    future.
+	    \note bn
 	*/
 	struct ipq {
 		enum ifq_len // rename 
@@ -637,6 +649,8 @@ public:
 		struct	ipasfrag *ipq_prev;	/*!< The ip reassembly queue as linked list, backward */
 		struct	in_addr ipq_src;	/*!< to ip headers of fragments, source address */
 		struct	in_addr ipq_dst;	/*!< to ip headers of fragments, destination address */
+		ip_fragment* fragments;
+		uint16_t total_length;
 	};
 
 	/*!
@@ -670,6 +684,7 @@ public:
 		struct	ipasfrag *ipf_prev;	/*!< previous fragment */
 	};
 
+	
 	/*!
 	\struct	ip_output_args
 
@@ -789,6 +804,7 @@ private:
 		\return	An int, for error handling.
 	*/
 	inline int done(struct route *ro, struct route &iproute, const int &flags, const int error);
+
 
 	/*!   
 		\note 	Currently disabled.
@@ -998,9 +1014,9 @@ struct L3::iphdr {
 
 	ip_v_hl_pack ip_v_hl;		/*!< version then header length, in a ip_v_hl_pack. \note The IP header length is in 4-bytes unit */
 	u_char	ip_tos;				/*!< type of service \see IPTOS_ */
-	short	ip_len;				/*!< total length, including data */
+	u_short	ip_len;				/*!< total length, including data */
 	u_short	ip_id;				/*!< identification */
-	short	ip_off;				/*!< fragment offset field \see IP_ */
+	u_short	ip_off;				/*!< fragment offset field \see IP_ */
 	u_char	ip_ttl;				/*!< time to live */
 	u_char	ip_p;				/*!< protocol */
 	u_short	ip_sum;				/*!< checksum */

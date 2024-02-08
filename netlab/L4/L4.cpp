@@ -4,8 +4,8 @@
 */
 #include "L4.h"
 
-#include "L3.h"
-#include "NIC.h"
+#include "../L3/L3.h"
+#include "../L1/NIC.h"
 
 using namespace std;
 
@@ -83,8 +83,8 @@ L4::~L4()
 }
 
 
-#include "L3.h"
-#include "L2.h"
+#include "../L3/L3.h"
+#include "../L2/L2.h"
 
 using namespace std;
 

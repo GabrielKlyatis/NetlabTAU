@@ -355,7 +355,7 @@ L2_ARP_impl::mac_addr* L2_ARP_impl::arpresolve(std::shared_ptr<std::vector<byte>
 		* There is an arptab entry, but no Ethernet address response yet.  Replace the held mbuf with this
 		* latest one. 
 		*/
-		la->push(m, it);
+		//la->push(m, it);
 
 		/*	RFC 1122 requires ARP to avoid sending ARP requests to a given destination at a high rate when a
 		*	reply is not received. The technique used by Net/3 to avoid ARP flooding is as follows:
