@@ -782,7 +782,7 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 
 	// IP FRAGMENTATION
 	// TODO: check if allignment is needed
-	u_short fragment_size = inet.nic()->if_mtu() - sizeof(struct iphdr) - sizeof(struct L2::ether_header); // mtu - ip header - eth header
+	u_short fragment_size = ((inet.nic()->if_mtu() - sizeof(struct iphdr) - sizeof(struct L2::ether_header)) >> 3) << 3; // mtu - ip header - eth header
 	u_short total_len = ntohs(ip->ip_len);
 	it = it + sizeof(L3::iphdr); // move the iterator to data saction
 
@@ -791,17 +791,15 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	{
 		// calculate data lengt
 		u_short fragment_data_len = std::min(fragment_size, static_cast<u_short>(total_len - off));
-		//std::cout << "Fragment Size: " << fragment_size << ", Data Length: " << fragment_data_len << std::endl;
 		
 		// allocate new packet and iterator
 		std::shared_ptr<std::vector<byte>> m_fragment(new std::vector<byte>(fragment_data_len + sizeof(struct L2::ether_header) + sizeof(struct L3::iphdr)));
 		std::vector<byte>::iterator it_fragment(m_fragment->begin() + sizeof(struct L2::ether_header));
 
 		// copy data
-		it_fragment += sizeof(L3::iphdr);
-		memcpy(&(*it_fragment), &(*(it)), fragment_data_len);
+		memcpy(&(*(it_fragment + sizeof(L3::iphdr))), &(*(it)), fragment_data_len);
 		it += fragment_data_len;
-		it_fragment -= sizeof(L3::iphdr);
+
 
 		// copy ip header
 		struct iphdr fragment_ip_header;
@@ -821,9 +819,6 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 		fragment_ip_header.ip_sum = in_cksum(&(*it_fragment), hlen);
 
 		memcpy(&(*it_fragment), &fragment_ip_header, sizeof(struct iphdr));
-
-		//std::cout << "fragment header\n" << fragment_ip_header << "\n";
-		std::cout << "fragment header\n" << &(*it_fragment) << "\n";
 		
 		//send
 		inet.datalink()->ether_output(m_fragment,it_fragment, reinterpret_cast<struct sockaddr*>(dst), ro->ro_rt);
@@ -1270,10 +1265,6 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		if (ip.ip_off & iphdr::IP_MF)
 			reinterpret_cast<struct ipasfrag *>(&ip)->ipf_mff |= 1;
 
-		/*
-		*	ip_off is multiplied by 8 to convert from 8-byte to 1-byte units.
-		*/
-		//ip.ip_off <<= 3;
 
 		/*
 		*	ipf_mff and ip_off determine if ours should attempt reassembly. Figure
@@ -1295,24 +1286,35 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		{
 			// attempt to reasmble
 			ip_fragment* pointer = fp->fragments;
+			size_t ethr_ip_header_size = sizeof(struct L2::ether_header) + sizeof(struct L3::iphdr);
 
-			std::shared_ptr<std::vector<byte>> m_reasemble_packet(new std::vector<byte>(sizeof(struct L2::ether_header) + sizeof(struct L3::iphdr) + fp->total_length));
+			// create the reasmble buffer & iterator
+			std::shared_ptr<std::vector<byte>> m_reasemble_packet(new std::vector<byte>(ethr_ip_header_size + fp->total_length));
 			std::vector<byte>::iterator it_reasemble(m_reasemble_packet->begin());
 			
-			memcpy(&(*it_reasemble), &(*pointer->frag_data->begin()), sizeof(struct L2::ether_header) + sizeof(struct L3::iphdr));
+			// copy ethernet and ip header 
+			memcpy(&(*it_reasemble), &(*pointer->frag_data->begin()), ethr_ip_header_size);
 			struct iphdr* ip_header = reinterpret_cast<struct iphdr*>(&(*(it_reasemble + sizeof(struct L2::ether_header)))); // point to start of iphdr
-			ip_header->ip_len = sizeof(struct L3::iphdr) + fp->total_length;
+			ip_header->ip_len = sizeof(struct L3::iphdr) + fp->total_length; // reasmble ip length
 
 			while (pointer != nullptr)
 			{
+				// fragment iterator
 				std::vector<byte>::iterator it_fragment(pointer->frag_data->begin());
 				struct iphdr* fragment_ip_header(reinterpret_cast<struct iphdr*>(&(*(it_fragment + sizeof(struct L2::ether_header)))));
+
+				// copy fragment data section
 				uint16_t fragment_offset = fragment_ip_header->ip_off  << 3; // multiply by 8
-				uint16_t fragment_length = fragment_ip_header->ip_len - sizeof(struct L3::iphdr);
-				memcpy(&(*(it_reasemble + sizeof(struct L3::iphdr) + fragment_offset)), &(*(it_fragment + sizeof(struct L2::ether_header))), fragment_length);
+				uint16_t fragment_length = fragment_ip_header->ip_len ;
+				memcpy(&(*(it_reasemble + ethr_ip_header_size + fragment_offset)), &(*(it_fragment + ethr_ip_header_size)), fragment_length);
+			
+				// next fragment and free memory
+				ip_fragment* tmp = pointer;
 				pointer = pointer->next_fragment;
+				delete tmp;
 			}
 
+			// assign new packet
 			m = m_reasemble_packet;
 		}
 	}
