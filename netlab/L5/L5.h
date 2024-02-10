@@ -923,6 +923,8 @@ namespace netlab
 
 		virtual void send(std::string uio, size_t uio_resid = 0, size_t chunk = 0, int flags = 0);
 
+		virtual void sendto(std::string uio = 0, size_t uio_resid = 0, size_t chunk = 0, int flags = 0, _In_ const struct sockaddr* name = nullptr, _In_ int name_len = 0);
+
 		virtual int recv(std::string &uio, size_t uio_resid, size_t chunk = 0, int flags = MSG_WAITALL);
 
 		/*!

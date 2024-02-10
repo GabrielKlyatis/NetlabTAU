@@ -37,12 +37,11 @@ protected:
 	// The sockaddr_in structure specifies the address family,
 	// IP address, and port for the socket that is being bound (SERVER)/and port of the server to be connected to (CLIENT).
 	sockaddr_in service;
-	sockaddr_in clientService;
 
 	UDPTest()
 		: inet_server(),
 		inet_client(),
-		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "(arp and ether src bb:bb:bb:bb:bb:bb) or (udp port 8888 and not ether src aa:aa:aa:aa:aa:aa)"),
+		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "(arp and ether src bb:bb:bb:bb:bb:bb) or (udp port 5000 and not ether src aa:aa:aa:aa:aa:aa)"),
 		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "(arp and ether src aa:aa:aa:aa:aa:aa) or (udp port 8888 and not ether src bb:bb:bb:bb:bb:bb)"),
 		datalink_server(inet_server),
 		datalink_client(inet_client),
@@ -78,6 +77,7 @@ protected:
 		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 		inet_client.domaininit();
 		arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+		arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
 
 		/* Spawning both sniffers, 0U means continue forever */
 		inet_server.connect(0U);
@@ -103,14 +103,14 @@ TEST_F(UDPTest, Test01) {
 	//----------------------
 	// The sockaddr_in structure specifies the address family,
 	// IP address, and port for the socket that is being bound.
-	sockaddr_in sock_addr;
-	sock_addr.sin_family = AF_INET;
-	sock_addr.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-	sock_addr.sin_port = htons(8888);
+	sockaddr_in server_socket_addr;
+	server_socket_addr.sin_family = AF_INET;
+	server_socket_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	server_socket_addr.sin_port = htons(8888);
 
 	////----------------------
 	//// Bind the socket.
-	ServerSocket->bind((SOCKADDR*)&sock_addr, sizeof(service));
+	ServerSocket->bind((SOCKADDR*)&server_socket_addr, sizeof(service));
 
 	////----------------------
 	//// Create a SOCKET for the client
@@ -118,14 +118,15 @@ TEST_F(UDPTest, Test01) {
 
 	//----------------------
 	// The sockaddr_in structure specifies the address family,
-	// IP address, and port of the server to be connected to.
-	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-	clientService.sin_port = htons(8888);
-
+	// IP address, and port for the socket that is being bound.
+	sockaddr_in server_socket_addr_for_client;
+	server_socket_addr_for_client.sin_family = AF_INET;
+	server_socket_addr_for_client.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
+	server_socket_addr_for_client.sin_port = htons(8888);
+	
 	std::string send_msg;
 	send_msg = "Client: Hi, I am Client!";
 
-	ClientSocket->send(send_msg, send_msg.size());
+	ClientSocket->sendto(send_msg, send_msg.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
 	
 }
