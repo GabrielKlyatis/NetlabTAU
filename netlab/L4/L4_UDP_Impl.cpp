@@ -114,18 +114,18 @@ uint16_t L4_UDP_Impl::calculate_checksum(pseudo_header& udp_pseudo_header, std::
 
 int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 
-	socket *so = dynamic_cast<socket*>(up.udp_inpcb->inp_socket);
+	socket *so = dynamic_cast<socket *>(up.udp_inpcb->inp_socket);
 
 	long len(so->so_snd.size());
 
-	uint16_t hdrlen(sizeof(udphdr) + sizeof(L3::iphdr)); 
+	uint16_t hdrlen(sizeof(udphdr) + sizeof(L3::iphdr));
 
 	std::shared_ptr<std::vector<byte>> m(new std::vector<byte>(hdrlen + sizeof(struct L2::ether_header) + len));
 	if (m == nullptr)
 		return out(up, ENOBUFS);
 
 	std::vector<byte>::iterator it(m->begin() + sizeof(struct L2::ether_header) + sizeof(L3::iphdr));
-	
+
 	if (len > 0) {
 
 		// copy data
@@ -137,7 +137,7 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 		// update header
 		udp_header->dst_port_number = so->so_pcb->inp_fport();
 		udp_header->src_port_number = so->so_pcb->inp_lport();
-		udp_header->udp_datagram_length = len + sizeof(udphdr);
+		udp_header->udp_datagram_length = htons((uint16_t)(len + sizeof(udphdr)));
 
 		// Create atrophied IP header with only src and dst IP addresses
 
@@ -145,6 +145,9 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 
 		ip_header->ip_src = so->so_pcb->inp_laddr();
 		ip_header->ip_dst = so->so_pcb->inp_faddr();
+		ip_header->ip_len = len + hdrlen;
+		ip_header->ip_ttl = 99;
+		ip_header->ip_p = IPPROTO_UDP;
 
 		// calculate UDP pseudo header and checksum 
 
@@ -156,8 +159,8 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 
 		int error(
 			inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*dynamic_cast<const struct pr_output_args*>(
-					&L3_impl::ip_output_args(m, it, up.udp_inpcb->inp_options, &up.udp_inpcb->inp_route, so->so_options & SO_DONTROUTE, nullptr)
-					)));
+				&L3_impl::ip_output_args(m, it - sizeof(L3::iphdr), up.udp_inpcb->inp_options, &up.udp_inpcb->inp_route, so->so_options & SO_DONTROUTE, nullptr)
+				)));
 		if (error)
 			return out(up, error);
 
@@ -183,38 +186,41 @@ int L4_UDP_Impl::pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr
 
 	switch (req) {
 
-	case PRU_ATTACH:
-	{
-		if (inp) {
-			error = EISCONN;
+		case PRU_ATTACH:
+		{
+			if (inp) {
+				error = EISCONN;
+				break;
+			}
+			if (error = udp_attach(*dynamic_cast<socket*>(so)))
+				break;
+			up = L4_UDP::udpcb::sotoudpcb(dynamic_cast<socket*>(so));
 			break;
 		}
-		if (error = udp_attach(*dynamic_cast<socket*>(so)))
+
+		case PRU_DETACH:
+		{
 			break;
-		up = L4_UDP::udpcb::sotoudpcb(dynamic_cast<socket*>(so));
-		break;
-	}
+		}
 
-	case PRU_DETACH:
-	{
-		break;
-	}
-
-	case PRU_BIND:
-	{
-		if (error = inp->in_pcbbind(reinterpret_cast<struct sockaddr_in*>(nam), nam_len))
+		case PRU_BIND:
+		{	
+			if (error = inp->in_pcbbind(reinterpret_cast<struct sockaddr_in*>(nam), nam_len))
+				break;
 			break;
-		break;
-	}
+		}
 
-	case PRU_SEND:
-	{
-		dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
-		error = udp_output(*up);
-		break;
-	}
-		
-	
+		case PRU_SEND:
+		{
+			if (inp->inp_lport() == 0)
+				if (error = inp->in_pcbbind(nullptr, 0))
+					break;
+			if (error = inp->in_pcbconnect(reinterpret_cast<sockaddr_in*>(const_cast<struct sockaddr*>(nam)), nam_len))
+				break;
+			dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
+			error = udp_output(*up);
+			break;
+		}
 	}
 	return error;
 }
