@@ -145,13 +145,13 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 
 		ip_header->ip_src = so->so_pcb->inp_laddr();
 		ip_header->ip_dst = so->so_pcb->inp_faddr();
-		ip_header->ip_len = len + hdrlen;
+		ip_header->ip_len = htons(len + hdrlen);
 		ip_header->ip_ttl = 99;
 		ip_header->ip_p = IPPROTO_UDP;
 
 		// calculate UDP pseudo header and checksum 
 
-		struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
+		struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, ntohs(udp_header->udp_datagram_length));
 
 		udp_header->udp_checksum = calculate_checksum(udp_pseudo_header, m);
 

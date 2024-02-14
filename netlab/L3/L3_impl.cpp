@@ -1,9 +1,9 @@
-/*!
-    \file	L3_impl.cpp
+﻿/*!
+	\file	L3_impl.cpp
 
 	\author	Tom Mahler, contact at tommahler@gmail.com
 
-    \brief	Implements the L3 class.
+	\brief	Implements the L3 class.
 */
 
 #ifndef _WINSOCK_DEPRECATED_NO_WARNINGS
@@ -20,8 +20,8 @@
 /*                         ip_output_args                               */
 /************************************************************************/
 
-L3_impl::ip_output_args::ip_output_args(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it,
-	std::shared_ptr<std::vector<byte>> &opt, struct L3::route *ro, int flags, struct  L3::ip_moptions *imo)
+L3_impl::ip_output_args::ip_output_args(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it,
+	std::shared_ptr<std::vector<byte>>& opt, struct L3::route* ro, int flags, struct  L3::ip_moptions* imo)
 	: m(m), it(it), opt(opt), ro(ro), flags(flags), imo(imo) { }
 
 /************************************************************************/
@@ -52,19 +52,19 @@ L3_impl::radix_node::radix_node()
 /*                         L3::rtentry	                                */
 /************************************************************************/
 
-L3::rtentry::rtentry(struct sockaddr *dst, int report, inet_os *inet)
+L3::rtentry::rtentry(struct sockaddr* dst, int report, inet_os* inet)
 	: rt_gateway(nullptr), rt_flags(0), rt_refcnt(0), rt_use(0), rt_ifp(inet), rt_genmask(nullptr), rt_llinfo(nullptr), rt_gwroute(nullptr)
 {
 #ifdef NETLAB_L3_FORWARDING
-	struct rtentry *rt;
-	struct rtentry *newrt = nullptr;
+	struct rtentry* rt;
+	struct rtentry* newrt = nullptr;
 	struct rt_addrinfo info;
 	inet_t::splnet();
 	int err = 0, msgtype = RTM_MISS;
-	struct radix_node *rn;
-	struct radix_node_head *rnh = rt_tables[dst->sa_family];
+	struct radix_node* rn;
+	struct radix_node_head* rnh = rt_tables[dst->sa_family];
 	if (rnh && (rn = rnh->rnh_matchaddr((caddr_t)dst, rnh)) && ((rn->rn_flags & RNF_ROOT) == 0)) {
-		newrt = rt = (struct rtentry *)rn;
+		newrt = rt = (struct rtentry*)rn;
 		if (report && (rt->rt_flags & RTF_CLONING)) {
 			err = rtrequest(RTM_RESOLVE, dst, SA(0), SA(0), 0, &newrt);
 			if (err) {
@@ -102,10 +102,10 @@ L3::rtentry::~rtentry()
 			//Throw std::runtime_error("rtfree 2");  // remove
 		//else if (rt_refcnt < 0)
 			return;
-	
+
 }
 
-void L3::rtentry::RTFREE() 
+void L3::rtentry::RTFREE()
 {
 	if (rt_refcnt <= 1)
 		delete this;
@@ -117,9 +117,9 @@ void L3::rtentry::RTFREE()
 /*                         L3::route	                                */
 /************************************************************************/
 
-L3::route::route(inet_os *inet) { ro_rt = new L3::rtentry(&ro_dst, 1, inet); }
+L3::route::route(inet_os* inet) { ro_rt = new L3::rtentry(&ro_dst, 1, inet); }
 
-void L3::route::rtalloc(inet_os *inet) 
+void L3::route::rtalloc(inet_os* inet)
 {
 	if (ro_rt && ro_rt->rt_ifp && (ro_rt->rt_flags & L3::rtentry::RTF_UP))
 		return;				 /* XXX */
@@ -130,7 +130,7 @@ void L3::route::rtalloc(inet_os *inet)
 /*                         L3::iphdr		                            */
 /************************************************************************/
 
-std::ostream& operator<<(std::ostream &out, const L3::iphdr &ip) 
+std::ostream& operator<<(std::ostream& out, const L3::iphdr& ip)
 {
 	std::ios::fmtflags f(out.flags());
 	out << "< IP (" << static_cast<uint32_t>(ip.ip_hl() << 2) <<
@@ -140,7 +140,7 @@ std::ostream& operator<<(std::ostream &out, const L3::iphdr &ip)
 		" , ExpCongestionNot = 0x" << (static_cast<uint8_t>(ip.ip_tos) << 6) <<
 		" , TotalLength = " << std::dec << static_cast<uint16_t>(ip.ip_len) <<
 		" , Identification = 0x" << std::setfill('0') << std::setw(4) << std::hex << static_cast<uint16_t>(ip.ip_id) <<
-		" , FragmentOffset = " << std::dec << static_cast<uint16_t>(ip.ip_off) <<
+		" , FragmentOffset = " << std::dec << ip.ip_off <<
 		" , TTL = " << static_cast<uint16_t>(ip.ip_ttl) <<
 		" , Protocol = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint16_t>(ip.ip_p) <<
 		" , Checksum = 0x" << std::setfill('0') << std::setw(4) << std::hex << static_cast<uint16_t>(ip.ip_sum) <<
@@ -160,17 +160,17 @@ void L3::iphdr::ip_hl(const u_char& ip_hl) { ip_v_hl.lb = ip_hl; }
 /*                         L3_impl				                        */
 /************************************************************************/
 
-L3_impl::L3_impl(class inet_os &inet, const short &pr_type, const short &pr_protocol, const short &pr_flags)
+L3_impl::L3_impl(class inet_os& inet, const short& pr_type, const short& pr_protocol, const short& pr_flags)
 	: L3(inet, pr_type, pr_protocol, pr_flags) { }
 
 void L3_impl::pr_init() { ip_init(); }
 
-int L3_impl::pr_output(const struct pr_output_args &args) { return ip_output(*reinterpret_cast<const struct ip_output_args*>(&args)); };		
+int L3_impl::pr_output(const struct pr_output_args& args) { return ip_output(*reinterpret_cast<const struct ip_output_args*>(&args)); };
 
-void L3_impl::ip_insertoptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, std::shared_ptr<std::vector<byte>> &opt, int &phlen) 
+void L3_impl::ip_insertoptions(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it, std::shared_ptr<std::vector<byte>>& opt, int& phlen)
 {
-	struct iphdr *ip(reinterpret_cast<struct iphdr *>(&m->data()[it - m->begin()]));
-	struct ipoption *p(reinterpret_cast<struct ipoption *>(&opt->data()[0]));
+	struct iphdr* ip(reinterpret_cast<struct iphdr*>(&m->data()[it - m->begin()]));
+	struct ipoption* p(reinterpret_cast<struct ipoption*>(&opt->data()[0]));
 	unsigned optlen(opt->size() - sizeof(p->ipopt_dst));
 	if (optlen + static_cast<u_short>(ip->ip_len) > IP_MAXPACKET)
 		/*!
@@ -181,26 +181,26 @@ void L3_impl::ip_insertoptions(std::shared_ptr<std::vector<byte>> &m, std::vecto
 		ip->ip_dst = p->ipopt_dst;
 
 	m->resize(m->size() + optlen);
-	std::move_backward(it += sizeof(struct iphdr *), m->end(), m->end());
+	std::move_backward(it += sizeof(struct iphdr*), m->end(), m->end());
 	std::copy(p->ipopt_list, p->ipopt_list + optlen, it);
 	phlen = sizeof(struct iphdr) + optlen;
 	ip->ip_len += optlen;
 	return;
 }
 
-void L3_impl::ip_stripoptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it) 
+void L3_impl::ip_stripoptions(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it)
 {
-	struct L3::iphdr *ip(reinterpret_cast<struct L3::iphdr *>(&m->data()[it - m->begin()]));
+	struct L3::iphdr* ip(reinterpret_cast<struct L3::iphdr*>(&m->data()[it - m->begin()]));
 	int olen((ip->ip_hl() << 2) - sizeof(struct L3::iphdr));
 	std::move(it + olen, m->end(), it);
 	m->resize(m->size() - olen);
 	ip->ip_hl(sizeof(struct L3::iphdr) >> 2);
 }
 
-void L3_impl::pr_input(const struct pr_input_args &args) 
+void L3_impl::pr_input(const struct pr_input_args& args)
 {
-	std::shared_ptr<std::vector<byte>> &m(args.m);
-	std::vector<byte>::iterator &it(args.it);
+	std::shared_ptr<std::vector<byte>>& m(args.m);
+	std::vector<byte>::iterator& it(args.it);
 
 	/*
 	*	Verification:
@@ -224,7 +224,7 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 	*				versions 5 and 6. Version 6 has also been selected as the version for the next revision to the
 	*				official IP standard (IPv6). Versions 0 and 15 are reserved, and the remaining versions are unassigned.
 	*/
-	struct iphdr &ip(*reinterpret_cast<struct iphdr *>(&m->data()[it - m->begin()]));
+	struct iphdr& ip(*reinterpret_cast<struct iphdr*>(&m->data()[it - m->begin()]));
 	if (ip.ip_v() != IPVERSION)
 		return;
 
@@ -285,13 +285,14 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 	*
 	* Convert fields to host representation.
 	*/
-	if ((ip.ip_len = htons(ip.ip_len)) < hlen)
+	if ((ip.ip_len = ntohs(ip.ip_len)) < hlen)
 		return;
-	ip.ip_id = htons(ip.ip_id);
-	ip.ip_off = htons(ip.ip_off);
+	ip.ip_id = ntohs(ip.ip_id);
+	ip.ip_off = ntohs(ip.ip_off);
 
+#define NETLAB_L3_DEBUG
 #ifdef NETLAB_L3_DEBUG
-	print(ip, htons(checksum));
+	print(ip, ntohs(checksum));
 #endif
 
 	/*
@@ -370,9 +371,9 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 		return ours(m, it, ip, hlen);
 	else if (IN_MULTICAST(ntohl(ip.ip_dst.s_addr))) {
 #ifdef NETLAB_L3_MULTICAST
-		struct in_multi *inm;
+		struct in_multi* inm;
 #ifdef MROUTING
-		extern struct socket *ip_mrouter;
+		extern struct socket* ip_mrouter;
 
 		if (ip_mrouter) {
 			/*
@@ -423,8 +424,8 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 	else if (ip.ip_dst.s_addr == INADDR_ANY)
 		return ours(m, it, ip, hlen);
 	else
-		
-		/*	
+
+		/*
 		 *	Forwarding
 		 *	If ip_dst does not match any of the addresses, the packet has not reached its final
 		 *	destination. If ipforwarding is not set, the packet is discarded. Otherwise,
@@ -433,13 +434,13 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 		 *	address of the packet. In this case, Net/3 would not search the entire in_i f addr list;
 		 *	only addresses assigned to the receiving interface would be considered. Rf<: 1122 calls this a
 		 *	slrong e1ul system model.
-		 *	For a multihomed host, it is uncommon for a packet to arrh�e at an interface that does not correspond
+		 *	For a multihomed host, it is uncommon for a packet to arrhe at an interface that does not correspond
 		 *	to the packet's destination address, unless specific host routes have been configured.
 		 *	The host routes force neighboring routers to consider the multihomed host as the next-hop
 		 *	router for the packets. The wtak t11d systmr modcl requires that the host accept these packets.
 		 *	An implementor is free to choose either model. Net/3 implements the weak end system
 		 *	model.
-		 *	
+		 *
 		* Not for us; forward if possible and desirable.
 		*/
 #ifdef NETLAB_L3_FORWARDING
@@ -451,7 +452,7 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 	return;
 }
 
-void L3_impl::print(struct iphdr& ip, uint16_t checksum, std::ostream& str) 
+void L3_impl::print(struct iphdr& ip, uint16_t checksum, std::ostream& str)
 {
 	std::swap(checksum, ip.ip_sum);
 	std::lock_guard<std::mutex> lock(inet.print_mutex);
@@ -459,7 +460,7 @@ void L3_impl::print(struct iphdr& ip, uint16_t checksum, std::ostream& str)
 	std::swap(checksum, ip.ip_sum);
 }
 
-void L3_impl::ip_init() 
+void L3_impl::ip_init()
 {
 	/*
 	*	pffindproto returns a pointer to the raw protocol (inetsw[3], Figure 7.14).
@@ -468,7 +469,7 @@ void L3_impl::ip_init()
 	*	for an unknown transport protocol to this protocol where they may be handled by a
 	*	process outside the kernel.
 	*/
-	class protosw **pr = inet.pffindproto(AF_INET, IPPROTO_RAW, SOCK_RAW);
+	class protosw** pr = inet.pffindproto(AF_INET, IPPROTO_RAW, SOCK_RAW);
 	if (pr == nullptr)
 		throw std::runtime_error("ip_init");
 
@@ -483,7 +484,7 @@ void L3_impl::ip_init()
 	const u_char protocol((*pr)->to_swproto());
 	for (int i(0); i < IPPROTO_MAX; i++)
 		ip_protox[i] = protocol;
-	for (pr = reinterpret_cast<class protosw **>(inet.inetdomain()->dom_protosw); pr < inet.inetdomain()->dom_protoswNPROTOSW; pr++)
+	for (pr = reinterpret_cast<class protosw**>(inet.inetdomain()->dom_protosw); pr < inet.inetdomain()->dom_protoswNPROTOSW; pr++)
 		if ((*pr) && (*pr)->dom_family() == AF_INET && (*pr)->pr_protocol() && (*pr)->pr_protocol() != IPPROTO_RAW)
 			ip_protox[(*pr)->pr_protocol()] = (*pr)->to_swproto();
 
@@ -504,14 +505,14 @@ void L3_impl::ip_init()
 	ip_id = static_cast<u_short>(GetTickCount64()) & 0xffff;
 }
 
-int L3_impl::ip_output(const struct ip_output_args &args) 
+int L3_impl::ip_output(const struct ip_output_args& args)
 {
-	/*	
+	/*
 	 *	Header initialization:
 	 *	The first section of ip_output, shown in Figure 8.22, merges options into the outgoing
 	 *	packet and completes the IP header for packets that are passed from the transport protocols
 	 *	(not those from ip_forward).
-	 *	
+	 *
 	 *	The arguments to ip_output are: mo, the packet to send; opt, the IP options to
 	 *	include; ro, a cached route to the destination; flags, described in Figure 8.23; and imo,
 	 *	a pointer to multicast options described in Chapter 12.
@@ -519,10 +520,10 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	int flags(args.flags),
 		hlen(sizeof(struct iphdr));
 
-	std::shared_ptr<std::vector<byte>> &m(args.m), &opt(args.opt);
-	std::vector<byte>::iterator &it(args.it);
+	std::shared_ptr<std::vector<byte>>& m(args.m), & opt(args.opt);
+	std::vector<byte>::iterator& it(args.it);
 
-	/*	
+	/*
 	 *	Construct IP header
 	 *	If the caller provides any IP options they are merged with the packet by
 	 *	ip_insertoptions (Section 9.8), which returns the new header length.
@@ -542,53 +543,53 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	 *	The source address may not be set, in which case it is selected after a route to the destination
 	 *	has been located (Figure 8.25).
 	 */
-	if (opt) 
-		ip_insertoptions(m, it, opt, hlen);
+	 //if (opt) 
+	 //	ip_insertoptions(m, it, opt, hlen);
 
-	struct iphdr *ip(reinterpret_cast<struct iphdr *>(&m->data()[it - m->begin()]));
+	struct iphdr* ip(reinterpret_cast<struct iphdr*>(&m->data()[it - m->begin()]));
 
 	/*
 	* Fill in IP header.
 	*/
-	if ((flags & (IP_FORWARDING | IP_RAWOUTPUT)) == 0) 
+	if ((flags & (IP_FORWARDING | IP_RAWOUTPUT)) == 0)
 	{
 		ip->ip_v(IPVERSION);
-		ip->ip_off &= iphdr::IP_DF;
+		//ip->ip_off &= iphdr::IP_DF;
 		ip->ip_id = htons(ip_id++);
 		ip->ip_hl(hlen >> 2);
 	}
 
-	/*	
+	/*
 	 *	Packet already Includes header:
 	 *	For a forwarded packet (or a raw IP packet with a header), the header length (in
 	 *	bytes) is saved in hlen for use by the fragmentation algorithm.
 	 */
-	else 
+	else
 		hlen = ip->ip_hl() << 2;
 
-	/*	
+	/*
 	 *	Route Selection:
 	 *	After completing the IP header, the next task for ip_output is to locate a route to the
 	 *	destination.
-	 *	
+	 *
 	 *	Verify cached route:
 	 *	A cached route may be provided to ip_output as the ro argument. In Chapter 24
 	 *	we'll see that UDP and TCP maintain a route cache associated with each socket. If a
-	 *	route has not been provided, ip_output sets ro to point to the temporary route 
+	 *	route has not been provided, ip_output sets ro to point to the temporary route
 	 *	structure iproute.
-	 *	
+	 *
 	* Route packet.
 	*/
 	struct route iproute(&inet),
-		*ro(args.ro);;
-	if (ro == nullptr) 
+		* ro(args.ro);;
+	if (ro == nullptr)
 		memset(ro = &iproute, 0, sizeof(*ro));
 
-	/*	
+	/*
 	 *	If the cached destination is not to the current packet's destination, the route is discarded
 	 *	and the new destination address placed in dst.
 	 */
-	struct sockaddr_in *dst(reinterpret_cast<struct sockaddr_in *>(&ro->ro_dst));
+	struct sockaddr_in* dst(reinterpret_cast<struct sockaddr_in*>(&ro->ro_dst));
 
 	/*
 	* If there is a cached route,
@@ -604,9 +605,9 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 		dst->sin_family = AF_INET;
 		dst->sin_addr = ip->ip_dst;
 	}
-	inet_os *ifp(&inet);
-	
-	/*	
+	inet_os* ifp(&inet);
+
+	/*
 	 *	Bypass routing
 	 *	A caller can prevent packet routing by setting the IP_ROUTETOIF flag (Section 8.8).
 	 *	If this flag is set, ip_output must locate an interface directly connected to the destination
@@ -617,14 +618,14 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	 *	This option allows routing protocols to bypass the local routing tables and force the packets to
 	 *	exit the system by a particular interface. In this way, routing information can be exchanged
 	 *	with other routers even when the local routing tables are incorrect.
-	 *	
+	 *
 	* If routing to interface only,
 	* short circuit routing lookup.
 	*/
 	if (flags & IP_ROUTETOIF)
 		throw std::runtime_error("IP Routing is disabled!");
 
-	/*	
+	/*
 	 *	Locate route
 	 *	If the packet is being routed (IP_ROUTETOIF is off) and there is no cached route,
 	 *	rtalloc locates a route to the address specified by dst. ip_output returns
@@ -641,13 +642,13 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 		ifp = ro->ro_rt->rt_ifp;
 		ro->ro_rt->rt_use++;
 		if (ro->ro_rt->rt_flags & L3::rtentry::RTF_GATEWAY)
-			dst = reinterpret_cast<struct sockaddr_in *>(ro->ro_rt->rt_gateway);
+			dst = reinterpret_cast<struct sockaddr_in*>(ro->ro_rt->rt_gateway);
 	}
 	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
 #ifndef NETLAB_L3_MULTICAST
 		throw std::runtime_error("Multicast is not supported, discarding packet");
 #else
-		struct in_multi *inm;
+		struct in_multi* inm;
 
 		//m->m_flags |= M_MCAST;
 		/*
@@ -655,7 +656,7 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 		* still points to the address in "ro".  (It may have been
 		* changed to point to a gateway address, above.)
 		*/
-		dst = reinterpret_cast<struct sockaddr_in *>(&ro->ro_dst);
+		dst = reinterpret_cast<struct sockaddr_in*>(&ro->ro_dst);
 		/*
 		* See if the caller provided any multicast options
 		*/
@@ -666,7 +667,7 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 		}
 		else
 			ip->ip_ttl = IP_DEFAULT_MULTICAST_TTL;
-		
+
 		/*
 		* Confirm that the outgoing interface supports multicast.
 		*/
@@ -677,7 +678,7 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 		* If source address not specified yet, use address
 		* of outgoing interface.
 		*/
-		if (ip->ip_src.s_addr == INADDR_ANY)	
+		if (ip->ip_src.s_addr == INADDR_ANY)
 			ip->ip_src = ifp->nic()->ip_addr;
 
 		//IN_LOOKUP_MULTI(ip->ip_dst, ifp, inm);
@@ -704,7 +705,7 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 			* above, will be forwarded by the ip_input() routine,
 			* if necessary.
 			*/
-			extern struct socket *ip_mrouter;
+			extern struct socket* ip_mrouter;
 			if (ip_mrouter && (flags & IP_FORWARDING) == 0) {
 				if (ip_mforward(m, ifp) != 0) {
 					m_freem(m);
@@ -734,9 +735,9 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	*/
 	if (ip->ip_src.s_addr == INADDR_ANY)
 		ip->ip_src = inet.nic()->ip_addr();
-	
+
 	short m_flags = 0;
-	
+
 	/*
 	* Look for broadcast address and
 	* and verify user is allowed to send
@@ -758,13 +759,13 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	/*
 	* If small enough for interface, can just send directly.
 	*/
-	if (static_cast<u_short>(ip->ip_len) <= inet.nic()->if_mtu()) 
+	if (static_cast<u_short>(ip->ip_len) <= inet.nic()->if_mtu())
 	{
 		ip->ip_len = htons(static_cast<u_short>(ip->ip_len));
 		ip->ip_off = htons(static_cast<u_short>(ip->ip_off));
 		(ip->ip_sum = 0) = inet.in_cksum(&m->data()[it - m->begin()], hlen);
 
-		inet.datalink()->ether_output(m, it, reinterpret_cast<struct sockaddr *>(dst), ro->ro_rt);
+		inet.datalink()->ether_output(m, it, reinterpret_cast<struct sockaddr*>(dst), ro->ro_rt);
 		return done(ro, iproute, flags, 0);
 	}
 
@@ -774,119 +775,91 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 	*/
 	if (ip->ip_off & iphdr::IP_DF)
 		return done(ro, iproute, flags, EMSGSIZE);
-	
+
 	int len((inet.nic()->if_mtu() - hlen) & ~7);
 	if (len < 8)
 		return done(ro, iproute, flags, EMSGSIZE);
 
-#ifdef NETLAB_L3_FRAGMENTATION
+	// IP FRAGMENTATION
+	// TODO: check if allignment is needed
+	u_short fragment_size = ((inet.nic()->if_mtu() - sizeof(struct iphdr) - sizeof(struct L2::ether_header)) >> 3) << 3; // mtu - ip header - eth header
+	u_short total_len = ntohs(ip->ip_len);
+	it = it + sizeof(L3::iphdr); // move the iterator to data saction
+
+	// iterate fragments
+	for (u_short off = hlen; off < total_len; off += fragment_size)
 	{
-		int mhlen, firstlen = len;
-		/*
-		* Loop through length of segment after first fragment,
-		* make new header and copy data of each part and link onto chain.
-		*/
-		m0 = m;
-		mhlen = sizeof(struct iphdr);
-		for (off = hlen + len; off < (u_short)ip->ip_len; off += len) {
-			MGETHDR(m, M_DONTWAIT, MT_HEADER);
-			if (m == 0) {
-				error = ENOBUFS;
-				goto sendorfree;
-			}
-			m->m_data += max_linkhdr;
-			mhip = mtod(m, struct iphdr *);
-			*mhip = *ip;
-			if (hlen > sizeof(struct iphdr)) {
-				mhlen = ip_optcopy(ip, mhip) + sizeof(struct iphdr);
-				mhip->ip_hl = mhlen >> 2;
-			}
-			m->m_len = mhlen;
-			mhip->ip_off = ((off - hlen) >> 3) + (ip->ip_off & ~IP_MF);
-			if (ip->ip_off & IP_MF)
-				mhip->ip_off |= IP_MF;
-			if (off + len >= (u_short)ip->ip_len)
-				len = (u_short)ip->ip_len - off;
-			else
-				mhip->ip_off |= IP_MF;
-			mhip->ip_len = htons((u_short)(len + mhlen));
-			m->m_next = m_copy(m0, off, len);
-			if (m->m_next == 0) {
-				(void)m_free(m);
-				error = ENOBUFS;	/* ??? */
-				ipstat.ips_odropped++;
-				goto sendorfree;
-			}
-			m->m_pkthdr.len = mhlen + len;
-			m->m_pkthdr.rcvif = (struct ifnet *)0;
-			mhip->ip_off = htons((u_short)mhip->ip_off);
-			mhip->ip_sum = 0;
-			mhip->ip_sum = in_cksum(m, mhlen);
-			*mnext = m;
-			mnext = &m->m_nextpkt;
-			ipstat.ips_ofragments++;
+		// calculate data lengt
+		u_short fragment_data_len = std::min(fragment_size, static_cast<u_short>(total_len - off));
+
+		// allocate new packet and iterator
+		std::shared_ptr<std::vector<byte>> m_fragment(new std::vector<byte>(fragment_data_len + sizeof(struct L2::ether_header) + sizeof(struct L3::iphdr)));
+		std::vector<byte>::iterator it_fragment(m_fragment->begin() + sizeof(struct L2::ether_header));
+
+		// copy data
+		memcpy(&(*(it_fragment + sizeof(L3::iphdr))), &(*(it)), fragment_data_len);
+		it += fragment_data_len;
+
+
+		// copy ip header
+		struct iphdr fragment_ip_header;
+		memcpy(&fragment_ip_header, ip, sizeof(struct iphdr));
+
+		// update hdr
+		fragment_ip_header.ip_off = ((off - hlen) >> 3);
+		fragment_ip_header.ip_off |= L3::iphdr::IP_MF;  // Set the More Fragments (MF) flag
+		if (off + fragment_size >= total_len)
+		{
+			// This is the last fragment, clear the More Fragments (MF) flag
+			fragment_ip_header.ip_off &= ~L3::iphdr::IP_MF;
 		}
-		/*
-		* Update first fragment by trimming what's been copied out
-		* and updating header, then send each fragment (in order).
-		*/
-		m = m0;
-		m_adj(m, hlen + firstlen - (u_short)ip->ip_len);
-		m->m_pkthdr.len = hlen + firstlen;
-		ip->ip_len = htons((u_short)m->m_pkthdr.len);
-		ip->ip_off = htons((u_short)(ip->ip_off | IP_MF));
-		ip->ip_sum = 0;
-		ip->ip_sum = in_cksum(m, hlen);
-	sendorfree:
-		for (m = m0; m; m = m0) {
-			m0 = m->m_nextpkt;
-			m->m_nextpkt = 0;
-			if (error == 0)
-				error = (*ifp->if_output)(ifp, m,
-				(struct sockaddr *)dst, ro->ro_rt);
-			else
-				m_freem(m);
-		}
-		if (error == 0)
-			ipstat.ips_fragmented++;
+		fragment_ip_header.ip_off = htons(fragment_ip_header.ip_off);
+		fragment_ip_header.ip_len = htons(fragment_data_len + hlen);
+		fragment_ip_header.ip_sum = 0;
+		fragment_ip_header.ip_sum = in_cksum(&(*it_fragment), hlen);
+
+		memcpy(&(*it_fragment), &fragment_ip_header, sizeof(struct iphdr));
+
+		//send
+		inet.datalink()->ether_output(m_fragment, it_fragment, reinterpret_cast<struct sockaddr*>(dst), ro->ro_rt);
+		//std::this_thread::sleep_for(std::chrono::seconds(5));
 	}
-#endif
-	
+
 	return done(ro, iproute, flags, 0);
 }
 
-int L3_impl::done(struct route *ro, struct route &iproute, const int &flags, const int error) 
+int L3_impl::done(struct route* ro, struct route& iproute, const int& flags, const int error)
 {
 	if (ro == &iproute && (flags & IP_ROUTETOIF) == 0 && ro->ro_rt)
 		ro->ro_rt->RTFREE();
 	return (error);
 }
 
-int L3_impl::ip_dooptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it) 
+int L3_impl::ip_dooptions(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it)
 {
 #ifndef NETLAB_L3_OPTIONS
 	return 0;
 #else
-	struct ip_timestamp *ipt;
-	struct in_ifaddr *ia;
+	struct ip_timestamp* ipt;
+	struct in_ifaddr* ia;
 	int off, code, type = ICMP_PARAMPROB, forward = 0;
-	struct in_addr *sin;
+	struct in_addr* sin;
 	n_time ntime;
 
-	struct iphdr &ip(*reinterpret_cast<struct iphdr *>(&m->data()[it - m->begin()]));
+	struct iphdr& ip(*reinterpret_cast<struct iphdr*>(&m->data()[it - m->begin()]));
 	struct in_addr dst(ip.ip_dst);
-	u_char *cp = reinterpret_cast<u_char *>(&ip + 1);
+	u_char* cp = reinterpret_cast<u_char*>(&ip + 1);
 	int cnt((ip.ip_hl() << 2) - sizeof(struct iphdr)), optlen, opt;
 	for (; cnt > 0; cnt -= optlen, cp += optlen) {
-		if ((opt = cp[IPOPT_OPTVAL]) == IPOPT_EOL) 
+		if ((opt = cp[IPOPT_OPTVAL]) == IPOPT_EOL)
 			break;
-		if (opt == IPOPT_NOP) 
+		if (opt == IPOPT_NOP)
 			optlen = 1;
 		else if ((optlen = cp[IPOPT_OLEN]) <= 0 || optlen > cnt) {
-			code = &cp[IPOPT_OLEN] - reinterpret_cast<u_char *>(&ip);
+			code = &cp[IPOPT_OLEN] - reinterpret_cast<u_char*>(&ip);
 			goto bad;
 		}
-		
+
 		switch (opt) {
 
 		default:
@@ -904,12 +877,12 @@ int L3_impl::ip_dooptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byt
 		case IPOPT_LSRR:
 		case IPOPT_SSRR:
 			if ((off = cp[IPOPT_OFFSET]) < IPOPT_MINOFF) {
-				code = &cp[IPOPT_OFFSET] - (u_char *)&ip;
+				code = &cp[IPOPT_OFFSET] - (u_char*)&ip;
 				goto bad;
 			}
 			ipaddr.sin_addr = ip.ip_dst;
-			ia = (struct in_ifaddr *)
-				ifa_ifwithaddr((struct sockaddr *)&ipaddr);
+			ia = (struct in_ifaddr*)
+				ifa_ifwithaddr((struct sockaddr*)&ipaddr);
 			if (ia == 0) {
 				if (opt == IPOPT_SSRR) {
 					type = ICMP_UNREACH;
@@ -949,7 +922,7 @@ int L3_impl::ip_dooptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byt
 				goto bad;
 			}
 			ip->ip_dst = ipaddr.sin_addr;
-			bcopy((caddr_t)&(IA_SIN(ia)->sin_addr),
+			bcopy((caddr_t) & (IA_SIN(ia)->sin_addr),
 				(caddr_t)(cp + off), sizeof(struct in_addr));
 			cp[IPOPT_OFFSET] += sizeof(struct in_addr);
 			/*
@@ -960,7 +933,7 @@ int L3_impl::ip_dooptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byt
 
 		case IPOPT_RR:
 			if ((off = cp[IPOPT_OFFSET]) < IPOPT_MINOFF) {
-				code = &cp[IPOPT_OFFSET] - (u_char *)ip;
+				code = &cp[IPOPT_OFFSET] - (u_char*)ip;
 				goto bad;
 			}
 			/*
@@ -981,14 +954,14 @@ int L3_impl::ip_dooptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byt
 				code = ICMP_UNREACH_HOST;
 				goto bad;
 			}
-			bcopy((caddr_t)&(IA_SIN(ia)->sin_addr),
+			bcopy((caddr_t) & (IA_SIN(ia)->sin_addr),
 				(caddr_t)(cp + off), sizeof(struct in_addr));
 			cp[IPOPT_OFFSET] += sizeof(struct in_addr);
 			break;
 
 		case IPOPT_TS:
-			code = cp - (u_char *)ip;
-			ipt = (struct ip_timestamp *)cp;
+			code = cp - (u_char*)ip;
+			ipt = (struct ip_timestamp*)cp;
 			if (ipt->ipt_len < 5)
 				goto bad;
 			if (ipt->ipt_ptr > ipt->ipt_len - sizeof(long)) {
@@ -996,7 +969,7 @@ int L3_impl::ip_dooptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byt
 					goto bad;
 				break;
 			}
-			sin = (struct in_addr *)(cp + ipt->ipt_ptr - 1);
+			sin = (struct in_addr*)(cp + ipt->ipt_ptr - 1);
 			switch (ipt->ipt_flg) {
 
 			case IPOPT_TS_TSONLY:
@@ -1049,16 +1022,16 @@ bad:
 #endif
 }
 
-void L3_impl::ip_forward(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, const int &srcrt) 
+void L3_impl::ip_forward(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it, const int& srcrt)
 {
 #ifdef NETLAB_L3_FORWARDING
-	register struct ip *ip = mtod(m, struct ip *);
-	register struct sockaddr_in *sin;
-	register struct rtentry *rt;
+	register struct ip* ip = mtod(m, struct ip*);
+	register struct sockaddr_in* sin;
+	register struct rtentry* rt;
 	int error, type = 0, code;
-	struct mbuf *mcopy;
+	struct mbuf* mcopy;
 	n_long dest;
-	struct ifnet *destifp;
+	struct ifnet* destifp;
 
 	dest = 0;
 	if (m->m_flags & M_BCAST || in_canforward(ip->ip_dst) == 0) {
@@ -1073,7 +1046,7 @@ void L3_impl::ip_forward(std::shared_ptr<std::vector<byte>> &m, std::vector<byte
 	}
 	ip->ip_ttl -= IPTTLDEC;
 
-	sin = (struct sockaddr_in *)&ipforward_rt.ro_dst;
+	sin = (struct sockaddr_in*)&ipforward_rt.ro_dst;
 	if ((rt = ipforward_rt.ro_rt) == 0 ||
 		ip->ip_dst.s_addr != sin->sin_addr.s_addr) {
 		if (ipforward_rt.ro_rt) {
@@ -1130,7 +1103,7 @@ void L3_impl::ip_forward(std::shared_ptr<std::vector<byte>> &m, std::vector<byte
 		}
 	}
 
-	error = ip_output(m, (struct mbuf *)0, &ipforward_rt, IP_FORWARDING
+	error = ip_output(m, (struct mbuf*)0, &ipforward_rt, IP_FORWARDING
 #ifdef DIRECTED_BROADCAST
 		| IP_ALLOWBROADCAST
 #endif
@@ -1183,7 +1156,7 @@ void L3_impl::ip_forward(std::shared_ptr<std::vector<byte>> &m, std::vector<byte
 #endif
 }
 
-void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, struct iphdr &ip, int &hlen) 
+void L3_impl::ours(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it, struct iphdr& ip, int& hlen)
 {
 
 	/*
@@ -1199,7 +1172,7 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 	* if the packet was previously fragmented,
 	* but it's not worth the time; just let them time out.)
 	*/
-	if (ip.ip_off & ~iphdr::IP_DF) {
+	if (~(ip.ip_off & iphdr::IP_DF)) {
 
 		/*
 		*	Net/3 keeps incomplete datagrams on the global doubly linked list, ipq. The name
@@ -1216,19 +1189,51 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		* Look for queue of fragments
 		* of this datagram.
 		*/
-		struct ipq *fp;
+		struct ipq* fp;
+
 		bool found(false);
 		for (fp = ipq_t.next; fp != &ipq_t; fp = fp->next)
+		{
+			if (fp == nullptr)
+			{
+				break;
+			}
+
 			if (ip.ip_id == fp->ipq_id &&
 				ip.ip_src.s_addr == fp->ipq_src.s_addr &&
 				ip.ip_dst.s_addr == fp->ipq_dst.s_addr &&
-				ip.ip_p == fp->ipq_p) 
+				ip.ip_p == fp->ipq_p)
 			{
 				found = true;
 				break;
 			}
-		if (!found)
-			fp = nullptr;
+		}
+
+		if (found)
+		{
+			ip_fragment* pointer = fp->fragments;
+			while (pointer->next_fragment != nullptr)
+			{
+				pointer = pointer->next_fragment;
+			}
+			fp->total_length += ip.ip_len - sizeof(iphdr);
+			pointer->next_fragment = new ip_fragment(m);
+		}
+		else
+		{
+			fp = new struct ipq(); // need to free memory
+			fp->ipq_id = ip.ip_id;
+			fp->ipq_src.s_addr = ip.ip_src.s_addr;
+			fp->ipq_dst.s_addr = ip.ip_dst.s_addr;
+			fp->ipq_p = ip.ip_p;
+			fp->total_length = ip.ip_len - sizeof(iphdr);
+			fp->fragments = new ip_fragment(m);
+
+			ipq* last_ipq = &ipq_t;
+			last_ipq->next = fp;
+
+		}
+
 
 		/*
 		*	At found, the packet is modified by ours to facilitate reassembly:
@@ -1256,14 +1261,10 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		*	ip_off can now be accessed as a 16-bit offset instead of 3 flag bits and a 13-bit
 		*	offset.
 		*/
-		reinterpret_cast<struct ipasfrag *>(&ip)->ipf_mff &= ~1;
+		reinterpret_cast<struct ipasfrag*>(&ip)->ipf_mff &= ~1;
 		if (ip.ip_off & iphdr::IP_MF)
-			reinterpret_cast<struct ipasfrag *>(&ip)->ipf_mff |= 1;
+			reinterpret_cast<struct ipasfrag*>(&ip)->ipf_mff |= 1;
 
-		/*
-		*	ip_off is multiplied by 8 to convert from 8-byte to 1-byte units.
-		*/
-		ip.ip_off <<= 3;
 
 		/*
 		*	ipf_mff and ip_off determine if ours should attempt reassembly. Figure
@@ -1277,16 +1278,44 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		*
 		* If datagram marked as having more fragments
 		* or if this is not the first fragment,
-		* attempt reassembly; if it succeeds, proceed.
+		* attempt reassembly; if it succeeds, proceed. ???????
+		*
+		* if no more frags try to reasmble
 		*/
-		if (reinterpret_cast<struct ipasfrag *>(&ip)->ipf_mff & 1 || ip.ip_off) 
+		if (((ip.ip_off & iphdr::IP_MF) == 0) && ip.ip_p == 4) // for now support only in udp
 		{
-#ifdef NETLAB_L3_FRAGMENTATION
-			ip = ip_reass((struct ipasfrag *)&ip, fp);
-			if (ip == 0)
-				goto next;
-			m = dtom(ip);
-#endif
+			// attempt to reasmble
+			ip_fragment* pointer = fp->fragments;
+			size_t ethr_ip_header_size = sizeof(struct L2::ether_header) + sizeof(struct L3::iphdr);
+
+			// create the reasmble buffer & iterator
+			std::shared_ptr<std::vector<byte>> m_reasemble_packet(new std::vector<byte>(ethr_ip_header_size + fp->total_length));
+			std::vector<byte>::iterator it_reasemble(m_reasemble_packet->begin());
+
+			// copy ethernet and ip header 
+			memcpy(&(*it_reasemble), &(*pointer->frag_data->begin()), ethr_ip_header_size);
+			struct iphdr* ip_header = reinterpret_cast<struct iphdr*>(&(*(it_reasemble + sizeof(struct L2::ether_header)))); // point to start of iphdr
+			ip_header->ip_len = sizeof(struct L3::iphdr) + fp->total_length; // reasmble ip length
+
+			while (pointer != nullptr)
+			{
+				// fragment iterator
+				std::vector<byte>::iterator it_fragment(pointer->frag_data->begin());
+				struct iphdr* fragment_ip_header(reinterpret_cast<struct iphdr*>(&(*(it_fragment + sizeof(struct L2::ether_header)))));
+
+				// copy fragment data section
+				uint16_t fragment_offset = fragment_ip_header->ip_off << 3; // multiply by 8
+				uint16_t fragment_length = fragment_ip_header->ip_len;
+				memcpy(&(*(it_reasemble + ethr_ip_header_size + fragment_offset)), &(*(it_fragment + ethr_ip_header_size)), fragment_length);
+
+				// next fragment and free memory
+				ip_fragment* tmp = pointer;
+				pointer = pointer->next_fragment;
+				delete tmp;
+			}
+
+			// assign new packet
+			m = m_reasemble_packet;
 		}
 	}
 	else
@@ -1307,9 +1336,3 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 	*/
 	return inet.inetsw(static_cast<protosw::SWPROTO_>(ip_protox[ip.ip_p]))->pr_input(protosw::pr_input_args(m, it, hlen));
 }
-
-
-
-
-
-
