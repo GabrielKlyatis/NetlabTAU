@@ -86,7 +86,7 @@ protected:
 
 	void TearDown() override {
 
-		std::this_thread::sleep_for(std::chrono::seconds(2));
+		std::this_thread::sleep_for(std::chrono::seconds(10));
 
 		inet_client.stop_fasttimo();
 		inet_client.stop_slowtimo();
@@ -132,8 +132,8 @@ TEST_F(UDPTest, Test01) {
 	server_socket_addr_for_client.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
 	server_socket_addr_for_client.sin_port = htons(8888);
 	
-	std::string send_msg;
-	send_msg = "Client: Hi, I am Client!";
+	std::string send_msg = std::string(1000, 'a') + std::string(1000, 'b') + std::string(1000, 'c');
+	//send_msg = "Client: Hi, I am Client!";
 
 	ClientSocket->sendto(send_msg, send_msg.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
 	
