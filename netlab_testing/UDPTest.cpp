@@ -77,7 +77,7 @@ protected:
 		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 		inet_client.domaininit();
 		arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-		arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
+		//arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
 
 		/* Spawning both sniffers, 0U means continue forever */
 		inet_server.connect(0U);
@@ -86,8 +86,16 @@ protected:
 
 	void TearDown() override {
 
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		ServerSocket->shutdown(SD_RECEIVE);
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+
+		inet_client.stop_fasttimo();
+		inet_client.stop_slowtimo();
+
+		inet_server.stop_fasttimo();
+		inet_server.stop_slowtimo();
+
+
+		ClientSocket->shutdown(SD_RECEIVE);
 	}
 };
 
@@ -98,7 +106,7 @@ TEST_F(UDPTest, Test01) {
 
 	//----------------------
 	// Create a SOCKET for the server
-	ServerSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_server));
+	ClientSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_client));
 
 	//----------------------
 	// The sockaddr_in structure specifies the address family,
@@ -110,11 +118,11 @@ TEST_F(UDPTest, Test01) {
 
 	////----------------------
 	//// Bind the socket.
-	ServerSocket->bind((SOCKADDR*)&server_socket_addr, sizeof(service));
+	ClientSocket->bind((SOCKADDR*)&server_socket_addr, sizeof(service));
 
 	////----------------------
 	//// Create a SOCKET for the client
-	ClientSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_client));
+	//ClientSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_client));
 
 	//----------------------
 	// The sockaddr_in structure specifies the address family,
