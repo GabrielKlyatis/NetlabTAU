@@ -133,11 +133,11 @@ TEST_F(UDPTest, Test01) {
 	std::string recv_msg_server;
 	recv_msg_server = "";
 
-	
-
 	ClientSocket->sendto(send_msg_client, send_msg_client.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
 	ServerSocket->recvfrom(recv_msg_server, send_msg_client.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
 
+
+	std::cout << recv_msg_server << std::endl;
 
 	std::string send_msg_server;
 	send_msg_server = "Server: Hello there Client! I am the server.";
