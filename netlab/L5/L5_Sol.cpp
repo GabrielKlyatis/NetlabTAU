@@ -514,15 +514,6 @@ namespace netlab
 		* a null address.
 		*/
 		int error(0);
-		/*try
-		{
-			sodisconnect();
-		}
-		catch (const std::runtime_error& e)
-		{
-			std::cout << e.what() << std::endl;
-			throw std::runtime_error("sendto failed with error EISCONN = " + std::to_string(EISCONN));
-		}*/
 
 		if (uio_resid == 0)
 			uio_resid = uio.size();
@@ -634,8 +625,6 @@ namespace netlab
 
 				restart = true;
 				continue;
-
-
 			}
 
 			/*
@@ -810,18 +799,42 @@ namespace netlab
 
 	int L5_socket_impl::recvfrom(std::string& uio, size_t uio_resid, size_t chunk, int flags, _In_ const struct sockaddr* name, _In_ int name_len) {
 
-		if (chunk == 0)
-			chunk = uio_resid;
-		if (so_type == SOCK_DGRAM) { // UDP simple socket for datagrams.
+		bool deliver = false;
+		lock so_rcv_lock(so_rcv.sb_process_mutex);
+		
+		bool restart = true;
+		while (restart)
+		{
+			so_rcv_lock.unlock();
+			so_rcv.sbwait_for_read(chunk);
+			so_rcv_lock.lock();
 
-			lock so_rcv_lock(so_rcv.sb_process_mutex);
-			if (so_rcv.size() > 0) {
-				chunk = so_rcv.size();
+			if (so_rcv.size() >= chunk) {
+				deliver = true;
 			}
+
+			if (deliver)
+			{
+				/* Fill uio until full or current end of socket buffer is reached. */
+				size_t len(std::min<size_t>(uio_resid, so_rcv.size()));
+
+				/* NB: Must unlock socket buffer as uiomove may sleep. */
+				uio += std::string(so_rcv.begin(), so_rcv.begin() + len);
+				uio_resid -= len;
+
+				/*
+				* Remove the delivered data from the socket buffer unless we
+				* were only peeking.
+				*/
+				if (len > 0)
+				{
+					so_rcv.sbdrop(len);
+					break;
+				}
+			}	
 		}
 		return uio.size();
 	}
-
 	void L5_socket_impl::soabort() 
 	{
 		int error(so_proto->pr_usrreq(this, protosw::PRU_ABORT, std::shared_ptr<std::vector<byte>>(nullptr), nullptr, 0, std::shared_ptr<std::vector<byte>>(nullptr)));
