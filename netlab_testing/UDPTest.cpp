@@ -11,6 +11,10 @@ class UDPTest : public testing::Test {
 
 protected:
 
+	/* Declaring the size for sending datagrams */
+
+	size_t size = 256 * 1024;
+
 	/* Declaring the client and the server */
 	inet_os inet_server;
 	inet_os inet_client;
@@ -105,7 +109,7 @@ TEST_F(UDPTest, Test01) {
 	// IP address, and port for the socket that is being bound.
 	sockaddr_in server_socket_addr;
 	server_socket_addr.sin_family = AF_INET;
-	server_socket_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	server_socket_addr.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
 	server_socket_addr.sin_port = htons(8888);
 
 	////----------------------
@@ -124,9 +128,16 @@ TEST_F(UDPTest, Test01) {
 	server_socket_addr_for_client.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
 	server_socket_addr_for_client.sin_port = htons(8888);
 	
-	std::string send_msg;
-	send_msg = "Client: Hi, I am Client!";
+	std::string send_msg_client;
+	send_msg_client = "Client: Hi, I am Client!";
+	std::string recv_msg_server;
+	recv_msg_server = "";
 
-	ClientSocket->sendto(send_msg, send_msg.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
-	
+	ServerSocket->recv(recv_msg_server, send_msg_client.size());
+
+	ClientSocket->sendto(send_msg_client, send_msg_client.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
+
+	std::string send_msg_server;
+	send_msg_server = "Server: Hello there Client! I am the server.";
+
 }

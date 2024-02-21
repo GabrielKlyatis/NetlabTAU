@@ -154,7 +154,7 @@ private:
 		\return	null if it fails, else a udpcb* casted version of the #so pcb.
 	*/
 
-	static inline class L4_UDP::udpcb* sotoudpcb(socket* so) { return dynamic_cast<L4_UDP::udpcb*>(so->so_pcb); } // TODO
+	static inline class L4_UDP::udpcb* sotoudpcb(socket* so) { return dynamic_cast<L4_UDP::udpcb*>(so->so_pcb); } 
 
 	/*!
 		\fn virtual udpcb * in_pcblookup(struct in_addr faddr, u_int fport_arg, struct in_addr laddr, u_int lport_arg, int flags)
@@ -169,7 +169,7 @@ private:
 
 		\return	null if it fails, else the matching inpcb.
 	*/
-	virtual class L4_UDP::udpcb* in_pcblookup(struct in_addr faddr, u_int fport_arg, struct in_addr laddr, u_int lport_arg, int flags) { return nullptr; } // TODO;
+	//virtual class L4_UDP::udpcb* in_pcblookup(struct in_addr faddr, u_int fport_arg, struct in_addr laddr, u_int lport_arg, int flags) { return nullptr; } // TODO;
 
 	/*!
 		\fn	void L4_UDP::udpcb::udp_template()
