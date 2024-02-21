@@ -49,6 +49,46 @@ std::ostream& operator<<(std::ostream& out, const struct L4_UDP_Impl::udphdr& ud
 L4_UDP_Impl::pseudo_header::pseudo_header(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length) 
 	: ip_src_addr(ip_src_addr), ip_dst_addr(ip_dst_addr), protocol(protocol), udp_length(udp_length) { } 
 
+
+
+/************************** UTILS *********************************/
+uint16_t ones_complement_add(uint16_t a, uint16_t b) {
+	uint32_t sum = a + b; // Use a larger type to capture potential carry
+	// Handle end-around carry
+	while (sum > 0xFFFF) {
+		sum = (sum & 0xFFFF) + (sum >> 16);
+	}
+	return static_cast<uint16_t>(sum); // Convert back to 16 bits
+}
+
+uint16_t L4_UDP_Impl::calculate_checksum(pseudo_header& udp_pseudo_header, std::shared_ptr<std::vector<byte>>& m) {
+
+	uint16_t checksum = 0;
+	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&udp_pseudo_header);
+	uint16_t udp_pseudo_header_length = sizeof(udp_pseudo_header);
+
+	for (size_t i = 0; i < udp_pseudo_header_length; i += 2) {
+
+		uint16_t word = 0;
+		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
+
+		checksum = ones_complement_add(checksum, word);
+	}
+
+	byte_ptr = reinterpret_cast<uint8_t*>(&(*(m->begin() + sizeof(L2::ether_header) + sizeof(L3::iphdr))));
+
+	for (size_t i = 0; i < udp_pseudo_header.udp_length; i += 2) {
+
+		uint16_t word = 0;
+		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
+
+		checksum = ones_complement_add(checksum, word);
+	}
+
+	return ~checksum;
+}
+
+
 /************************************************************************/
 /*                         L4_UDP_Impl			                        */
 /************************************************************************/
@@ -68,49 +108,72 @@ void L4_UDP_Impl::pr_init() {
 }
 
 
-
-
 void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	
 	std::shared_ptr<std::vector<byte>>& m(args.m);
 	std::vector<byte>::iterator& it(args.it);
 	const int& iphlen(args.iphlen);
-}
-
-uint16_t ones_complement_add(uint16_t a, uint16_t b) {
-	uint32_t sum = a + b; // Use a larger type to capture potential carry
-	// Handle end-around carry
-	while (sum > 0xFFFF) {
-		sum = (sum & 0xFFFF) + (sum >> 16);
-	}
-	return static_cast<uint16_t>(sum); // Convert back to 16 bits
-}
-
-uint16_t L4_UDP_Impl::calculate_checksum(pseudo_header& udp_pseudo_header, std::shared_ptr<std::vector<byte>>& m) {
-
-	uint16_t checksum = 0;
-	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&udp_pseudo_header);
-
-	for (size_t i = 0; i < sizeof(udp_pseudo_header); i += 2) {
-
-		uint16_t word = 0;
-		word = (byte_ptr[i] << 8) + byte_ptr[i+1];
-
-		checksum = ones_complement_add(checksum, word);
-	}
-
-	byte_ptr = reinterpret_cast<uint8_t*>(&(*(m->begin() + sizeof(L2::ether_header) + sizeof(L3::iphdr))));
-
-	for (size_t i = 0; i < udp_pseudo_header.udp_length; i+=2) {
+	const int& udphlen(sizeof(udphdr));
 	
-		uint16_t word = 0;
-		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
+	// Strip options if needed.
+	if (iphlen > sizeof(struct L3::iphdr))
+		L3_impl::ip_stripoptions(m, it);
 
-		checksum = ones_complement_add(checksum, word);
+	if (m->end() - it < (iphlen + sizeof(udphdr))) {
+		return drop(nullptr, 0);
 	}
 
-	return ~checksum;
+	// Get IP header from buffer
+	struct L3::iphdr* ip_header = reinterpret_cast<struct L3::iphdr*>(&(*it));
+
+	// Get UDP header from buffer
+	struct udphdr* udp_header = reinterpret_cast<struct udphdr*>(&(*(it+iphlen)));
+
+	// Calculate UDP pseudo header and checksum 
+	struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
+
+	int len(sizeof(struct L3::iphdr) + ip_header->ip_len);
+	//uint16_t udp_checksum = inet.in_cksum(&m->data()[it - m->begin()], len);
+
+	//if (udp_checksum != udp_header->udp_checksum) {
+	//	return drop(nullptr, 0); // TODO
+	//}
+
+	class inpcb_impl* inp(nullptr);
+	
+	inp = udp_last_inpcb;
+
+	if ((inp->inp_lport() != udp_header->dst_port_number ||
+		inp->inp_fport() != udp_header->src_port_number ||
+		inp->inp_faddr().s_addr != ip_header->ip_src.s_addr ||
+		inp->inp_laddr().s_addr != ip_header->ip_dst.s_addr) &&
+		(inp = ucb.in_pcblookup(ip_header->ip_src, udp_header->src_port_number, ip_header->ip_dst, udp_header->dst_port_number, inpcb::INPLOOKUP_WILDCARD))) {
+
+		udp_last_inpcb = inp;
+	}
+
+
+	// Create UDP control block.
+	L4_UDP::udpcb* up = L4_UDP::udpcb::intoudpcb(inp);
+
+	// Create socket
+	socket* so(dynamic_cast<socket*>(up->inp_socket));
+
+	up = L4_UDP::udpcb::sotoudpcb(so);
+	up->inp_laddr() = ip_header->ip_dst;
+	up->inp_lport() = udp_header->src_port_number;
+
+	long data_len = m->end() - it - udphlen - iphlen;
+
+	// Copy data
+	if (data_len > 0) {
+
+		so->so_rcv.sbappend(it + udphlen + iphlen, it + udphlen + iphlen + data_len);
+		so->sorwakeup();
+		return;
+	}
 }
+
 
 int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 
@@ -128,13 +191,13 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 
 	if (len > 0) {
 
-		// copy data
+		// Copy data
 		std::copy(so->so_snd.begin(), so->so_snd.begin() + len, it + sizeof(udphdr));
 
-		// create udp header
+		// Create udp header
 		struct udphdr* udp_header = reinterpret_cast<struct udphdr*>(&(*it));
 
-		// update header
+		// Update header
 		udp_header->dst_port_number = so->so_pcb->inp_fport();
 		udp_header->src_port_number = so->so_pcb->inp_lport();
 		udp_header->udp_datagram_length = htons((uint16_t)(len + sizeof(udphdr)));
@@ -149,13 +212,12 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 		ip_header->ip_ttl = 99;
 		ip_header->ip_p = IPPROTO_UDP;
 
-		// calculate UDP pseudo header and checksum 
+		// Calculate UDP pseudo header and checksum 
 
 		struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
+		udp_header->udp_checksum = inet.in_cksum(&m->data()[it - m->begin()], static_cast<int>(hdrlen + len));
 
-		udp_header->udp_checksum = calculate_checksum(udp_pseudo_header, m);
-
-		// send encapsualted result with udp header to IP layer
+		// Send encapsualted result with udp header to IP layer
 
 		int error(
 			inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*dynamic_cast<const struct pr_output_args*>(

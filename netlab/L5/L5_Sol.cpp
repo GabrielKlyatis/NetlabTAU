@@ -808,6 +808,20 @@ namespace netlab
 		return uio.size();
 	}
 
+	int L5_socket_impl::recvfrom(std::string& uio, size_t uio_resid, size_t chunk, int flags, _In_ const struct sockaddr* name, _In_ int name_len) {
+
+		if (chunk == 0)
+			chunk = uio_resid;
+		if (so_type == SOCK_DGRAM) { // UDP simple socket for datagrams.
+
+			lock so_rcv_lock(so_rcv.sb_process_mutex);
+			if (so_rcv.size() > 0) {
+				chunk = so_rcv.size();
+			}
+		}
+		return uio.size();
+	}
+
 	void L5_socket_impl::soabort() 
 	{
 		int error(so_proto->pr_usrreq(this, protosw::PRU_ABORT, std::shared_ptr<std::vector<byte>>(nullptr), nullptr, 0, std::shared_ptr<std::vector<byte>>(nullptr)));
