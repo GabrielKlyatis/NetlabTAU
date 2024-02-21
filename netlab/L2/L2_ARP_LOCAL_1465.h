@@ -1,6 +1,5 @@
 #ifndef L2_ARP_H_
 #define L2_ARP_H_
-
 #include "../L1/NIC.h"
 #include "../infra/inet_os.hpp"
 #include "gtest/gtest.h"
