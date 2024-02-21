@@ -42,7 +42,6 @@ public:
 			\return	The output stream, when #udp was inserted and printed.
 		*/
 		friend std::ostream& operator<<(std::ostream& out, const struct udphdr& udp);
-
 	};
 
 /************************************************************************/
@@ -50,58 +49,12 @@ public:
 /************************************************************************/
 
 	struct pseudo_header {
-
-		struct ipovly
-		{
-			/*!
-				\fn	ipovly()
-
-				\brief	Default constructor.
-			*/
-			ipovly();
-
-			/*!
-				\fn
-				ipovly(const u_char& ih_pr, const short &ih_len, const in_addr &ih_src, const in_addr &ih_dst)
-
-				\brief	Constructor.
-
-			\param	ih_pr	 	The ip header protocol.
-			\param	ip_len   	The ip header parameter ip_len (total length).
-			\param	ip_src   	The IP source address.
-			\param	ip_dst   	The IP destination address.
-			*/
-			ipovly(const u_char& ih_pr, const short& ih_len, const in_addr& ih_src, const in_addr& ih_dst);
-
-			/*!
-				\fn
-				friend std::ostream& operator<<(std::ostream &out, const struct tcpiphdr::ipovly &ip);
-
-				\brief	Stream insertion operator.
-
-				\param [in,out]	out	The output stream (usually std::cout).
-				\param	ip		   	The ipovly to printout.
-
-				\return	The output stream, when #ip was inserted and printed.
-			*/
-
-			friend std::ostream& operator<<(std::ostream& out, const struct pseudo_header::ipovly& ip);
-
-			struct L4_UDP::pseudo_header* ih_next, * ih_prev;			/*!< for protocol sequence q's */
-			u_char	ih_x1 = 0x00;		/*!< (unused) */
-			u_char	ih_pr;				/*!< protocol */
-			short	ih_len;				/*!< protocol length */
-			struct	in_addr ih_src;		/*!< source internet address */
-			struct	in_addr ih_dst;		/*!< destination internet address */
-		};
-
-		/*!
-			\fn	pseudo_header()
-
-			\brief	Default constructor.
-		*/
-
-		pseudo_header();
+			
+		in_addr ip_src_addr;
+		in_addr ip_dst_addr;
+		u_char	reserved = 0x00;		/*!< (unused) */
+		u_char	protocol;				/*!< protocol */
+		short	udp_length;				/*!< protocol length */
 
 		/*!
 			\fn
@@ -109,50 +62,46 @@ public:
 
 			\brief	Constructor from received packet, does the casting.
 
-			\param [in,out]	m	If non-null, the byte to process.
-			\param	ih_pr	 	The ip header protocol.
-			\param	ip_len   	The ip header parameter ip_len (total length).
-			\param	ip_src   	The IP source address.
-			\param	ip_dst   	The IP destination address.
+			\param [in,out]	m		If non-null, the byte to process.
+			\param	protocol	 	The ip header protocol.
+			\param	udp_length   	The udp header parameter udp_length (total length).
+			\param	ip_src_addr   	The IP source address.
+			\param	ip_dst_addr   	The IP destination address.
 		*/
 
-		pseudo_header(byte* m, const u_char& ih_pr, const short& ip_len, const in_addr& ip_src, const in_addr& ip_dst);
-
-		/*!
-			\fn	friend std::ostream& operator<<(std::ostream &out, const struct udpiphdr &ti)
-
-			\brief	Stream insertion operator.
-
-			\param [in,out]	out	The output stream (usually std::cout).
-			\param	ti		   	The udphdr to printout.
-
-			\return	The output stream, when #udp was inserted and printed.
-		*/
-		friend std::ostream& operator<<(std::ostream& out, const struct pseudo_header& ti);
-
-		/*!
-			\fn
-			void udp_template(const struct in_addr &inp_faddr, const u_short &inp_fport, const struct in_addr &inp_laddr, const u_short &inp_lport)
-
-			\brief
-			Create template to be used to send UDP packets on a connection. Call after host entry
-			created, allocates an mbuf and fills in a skeletal UDP/IP header, minimizing the amount
-			of work necessary when the connection is used.
-
-			\param	inp_faddr	The foreign host table entry
-			\param	inp_fport	The foreign port.
-			\param	inp_laddr	The local host table entry.
-			\param	inp_lport	The local port.
-		*/
-		void udp_template(const struct in_addr& inp_faddr, const u_short& inp_fport, const struct in_addr& inp_laddr, const u_short& inp_lport);
-
+		pseudo_header(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length);
 	};
+
+/************************************************************************/
+/*                         L4_UDP_Impl									*/
+/************************************************************************/
+
+	typedef class netlab::L5_socket_impl socket;
+
+	/*!
+		\fn	L4_UDP_Impl::L4_UDP_Impl(class inet_os &inet)
+
+		\brief	Constructor.
+
+		\param [in,out]	inet	The inet.
+	*/
+
+	L4_UDP_Impl(class inet_os &inet);
+
+	/*!
+		\fn	L4_UDP_Impl::~L4_UDP_Impl()
+
+		\brief	Deletes the UDP object.
+	*/
+
+	~L4_UDP_Impl();
 
 	/*!
 		\pure	virtual void L4_UDP::pr_init() override;
 
 		\brief	UDP initialization.
 	*/
+
 	virtual void pr_init() override;
 
 	/*!
@@ -163,6 +112,22 @@ public:
 	virtual void pr_input(const struct pr_input_args& args) override;
 
 	/*!
+		\fn	void L4_UDP_Impl::drop(class inpcb_impl *inp, const int dropsocket);
+
+		\brief
+		Drop UDP socket.
+
+		\param [in,out]	inp	If non-null, the inp holding the socket to abort.
+		\param	dropsocket 	The dropsocket.
+	*/
+
+	inline void drop(class inpcb_impl* inp, const int dropsocket);
+
+	static inline int out(udpcb& up, int error);
+
+	inline int udp_attach(socket& so);
+
+	/*!
 		\pure	virtual int L4_UDP::pr_output(const struct pr_output_args &args) override;
 
 		\brief
@@ -170,6 +135,21 @@ public:
 	*/
 
 	virtual int pr_output(const struct pr_output_args& args) override;
+
+	/*!
+		\fn	int L4_UDP_Impl::udp_output(udpcb &up);
+
+		\brief	The actual function, with the desired arguments.
+
+		\note
+		Most of the work is done by again, this separation was in order to avoid gotos.
+
+		\param [in,out]	up	The udpcb of this connection.
+
+		\return	An int, for error handling.
+	*/
+
+	inline int udp_output(udpcb &up);
 
 	/*!
 		\pure virtual int L4_TCP::pr_usrreq(class netlab::socket *so, int req, std::shared_ptr<std::vector<byte>> &m, struct sockaddr *nam, size_t nam_len, std::shared_ptr<std::vector<byte>> &control) override;
@@ -190,6 +170,7 @@ public:
 	virtual int pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr<std::vector<byte>>& m,
 		struct sockaddr* nam, size_t nam_len, std::shared_ptr<std::vector<byte>>& control) override;
 
+
 /************************************************************************/
 /*                         L4_UDP_Impl::udp_output_args                 */
 /************************************************************************/
@@ -204,18 +185,22 @@ public:
 
 			\param [in,out]	m  	The std::shared_ptr<std::vector<byte>> to process.
 			\param [in,out]	it 	The iterator, maintaining the current offset in the vector.
-			\param [in,out]
-			\param [in,out]
-			\param [in,out]
-			\param [in,out]
 		*/
-		udp_output_args(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it);
+		udp_output_args(udpcb &up);
 
-		std::shared_ptr<std::vector<byte>>& m;		/*!< The std::shared_ptr<std::vector<byte>> to process. */
-		std::vector<byte>::iterator& it;			/*!< The iterator, maintaining the current offset in the vector. */
+		udpcb& up;
 	};
 
-	int udp_output(const struct udp_output_args& args);
+	
+
+private:
+
+		uint16_t calculate_checksum(pseudo_header& udp_pseaudo_header, std::shared_ptr<std::vector<byte>>& m);
+		class L4_UDP::udpcb ucb;
+		class inpcb_impl* udp_last_inpcb;
+
+		u_long	udp_sendspace;   /*!< The UDP send space */
+		u_long	udp_recvspace;   /*!< The UDP recv space */
 
 };
 
