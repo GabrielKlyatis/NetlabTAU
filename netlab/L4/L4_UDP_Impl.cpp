@@ -77,11 +77,17 @@ uint16_t L4_UDP_Impl::calculate_checksum(pseudo_header& udp_pseudo_header, std::
 
 	byte_ptr = reinterpret_cast<uint8_t*>(&(*(m->begin() + sizeof(L2::ether_header) + sizeof(L3::iphdr))));
 
-	for (size_t i = 0; i < udp_pseudo_header.udp_length; i += 2) {
+	auto udp_length_in_host = ntohs(udp_pseudo_header.udp_length);
+
+	for (size_t i = 0; i < udp_length_in_host; i += 2) {
 
 		uint16_t word = 0;
-		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
-
+		if ((udp_length_in_host % 2) != 0) {
+			word = (byte_ptr[i] << 8);
+		}
+		else {
+			word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
+		}
 		checksum = ones_complement_add(checksum, word);
 	}
 
@@ -133,11 +139,11 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
 
 	int len(sizeof(struct L3::iphdr) + ip_header->ip_len);
-	//uint16_t udp_checksum = inet.in_cksum(&m->data()[it - m->begin()], len);
+	uint16_t udp_checksum = calculate_checksum(udp_pseudo_header, m);
 
-	//if (udp_checksum != udp_header->udp_checksum) {
-	//	return drop(nullptr, 0); // TODO
-	//}
+	if (udp_checksum != 0) {
+		return drop(nullptr, 0); // TODO
+	}
 
 	class inpcb_impl* inp(nullptr);
 	
@@ -215,7 +221,7 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 		// Calculate UDP pseudo header and checksum 
 
 		struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
-		udp_header->udp_checksum = inet.in_cksum(&m->data()[it - m->begin()], static_cast<int>(hdrlen + len));
+		udp_header->udp_checksum = calculate_checksum(udp_pseudo_header, m);
 
 		// Send encapsualted result with udp header to IP layer
 
