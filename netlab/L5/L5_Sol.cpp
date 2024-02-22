@@ -807,6 +807,10 @@ namespace netlab
 		{
 			so_rcv_lock.unlock();
 			so_rcv.sbwait_for_read(chunk);
+			
+			
+			
+			
 			so_rcv_lock.lock();
 
 			if (so_rcv.size() >= chunk) {

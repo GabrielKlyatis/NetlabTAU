@@ -57,6 +57,8 @@ public:
 	    \brief	Destructor.
 	*/
 	inline ~inet_os() {
+		_slowtimo_on = false;
+		_fasttimo_on = false;
 		if (_inetdomain)
 			delete _inetdomain;
 	}

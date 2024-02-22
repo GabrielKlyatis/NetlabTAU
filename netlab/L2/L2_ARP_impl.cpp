@@ -149,7 +149,8 @@ L2_ARP::llinfo_arp::~llinfo_arp() { pop(); }
 bool L2_ARP::llinfo_arp::valid() const 
 {
 	unsigned long long cmp(static_cast<unsigned long long>(floor(GetTickCount64())));
-	return la_timeStamp == 0 || (cmp > la_timeStamp && cmp < MAX_TIME_STAMP + la_timeStamp);
+	return true; // REVERT
+	//return la_timeStamp == 0 || (cmp > la_timeStamp && cmp < MAX_TIME_STAMP + la_timeStamp);
 }
 
 L2_ARP::mac_addr& L2_ARP::llinfo_arp::getLaMac() { return la_mac; }
@@ -355,7 +356,7 @@ L2_ARP_impl::mac_addr* L2_ARP_impl::arpresolve(std::shared_ptr<std::vector<byte>
 		* There is an arptab entry, but no Ethernet address response yet.  Replace the held mbuf with this
 		* latest one. 
 		*/
-		//la->push(m, it);
+		la->push(m, it);
 
 		/*	RFC 1122 requires ARP to avoid sending ARP requests to a given destination at a high rate when a
 		*	reply is not received. The technique used by Net/3 to avoid ARP flooding is as follows:
