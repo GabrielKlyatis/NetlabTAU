@@ -150,7 +150,7 @@ void NIC_Cable::open_l2_socket(const netlab::NetworkInterface &iface)
 pcap_t* NIC_Cable::make_pcap_handle(const netlab::NetworkInterface& iface) const 
 {
 	char error[PCAP_ERRBUF_SIZE];
-	pcap_t* handle(pcap_create(("\\Device\\NPF_" + iface.name()).c_str(), error));
+	pcap_t* handle(pcap_create(("\\Device\\NPF_" + iface.name()).c_str(), error));	
 	if (!handle)
 		throw std::runtime_error("Error opening pcap handle: " + std::string(error));
 	if (pcap_set_promisc(handle, 1) < 0)
