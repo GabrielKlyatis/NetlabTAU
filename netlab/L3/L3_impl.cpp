@@ -781,9 +781,8 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 		return done(ro, iproute, flags, EMSGSIZE);
 
 	// IP FRAGMENTATION
-	// TODO: check if allignment is needed
 	u_short fragment_size = ((inet.nic()->if_mtu() - sizeof(struct iphdr) - sizeof(struct L2::ether_header)) >> 3) << 3; // mtu - ip header - eth header
-	u_short total_len = ntohs(ip->ip_len);
+	u_short total_len = ip->ip_len;
 	it = it + sizeof(L3::iphdr); // move the iterator to data saction
 
 	// iterate fragments
@@ -822,7 +821,7 @@ int L3_impl::ip_output(const struct ip_output_args &args)
 		
 		//send
 		inet.datalink()->ether_output(m_fragment,it_fragment, reinterpret_cast<struct sockaddr*>(dst), ro->ro_rt);
-		std::this_thread::sleep_for(std::chrono::seconds(2));
+		//std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 		
 	return done(ro, iproute, flags, 0);
@@ -1282,7 +1281,7 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		* 
 		* if no more frags try to reasmble
 		*/
-		if (((ip.ip_off & iphdr::IP_MF) == 0) && ip.ip_p == 4) // for now support only in udp
+		if (((ip.ip_off & iphdr::IP_MF) == 0) && ip.ip_p == 0x11) // for now support only in udp
 		{
 			// attempt to reasmble
 			ip_fragment* pointer = fp->fragments;
@@ -1306,6 +1305,10 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 				// copy fragment data section
 				uint16_t fragment_offset = fragment_ip_header->ip_off  << 3; // multiply by 8
 				uint16_t fragment_length = fragment_ip_header->ip_len ;
+				if (fragment_offset + fragment_length > fp->total_length) // detect missing frags
+				{
+ 					return; // maybe need to free the entry?
+				}
 				memcpy(&(*(it_reasemble + ethr_ip_header_size + fragment_offset)), &(*(it_fragment + ethr_ip_header_size)), fragment_length);
 			
 				// next fragment and free memory
@@ -1315,8 +1318,10 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 			}
 
 			// assign new packet
-			m = m_reasemble_packet;
+			//m = m_reasemble_packet;
+			return inet.inetsw(static_cast<protosw::SWPROTO_>(ip_protox[ip.ip_p]))->pr_input(protosw::pr_input_args(m_reasemble_packet, it_reasemble + sizeof(struct L2::ether_header), hlen));
 		}
+		return;
 	}
 	else
 		ip.ip_len -= hlen;
