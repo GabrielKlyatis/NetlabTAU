@@ -125,7 +125,7 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	if (iphlen > sizeof(struct L3::iphdr))
 		L3_impl::ip_stripoptions(m, it);
 
-	if (m->end() - it < (iphlen + sizeof(udphdr))) {
+	if (m->end() - it < (iphlen + sizeof(udphdr))) { // why??
 		return drop(nullptr, 0);
 	}
 
@@ -139,6 +139,7 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
 
 	int len(sizeof(struct L3::iphdr) + ip_header->ip_len);
+	
 	uint16_t udp_checksum = calculate_checksum(udp_pseudo_header, m);
 
 	if (udp_checksum != 0) {
@@ -221,7 +222,7 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 		// Calculate UDP pseudo header and checksum 
 
 		struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
-		udp_header->udp_checksum = calculate_checksum(udp_pseudo_header, m);
+		udp_header->udp_checksum = htons(calculate_checksum(udp_pseudo_header, m));
 
 		// Send encapsualted result with udp header to IP layer
 
