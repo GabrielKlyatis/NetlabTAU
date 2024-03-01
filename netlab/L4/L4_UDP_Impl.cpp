@@ -168,7 +168,6 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 
 	up = L4_UDP::udpcb::sotoudpcb(so);
 	up->inp_laddr() = ip_header->ip_dst;
-	up->inp_lport() = udp_header->src_port_number;
 
 	long data_len = m->end() - it - udphlen - iphlen;
 
@@ -284,6 +283,7 @@ int L4_UDP_Impl::pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr
 			if (inp->inp_lport() == 0)
 				if (error = inp->in_pcbbind(nullptr, 0))
 					break;
+
 			if (error = inp->in_pcbconnect(reinterpret_cast<sockaddr_in*>(const_cast<struct sockaddr*>(nam)), nam_len))
 				break;
 			dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
