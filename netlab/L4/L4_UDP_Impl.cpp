@@ -33,22 +33,70 @@ L4_UDP::udpcb::udpcb(socket& so, inpcb_impl& head)
 std::ostream& operator<<(std::ostream& out, const struct L4_UDP_Impl::udphdr& udp) {
 
 	std::ios::fmtflags f(out.flags());
-	out << "< UDP (" << "SourcePort = " << std::dec << ntohs(static_cast<uint16_t>(udp.src_port_number)) <<
-		" , DestinationPort = " << std::dec << ntohs(static_cast<uint16_t>(udp.dst_port_number)) <<
-		" , HeaderLength = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint16_t>(udp.udp_datagram_length) <<
-		" , Checksum = 0x" << std::setfill('0') << std::setw(3) << std::hex << static_cast<uint16_t>(udp.udp_checksum) <<
+	out << "< UDP (" << "SourcePort = " << std::dec << ntohs(static_cast<uint16_t>(udp.uh_sport)) <<
+		" , DestinationPort = " << std::dec << ntohs(static_cast<uint16_t>(udp.uh_dport)) <<
+		" , HeaderLength = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint16_t>(udp.uh_ulen) <<
+		" , Checksum = 0x" << std::setfill('0') << std::setw(3) << std::hex << static_cast<uint16_t>(udp.uh_sum) <<
 		" )";
 	out.flags(f);
 	return out;
 }
 
 /************************************************************************/
-/*                         L4_UDP_Impl::pseudo_header                   */
+/*                    L4_UDP_Impl::udpiphdr::ipovly                     */
 /************************************************************************/
 
-L4_UDP_Impl::pseudo_header::pseudo_header(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length) 
+L4_UDP_Impl::udpiphdr::ipovly::ipovly()
+	: ih_pr(0), ih_len(0), ih_src(struct in_addr()), ih_dst(struct in_addr()), ih_x1(0x00), ih_next(nullptr), ih_prev(nullptr) { }
+
+L4_UDP_Impl::udpiphdr::ipovly::ipovly(const u_char& ih_pr, const short& ih_len, const in_addr& ih_src, const in_addr& ih_dst)
+	: ih_pr(ih_pr), ih_len(ih_len), ih_src(ih_src), ih_dst(ih_dst), ih_x1(0x00), ih_next(nullptr), ih_prev(nullptr) { }
+
+std::ostream& operator<<(std::ostream& out, const struct L4_UDP_Impl::udpiphdr::ipovly& ip) {
+	std::ios::fmtflags f(out.flags());
+	out << "< Pseudo IP (" << static_cast<uint32_t>(sizeof(struct L4_UDP_Impl::udpiphdr::ipovly)) <<
+		" bytes) :: Unsused = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint8_t>(ip.ih_x1) <<
+		" , Protocol = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint8_t>(ip.ih_pr) <<
+		" , Protocol Length = " << std::dec << htons(static_cast<uint16_t>(ip.ih_len)) <<
+		" , SourceIP = " << inet_ntoa(ip.ih_src);
+	out << " , DestinationIP = " << inet_ntoa(ip.ih_dst) <<
+		" , >";
+	out.flags(f);
+	return out;
+}
+
+/************************************************************************/
+/*                         L4_UDP_Impl::udpiphdr                        */
+/************************************************************************/
+
+L4_UDP_Impl::udpiphdr::udpiphdr() : ui_i(ipovly()), ui_u(udphdr()) { }
+
+L4_UDP_Impl::udpiphdr::udpiphdr(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length) 
 	: ip_src_addr(ip_src_addr), ip_dst_addr(ip_dst_addr), protocol(protocol), udp_length(udp_length) { } 
 
+std::ostream& operator<<(std::ostream& out, const struct L4_UDP_Impl::udpiphdr& ui)
+{
+	return out << ui.ui_i << ui.ui_u;
+}
+
+inline void L4_UDP_Impl::udpiphdr::insque(struct L4_UDP_Impl::udpiphdr& head)
+{
+	ui_next(head.ui_next());
+	head.ui_next(this);
+	ui_prev(&head);
+	if (ui_next())
+		ui_next()->ui_prev(this);
+}
+
+inline void L4_UDP_Impl::udpiphdr::remque()
+{
+	if (ui_next())
+		ui_next()->ui_prev(ui_prev());
+	if (ui_prev()) {
+		ui_prev()->ui_next(ui_next());
+		ui_prev(nullptr);
+	}
+}
 
 
 /************************** UTILS *********************************/
@@ -61,7 +109,7 @@ uint16_t ones_complement_add(uint16_t a, uint16_t b) {
 	return static_cast<uint16_t>(sum); // Convert back to 16 bits
 }
 
-uint16_t L4_UDP_Impl::calculate_checksum(pseudo_header& udp_pseudo_header, std::shared_ptr<std::vector<byte>>& m) {
+uint16_t L4_UDP_Impl::calculate_checksum(udpiphdr& udp_pseudo_header, std::shared_ptr<std::vector<byte>>& m) {
 
 	uint16_t checksum = 0;
 	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&udp_pseudo_header);
@@ -136,7 +184,7 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	struct udphdr* udp_header = reinterpret_cast<struct udphdr*>(&(*(it+iphlen)));
 
 	// Calculate UDP pseudo header and checksum 
-	struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
+	struct udpiphdr udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->uh_ulen);
 
 	int len(sizeof(struct L3::iphdr) + ip_header->ip_len);
 	
@@ -150,11 +198,11 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	
 	inp = udp_last_inpcb;
 
-	if ((inp->inp_lport() != udp_header->dst_port_number ||
-		inp->inp_fport() != udp_header->src_port_number ||
+	if ((inp->inp_lport() != udp_header->uh_dport ||
+		inp->inp_fport() != udp_header->uh_sport ||
 		inp->inp_faddr().s_addr != ip_header->ip_src.s_addr ||
 		inp->inp_laddr().s_addr != ip_header->ip_dst.s_addr) &&
-		(inp = ucb.in_pcblookup(ip_header->ip_src, udp_header->src_port_number, ip_header->ip_dst, udp_header->dst_port_number, inpcb::INPLOOKUP_WILDCARD))) {
+		(inp = ucb.in_pcblookup(ip_header->ip_src, udp_header->uh_sport, ip_header->ip_dst, udp_header->uh_dport, inpcb::INPLOOKUP_WILDCARD))) {
 
 		udp_last_inpcb = inp;
 	}
@@ -204,9 +252,9 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 		struct udphdr* udp_header = reinterpret_cast<struct udphdr*>(&(*it));
 
 		// Update header
-		udp_header->dst_port_number = so->so_pcb->inp_fport();
-		udp_header->src_port_number = so->so_pcb->inp_lport();
-		udp_header->udp_datagram_length = htons((uint16_t)(len + sizeof(udphdr)));
+		udp_header->uh_dport = so->so_pcb->inp_fport();
+		udp_header->uh_sport = so->so_pcb->inp_lport();
+		udp_header->uh_ulen = htons((uint16_t)(len + sizeof(udphdr)));
 
 		// Create atrophied IP header with only src and dst IP addresses
 
@@ -220,8 +268,8 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 
 		// Calculate UDP pseudo header and checksum 
 
-		struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
-		udp_header->udp_checksum = htons(calculate_checksum(udp_pseudo_header, m));
+		struct udpiphdr udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->uh_ulen);
+		udp_header->uh_sum = htons(calculate_checksum(udp_pseudo_header, m));
 
 		// Send encapsualted result with udp header to IP layer
 

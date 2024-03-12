@@ -170,6 +170,7 @@ namespace Tins {
     private:
         TINS_BEGIN_PACK
         struct udphdr {
+
             uint16_t sport;
             uint16_t dport;
             uint16_t len;

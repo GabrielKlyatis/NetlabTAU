@@ -17,19 +17,19 @@ public:
 
 		\brief Definition of the UDP's header parts.
 
-		\param	src_port_number	 	Two bytes used to represent the source port number.
-		\param	dst_port_number   	Two bytes used to represent the destination port number.
-		\param	udp_datagram_length   	Two bytes used to represent the length of the UDP datagram (header + data).
-		\param	udp_checksum   	Two bytes used to represent the checksum of the UDP datagram.
+		\param	uh_sport	 	Two bytes used to represent the source port number.
+		\param	uh_dport   	Two bytes used to represent the destination port number.
+		\param	uh_ulen   	Two bytes used to represent the length of the UDP datagram (header + data).
+		\param	uh_sum   	Two bytes used to represent the checksum of the UDP datagram.
 		*/
 
-		u_short src_port_number;
-		u_short dst_port_number;
-		u_short udp_datagram_length;
-		u_short udp_checksum;
+		u_short uh_sport;
+		u_short uh_dport;
+		u_short uh_ulen;
+		u_short uh_sum;
 
 		udphdr()
-			: src_port_number(0), dst_port_number(0), udp_datagram_length(0), udp_checksum(0) {}
+			: uh_sport(0), uh_dport(0), uh_ulen(0), uh_sum(0) {}
 
 		/*!
 			\fn	friend std::ostream& operator<<(std::ostream &out, const struct udphdr &udp);
@@ -45,11 +45,54 @@ public:
 	};
 
 /************************************************************************/
-/*                         L4_UDP_Impl::pseudo_header                   */
+/*                         L4_UDP_Impl::udpiphdr                        */
 /************************************************************************/
 
-	struct pseudo_header {
-			
+	struct udpiphdr {
+
+		struct ipovly
+		{
+			/*!
+				\fn	ipovly()
+
+				\brief	Default constructor.
+			*/
+			ipovly();
+
+			/*!
+				\fn
+				ipovly(const u_char& ih_pr, const short &ih_len, const in_addr &ih_src, const in_addr &ih_dst)
+
+				\brief	Constructor.
+
+			\param	ih_pr	 	The ip header protocol.
+			\param	ip_len   	The ip header parameter ip_len (total length).
+			\param	ip_src   	The IP source address.
+			\param	ip_dst   	The IP destination address.
+			*/
+			ipovly(const u_char& ih_pr, const short& ih_len, const in_addr& ih_src, const in_addr& ih_dst);
+
+			/*!
+				\fn
+				friend std::ostream& operator<<(std::ostream &out, const struct tcpiphdr::ipovly &ip);
+
+				\brief	Stream insertion operator.
+
+				\param [in,out]	out	The output stream (usually std::cout).
+				\param	ip		   	The ipovly to printout.
+
+				\return	The output stream, when #ip was inserted and printed.
+			*/
+			friend std::ostream& operator<<(std::ostream& out, const struct udpiphdr::ipovly& ip);
+
+			struct L4_UDP_Impl::udpiphdr* ih_next, * ih_prev;			/*!< for protocol sequence q's */
+			u_char	ih_x1 = 0x00;		/*!< (unused) */
+			u_char	ih_pr;				/*!< protocol */
+			short	ih_len;				/*!< protocol length */
+			struct	in_addr ih_src;		/*!< source internet address */
+			struct	in_addr ih_dst;		/*!< destination internet address */
+		};
+
 		in_addr ip_src_addr;
 		in_addr ip_dst_addr;
 		u_char	reserved = 0x00;		/*!< (unused) */
@@ -69,7 +112,93 @@ public:
 			\param	ip_dst_addr   	The IP destination address.
 		*/
 
-		pseudo_header(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length);
+		/*!
+			\fn udpiphdr()
+			
+			\brief Default constructor.
+		*/
+
+		udpiphdr();
+
+		/*!
+			\fn udpiphdr(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length)
+
+			\brief Constructor from received parameters.
+
+			\param	ip_src_addr	 	The IP source address.
+			\param	ip_dst_addr   	The IP destination address.
+			\param	protocol   	The protocol.
+			\param	udp_length   	The UDP datagram length.
+		*/
+
+		udpiphdr(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length);
+
+		/*!
+		\fn	friend std::ostream& operator<<(std::ostream &out, const struct udphdr &ui)
+
+		\brief	Stream insertion operator.
+
+		\param [in,out]	out	The output stream (usually std::cout).
+		\param	ui		   	The udphdr to printout.
+
+		\return	The output stream, when #udp was inserted and printed.
+	*/
+		friend std::ostream& operator<<(std::ostream& out, const struct udpiphdr& ui);
+
+		inline	struct L4_UDP_Impl::udpiphdr* ui_next() { return ui_i.ih_next; }
+		inline	void ui_next(struct L4_UDP_Impl::udpiphdr* ih_next) { ui_i.ih_next = ih_next; }
+
+		inline	struct L4_UDP_Impl::udpiphdr* ui_prev() { return ui_i.ih_prev; }
+		inline	void ui_prev(struct L4_UDP_Impl::udpiphdr* ih_prev) { ui_i.ih_prev = ih_prev; }
+
+		inline	u_char& ui_x1() { return ui_i.ih_x1; }
+		inline	const u_char& ui_x1() const { return ui_i.ih_x1; }
+
+		inline	u_char& ui_pr() { return ui_i.ih_pr; }
+		inline	const u_char& ui_pr() const { return ui_i.ih_pr; }
+
+		inline	short& ui_len() { return ui_i.ih_len; }
+		inline	const short& ui_len() const { return ui_i.ih_len; }
+
+		inline	struct	in_addr& ui_src() { return ui_i.ih_src; }
+		inline	const struct	in_addr& ui_src() const { return ui_i.ih_src; }
+
+		inline	struct	in_addr& ui_dst() { return ui_i.ih_dst; }
+		inline	const struct	in_addr& ui_dst() const { return ui_i.ih_dst; }
+
+		inline	u_short& ui_sport() { return ui_u.uh_sport; }
+		inline	const u_short& ui_sport() const { return ui_u.uh_sport; }
+
+		inline	u_short& ui_dport() { return ui_u.uh_dport; }
+		inline	const u_short& ui_dport() const { return ui_u.uh_dport; }
+
+		inline	u_short& ui_sum() { return ui_u.uh_sum; }
+		inline	const u_short& ui_sum() const { return ui_u.uh_sum; }
+
+		inline	u_short& ui_ulen() { return ui_u.uh_ulen; }
+		inline	const short& ui_ulen() const { return ui_u.uh_ulen; }
+
+		/*!
+		\fn	inline void insque(struct udpiphdr &head)
+
+		\brief	Insert the given head to the global PCB linked list.
+
+		\param [in,out]	head	The head.
+	*/
+		inline void insque(struct udpiphdr& head);
+
+		/*!
+			\fn	inline void remque()
+
+			\brief
+			Remove this object from the linked list.
+
+			\warning Does not delete the object!
+		*/
+		inline void remque();
+
+		struct ipovly ui_i;
+		struct udphdr ui_u;
 	};
 
 /************************************************************************/
@@ -195,8 +324,9 @@ public:
 
 private:
 
-		uint16_t calculate_checksum(pseudo_header& udp_pseaudo_header, std::shared_ptr<std::vector<byte>>& m);
+		uint16_t calculate_checksum(udpiphdr& udp_pseaudo_header, std::shared_ptr<std::vector<byte>>& m);
 		class L4_UDP::udpcb ucb;
+		//class inpcb_impl udb; // 
 		class inpcb_impl* udp_last_inpcb;
 
 		u_long	udp_sendspace;   /*!< The UDP send space */

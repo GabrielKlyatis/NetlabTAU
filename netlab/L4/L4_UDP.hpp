@@ -25,7 +25,7 @@ public:
 		\brief	UDP pseudo header: UDP + IP header, after ip options removed.
 	*/
 
-	struct pseudo_header;
+	struct udpiphdr;
 
 	/*!
 		\fn	L4_UDP::L4_UDP(class inet_os &inet)
@@ -182,7 +182,7 @@ private:
 	void udp_template();
 
 
-	struct	pseudo_header *udp_ip_template;	/*!< skeletal packet for transmit */
+	struct	udpiphdr *udp_ip_template;	/*!< skeletal packet for transmit */
 	class	inpcb_impl *udp_inpcb;	/*!< back pointer to internet pcb */
 
 	class udpcb_logger {
