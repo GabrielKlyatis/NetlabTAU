@@ -77,9 +77,6 @@ std::ostream& operator<<(std::ostream& out, const struct L4_UDP_Impl::udpiphdr::
 
 L4_UDP_Impl::udpiphdr::udpiphdr() : ui_i(ipovly()), ui_u(udphdr()) { }
 
-L4_UDP_Impl::udpiphdr::udpiphdr(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length) 
-	: ip_src_addr(ip_src_addr), ip_dst_addr(ip_dst_addr), protocol(protocol), udp_length(udp_length) { } 
-
 std::ostream& operator<<(std::ostream& out, const struct L4_UDP_Impl::udpiphdr& ui)
 {
 	return out << ui.ui_i << ui.ui_u;
@@ -116,38 +113,38 @@ uint16_t ones_complement_add(uint16_t a, uint16_t b) {
 	return static_cast<uint16_t>(sum); // Convert back to 16 bits
 }
 
-uint16_t L4_UDP_Impl::calculate_checksum(udpiphdr& udp_ip_hdr, std::shared_ptr<std::vector<byte>>& m) {
-
-	uint16_t checksum = 0;
-	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&udp_ip_hdr);
-	uint16_t udp_ip_header_length = sizeof(udp_ip_hdr);
-
-	for (size_t i = 0; i < udp_ip_header_length; i += 2) {
-
-		uint16_t word = 0;
-		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
-
-		checksum = ones_complement_add(checksum, word);
-	}
-
-	byte_ptr = reinterpret_cast<uint8_t*>(&(*(m->begin() + sizeof(L2::ether_header) + sizeof(L3::iphdr))));
-
-	auto udp_length_in_host = ntohs(udp_ip_hdr.udp_length);
-
-	for (size_t i = 0; i < udp_length_in_host; i += 2) {
-
-		uint16_t word = 0;
-		if ((udp_length_in_host % 2) != 0) {
-			word = (byte_ptr[i] << 8);
-		}
-		else {
-			word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
-		}
-		checksum = ones_complement_add(checksum, word);
-	}
-
-	return ~checksum;
-}
+//uint16_t L4_UDP_Impl::calculate_checksum(udpiphdr& udp_ip_hdr, std::shared_ptr<std::vector<byte>>& m) {
+//
+//	uint16_t checksum = 0;
+//	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&udp_ip_hdr);
+//	uint16_t udp_ip_header_length = sizeof(udp_ip_hdr);
+//
+//	for (size_t i = 0; i < udp_ip_header_length; i += 2) {
+//
+//		uint16_t word = 0;
+//		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
+//
+//		checksum = ones_complement_add(checksum, word);
+//	}
+//
+//	byte_ptr = reinterpret_cast<uint8_t*>(&(*(m->begin() + sizeof(L2::ether_header) + sizeof(L3::iphdr))));
+//
+//	auto udp_length_in_host = ntohs(udp_ip_hdr.udp_length);
+//
+//	for (size_t i = 0; i < udp_length_in_host; i += 2) {
+//
+//		uint16_t word = 0;
+//		if ((udp_length_in_host % 2) != 0) {
+//			word = (byte_ptr[i] << 8);
+//		}
+//		else {
+//			word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
+//		}
+//		checksum = ones_complement_add(checksum, word);
+//	}
+//
+//	return ~checksum;
+//}
 
 
 /************************************************************************/
@@ -177,40 +174,38 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	const int& iphlen(args.iphlen);
 	const int& udphlen(sizeof(udphdr));
 	
+	struct L4_UDP_Impl::udpiphdr* ui(reinterpret_cast<struct L4_UDP_Impl::udpiphdr*>(&m->data()[it - m->begin()]));
+
 	// Strip options if needed.
 	if (iphlen > sizeof(struct L3::iphdr))
 		L3_impl::ip_stripoptions(m, it);
 
-	if (m->end() - it < (iphlen + sizeof(udphdr))) { // why??
+	if (m->end() - it < sizeof(struct udpiphdr)) { // why??
 		return drop(nullptr, 0);
 	}
 
-	// Get IP header from buffer
-	struct L3::iphdr* ip_header = reinterpret_cast<struct L3::iphdr*>(&(*it));
+	int ulen = reinterpret_cast<struct L3::iphdr*>(ui)->ip_len;
+	int	len = sizeof(struct L3::iphdr) + ulen;
 
-	// Get UDP header from buffer
-	struct udphdr* udp_header = reinterpret_cast<struct udphdr*>(&(*(it+iphlen)));
+	ui->ui_next(0);
+	ui->ui_prev(0);
+	ui->ui_x1() = 0;
+	ui->ui_len() = htons(static_cast<u_short>(ulen));
 
-	// Calculate UDP pseudo header and checksum 
-	struct udpiphdr udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->uh_ulen);
+	u_short checksum = ui->ui_sum();
 
-	int len(sizeof(struct L3::iphdr) + ip_header->ip_len);
-	
-	uint16_t udp_checksum = calculate_checksum(udp_pseudo_header, m);
-
-	if (udp_checksum != 0) {
-		return drop(nullptr, 0); // TODO
-	}
+	if (((ui->ui_sum() = 0) = checksum ^ inet.in_cksum(&m->data()[it - m->begin()], len)) != 0)
+		return drop(nullptr, 0);
 
 	class inpcb_impl* inp(nullptr);
 	
 	inp = udp_last_inpcb;
 
-	if ((inp->inp_lport() != udp_header->uh_dport ||
-		inp->inp_fport() != udp_header->uh_sport ||
-		inp->inp_faddr().s_addr != ip_header->ip_src.s_addr ||
-		inp->inp_laddr().s_addr != ip_header->ip_dst.s_addr) &&
-		(inp = udb.in_pcblookup(ip_header->ip_src, udp_header->uh_sport, ip_header->ip_dst, udp_header->uh_dport, inpcb::INPLOOKUP_WILDCARD))) {
+	if ((inp->inp_lport() != ui->ui_dport() ||
+		inp->inp_fport() != ui->ui_sport() ||
+		inp->inp_faddr().s_addr != ui->ui_src().s_addr ||
+		inp->inp_laddr().s_addr != ui->ui_dst().s_addr) &&
+		(inp = udb.in_pcblookup(ui->ui_src(), ui->ui_sport(), ui->ui_dst(), ui->ui_dport(), inpcb::INPLOOKUP_WILDCARD))) {
 
 		udp_last_inpcb = inp;
 	}
@@ -223,14 +218,14 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	socket* so(dynamic_cast<socket*>(up->inp_socket));
 
 	up = L4_UDP::udpcb::sotoudpcb(so);
-	up->inp_laddr() = ip_header->ip_dst;
+	up->inp_laddr() = ui->ui_dst();
 
-	long data_len = m->end() - it - udphlen - iphlen;
+	long data_len = m->end() - it - sizeof(struct udpiphdr);
 
 	// Copy data
 	if (data_len > 0) {
 
-		so->so_rcv.sbappend(it + udphlen + iphlen, it + udphlen + iphlen + data_len);
+		so->so_rcv.sbappend(it + sizeof(struct udpiphdr), it + sizeof(struct udpiphdr) + data_len);
 		so->sorwakeup();
 		return;
 	}
@@ -266,14 +261,13 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 		ui->ui_next(0);
 		ui->ui_x1() = 0;
 		ui->ui_pr() = IPPROTO_UDP;
-		ui->ui_len() = len + sizeof(struct udphdr);
+		ui->ui_len() = len + hdrlen;
 		ui->ui_src() = so->so_pcb->inp_laddr();
 		ui->ui_dst() = so->so_pcb->inp_faddr();
 		ui->ui_sport() = so->so_pcb->inp_lport();
 		ui->ui_dport() = so->so_pcb->inp_fport();
-		ui->ui_ulen() = len + hdrlen;
 		ui->ui_ulen() = htons((uint16_t)(len + sizeof(udphdr)));
-		ui->ui_sum() = htons(calculate_checksum(*ui, m));
+		ui->ui_sum() = inet.in_cksum(&m->data()[it - m->begin()], static_cast<int>(hdrlen + len));
 
 		reinterpret_cast<struct L3::iphdr*>(ui)->ip_len = static_cast<short>(hdrlen + len);
 		reinterpret_cast<struct L3::iphdr*>(ui)->ip_ttl = up.udp_inpcb->inp_ip.ip_ttl;	/* XXX */

@@ -91,14 +91,7 @@ public:
 			short	ih_len;				/*!< protocol length */
 			struct	in_addr ih_src;		/*!< source internet address */
 			struct	in_addr ih_dst;		/*!< destination internet address */
-			u_char	ip_ttl;				/*!< time to live */
 		};
-
-		in_addr ip_src_addr;
-		in_addr ip_dst_addr;
-		u_char	reserved = 0x00;		/*!< (unused) */
-		u_char	protocol;				/*!< protocol */
-		short	udp_length;				/*!< protocol length */
 
 		/*!
 			\fn
@@ -120,19 +113,6 @@ public:
 		*/
 
 		udpiphdr();
-
-		/*!
-			\fn udpiphdr(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length)
-
-			\brief Constructor from received parameters.
-
-			\param	ip_src_addr	 	The IP source address.
-			\param	ip_dst_addr   	The IP destination address.
-			\param	protocol   	The protocol.
-			\param	udp_length   	The UDP datagram length.
-		*/
-
-		udpiphdr(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length);
 
 		/*!
 		\fn	friend std::ostream& operator<<(std::ostream &out, const struct udphdr &ui)
@@ -325,7 +305,7 @@ public:
 
 private:
 
-		uint16_t calculate_checksum(udpiphdr& udp_pseaudo_header, std::shared_ptr<std::vector<byte>>& m);
+		//uint16_t calculate_checksum(udpiphdr& udp_pseaudo_header, std::shared_ptr<std::vector<byte>>& m);
 
 		class L4_UDP::udpcb udb;
 		class inpcb_impl* udp_last_inpcb;
