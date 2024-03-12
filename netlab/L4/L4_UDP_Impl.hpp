@@ -305,7 +305,7 @@ public:
 
 private:
 
-		//uint16_t calculate_checksum(udpiphdr& udp_pseaudo_header, std::shared_ptr<std::vector<byte>>& m);
+		uint16_t calculate_checksum(udpiphdr& udp_pseaudo_header, std::shared_ptr<std::vector<byte>>& m);
 
 		class L4_UDP::udpcb udb;
 		class inpcb_impl* udp_last_inpcb;
