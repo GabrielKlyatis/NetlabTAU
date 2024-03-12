@@ -130,7 +130,7 @@ private:
 
 	udpcb(socket& so, inpcb_impl& head);
 
-	~udpcb() {};
+	~udpcb();
 
 	/*!
 		\fn	static inline udpcb* L4_UDP::udpcb::intoudpcb(inpcb_impl *ip)

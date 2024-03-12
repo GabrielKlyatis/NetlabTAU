@@ -26,6 +26,12 @@ L4_UDP::udpcb::udpcb(socket& so, inpcb_impl& head)
 	: inpcb_impl(so, head), udp_ip_template(nullptr), udp_inpcb(dynamic_cast<inpcb_impl*>(this)),
 	log(udpcb_logger()) { }
 
+L4_UDP::udpcb::~udpcb() {
+
+	if (this != dynamic_cast<class L4_UDP::udpcb*>(udp_inpcb))
+		delete udp_inpcb;
+}
+
 /************************************************************************/
 /*                         L4_UDP_Impl::udphdr                          */
 /************************************************************************/
@@ -100,6 +106,7 @@ inline void L4_UDP_Impl::udpiphdr::remque()
 
 
 /************************** UTILS *********************************/
+
 uint16_t ones_complement_add(uint16_t a, uint16_t b) {
 	uint32_t sum = a + b; // Use a larger type to capture potential carry
 	// Handle end-around carry
@@ -109,13 +116,13 @@ uint16_t ones_complement_add(uint16_t a, uint16_t b) {
 	return static_cast<uint16_t>(sum); // Convert back to 16 bits
 }
 
-uint16_t L4_UDP_Impl::calculate_checksum(udpiphdr& udp_pseudo_header, std::shared_ptr<std::vector<byte>>& m) {
+uint16_t L4_UDP_Impl::calculate_checksum(udpiphdr& udp_ip_hdr, std::shared_ptr<std::vector<byte>>& m) {
 
 	uint16_t checksum = 0;
-	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&udp_pseudo_header);
-	uint16_t udp_pseudo_header_length = sizeof(udp_pseudo_header);
+	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&udp_ip_hdr);
+	uint16_t udp_ip_header_length = sizeof(udp_ip_hdr);
 
-	for (size_t i = 0; i < udp_pseudo_header_length; i += 2) {
+	for (size_t i = 0; i < udp_ip_header_length; i += 2) {
 
 		uint16_t word = 0;
 		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
@@ -125,7 +132,7 @@ uint16_t L4_UDP_Impl::calculate_checksum(udpiphdr& udp_pseudo_header, std::share
 
 	byte_ptr = reinterpret_cast<uint8_t*>(&(*(m->begin() + sizeof(L2::ether_header) + sizeof(L3::iphdr))));
 
-	auto udp_length_in_host = ntohs(udp_pseudo_header.udp_length);
+	auto udp_length_in_host = ntohs(udp_ip_hdr.udp_length);
 
 	for (size_t i = 0; i < udp_length_in_host; i += 2) {
 
@@ -148,7 +155,7 @@ uint16_t L4_UDP_Impl::calculate_checksum(udpiphdr& udp_pseudo_header, std::share
 /************************************************************************/
 
 L4_UDP_Impl::L4_UDP_Impl(class inet_os &inet)
-	: L4_UDP(inet), ucb(inet), udp_last_inpcb(nullptr) {}
+	: L4_UDP(inet), udb(inet), udp_last_inpcb(nullptr) {}
 
 L4_UDP_Impl::~L4_UDP_Impl() {
 	if (udp_last_inpcb)
@@ -156,9 +163,10 @@ L4_UDP_Impl::~L4_UDP_Impl() {
 }
 
 void L4_UDP_Impl::pr_init() {
-	ucb.inp_next = ucb.inp_prev = &ucb;
+
+	udb.inp_next = udb.inp_prev = &udb;
 	udp_last_inpcb = nullptr;
-	udp_last_inpcb = dynamic_cast<class inpcb_impl*>(&ucb);
+	udp_last_inpcb = dynamic_cast<class inpcb_impl*>(&udb);
 }
 
 
@@ -202,7 +210,7 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 		inp->inp_fport() != udp_header->uh_sport ||
 		inp->inp_faddr().s_addr != ip_header->ip_src.s_addr ||
 		inp->inp_laddr().s_addr != ip_header->ip_dst.s_addr) &&
-		(inp = ucb.in_pcblookup(ip_header->ip_src, udp_header->uh_sport, ip_header->ip_dst, udp_header->uh_dport, inpcb::INPLOOKUP_WILDCARD))) {
+		(inp = udb.in_pcblookup(ip_header->ip_src, udp_header->uh_sport, ip_header->ip_dst, udp_header->uh_dport, inpcb::INPLOOKUP_WILDCARD))) {
 
 		udp_last_inpcb = inp;
 	}
@@ -241,46 +249,45 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 	if (m == nullptr)
 		return out(up, ENOBUFS);
 
-	std::vector<byte>::iterator it(m->begin() + sizeof(struct L2::ether_header) + sizeof(L3::iphdr));
+	std::vector<byte>::iterator it(m->begin() + sizeof(struct L2::ether_header));
 
+	/*
+	 * Fill in mbuf with extended UDP header
+	 * and addresses and length put into network format.
+	 */
+
+	 // Copy data
 	if (len > 0) {
 
-		// Copy data
-		std::copy(so->so_snd.begin(), so->so_snd.begin() + len, it + sizeof(udphdr));
+		std::copy(so->so_snd.begin(), so->so_snd.begin() + len, it + hdrlen);
+		struct L4_UDP_Impl::udpiphdr* ui = reinterpret_cast<struct L4_UDP_Impl::udpiphdr*>(&m->data()[it - m->begin()]);
 
-		// Create udp header
-		struct udphdr* udp_header = reinterpret_cast<struct udphdr*>(&(*it));
+		ui->ui_prev(0);
+		ui->ui_next(0);
+		ui->ui_x1() = 0;
+		ui->ui_pr() = IPPROTO_UDP;
+		ui->ui_len() = len + sizeof(struct udphdr);
+		ui->ui_src() = so->so_pcb->inp_laddr();
+		ui->ui_dst() = so->so_pcb->inp_faddr();
+		ui->ui_sport() = so->so_pcb->inp_lport();
+		ui->ui_dport() = so->so_pcb->inp_fport();
+		ui->ui_ulen() = len + hdrlen;
+		ui->ui_ulen() = htons((uint16_t)(len + sizeof(udphdr)));
+		ui->ui_sum() = htons(calculate_checksum(*ui, m));
 
-		// Update header
-		udp_header->uh_dport = so->so_pcb->inp_fport();
-		udp_header->uh_sport = so->so_pcb->inp_lport();
-		udp_header->uh_ulen = htons((uint16_t)(len + sizeof(udphdr)));
-
-		// Create atrophied IP header with only src and dst IP addresses
-
-		struct L3::iphdr* ip_header = reinterpret_cast<struct L3::iphdr*> (&(*(it - sizeof(L3::iphdr))));
-
-		ip_header->ip_src = so->so_pcb->inp_laddr();
-		ip_header->ip_dst = so->so_pcb->inp_faddr();
-		ip_header->ip_len = len + hdrlen;
-		ip_header->ip_ttl = 99;
-		ip_header->ip_p = IPPROTO_UDP;
-
-		// Calculate UDP pseudo header and checksum 
-
-		struct udpiphdr udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->uh_ulen);
-		udp_header->uh_sum = htons(calculate_checksum(udp_pseudo_header, m));
-
+		reinterpret_cast<struct L3::iphdr*>(ui)->ip_len = static_cast<short>(hdrlen + len);
+		reinterpret_cast<struct L3::iphdr*>(ui)->ip_ttl = up.udp_inpcb->inp_ip.ip_ttl;	/* XXX */
+		reinterpret_cast<struct L3::iphdr*>(ui)->ip_tos = up.udp_inpcb->inp_ip.ip_tos;	/* XXX */
+		
 		// Send encapsualted result with udp header to IP layer
-
 		int error(
 			inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*dynamic_cast<const struct pr_output_args*>(
-				&L3_impl::ip_output_args(m, it - sizeof(L3::iphdr), up.udp_inpcb->inp_options, &up.udp_inpcb->inp_route, so->so_options & SO_DONTROUTE, nullptr)
+				&L3_impl::ip_output_args(m, it, up.udp_inpcb->inp_options, &up.udp_inpcb->inp_route, so->so_options & SO_DONTROUTE, nullptr)
 				)));
 		if (error)
 			return out(up, error);
-
 	}
+
 	return 0;
 }
 
@@ -383,7 +390,7 @@ int L4_UDP_Impl::udp_attach(socket& so)
 	 */
 
 	
-	class L4_UDP::udpcb* up(new L4_UDP::udpcb(so, ucb));
+	class L4_UDP::udpcb* up(new L4_UDP::udpcb(so, udb));
 	//up->seg_next = tp->seg_prev = reinterpret_cast<struct L4_UDP::tcpiphdr*>(up);
 	if (up->udp_inpcb == nullptr)
 		up->udp_inpcb = dynamic_cast<class inpcb_impl*>(up);

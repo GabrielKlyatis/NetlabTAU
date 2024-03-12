@@ -91,6 +91,7 @@ public:
 			short	ih_len;				/*!< protocol length */
 			struct	in_addr ih_src;		/*!< source internet address */
 			struct	in_addr ih_dst;		/*!< destination internet address */
+			u_char	ip_ttl;				/*!< time to live */
 		};
 
 		in_addr ip_src_addr;
@@ -325,8 +326,8 @@ public:
 private:
 
 		uint16_t calculate_checksum(udpiphdr& udp_pseaudo_header, std::shared_ptr<std::vector<byte>>& m);
-		class L4_UDP::udpcb ucb;
-		//class inpcb_impl udb; // 
+
+		class L4_UDP::udpcb udb;
 		class inpcb_impl* udp_last_inpcb;
 
 		u_long	udp_sendspace;   /*!< The UDP send space */
