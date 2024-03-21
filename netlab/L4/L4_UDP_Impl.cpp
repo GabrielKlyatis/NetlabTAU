@@ -113,38 +113,38 @@ uint16_t ones_complement_add(uint16_t a, uint16_t b) {
 	return static_cast<uint16_t>(sum); // Convert back to 16 bits
 }
 
-uint16_t L4_UDP_Impl::calculate_checksum(udpiphdr& ui, std::shared_ptr<std::vector<byte>>& m) {
-
-	uint16_t checksum = 0;
-	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&ui);
-	uint16_t udp_ip_header_length = sizeof(ui);
-
-	for (size_t i = 0; i < udp_ip_header_length; i += 2) {
-
-		uint16_t word = 0;
-		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
-
-		checksum = ones_complement_add(checksum, word);
-	}
-
-	byte_ptr = reinterpret_cast<uint8_t*>(&(*(m->begin() + sizeof(L2::ether_header) + sizeof(L3::iphdr))));
-
-	auto udp_length_in_host = ntohs(ui.ui_sum());
-
-	for (size_t i = 0; i < udp_length_in_host; i += 2) {
-
-		uint16_t word = 0;
-		if ((udp_length_in_host % 2) != 0) {
-			word = (byte_ptr[i] << 8);
-		}
-		else {
-			word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
-		}
-		checksum = ones_complement_add(checksum, word);
-	}
-
-	return ~checksum;
-}
+//uint16_t L4_UDP_Impl::calculate_checksum(udpiphdr& ui, std::shared_ptr<std::vector<byte>>& m) {
+//
+//	uint16_t checksum = 0;
+//	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&ui);
+//	uint16_t udp_ip_header_length = sizeof(ui);
+//
+//	for (size_t i = 0; i < udp_ip_header_length; i += 2) {
+//
+//		uint16_t word = 0;
+//		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
+//
+//		checksum = ones_complement_add(checksum, word);
+//	}
+//
+//	byte_ptr = reinterpret_cast<uint8_t*>(&(*(m->begin() + sizeof(L2::ether_header) + sizeof(L3::iphdr))));
+//
+//	auto udp_length_in_host = ntohs(ui.ui_sum());
+//
+//	for (size_t i = 0; i < udp_length_in_host; i += 2) {
+//
+//		uint16_t word = 0;
+//		if ((udp_length_in_host % 2) != 0) {
+//			word = (byte_ptr[i] << 8);
+//		}
+//		else {
+//			word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
+//		}
+//		checksum = ones_complement_add(checksum, word);
+//	}
+//
+//	return ~checksum;
+//}
 
 
 /************************************************************************/
@@ -192,12 +192,7 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	ui->ui_x1() = 0;
 	ui->ui_len() = htons(static_cast<u_short>(ulen));
 
-	uint16_t udp_checksum = calculate_checksum(*ui, m);
-
-	if (udp_checksum != 0) {
-		return drop(nullptr, 0); // TODO
-	}
-
+	u_short checksum(ui->ui_sum());
 	/*if (((ui->ui_sum() = 0) = checksum ^ inet.in_cksum(&m->data()[it - m->begin()], len)) != 0)
 		return drop(nullptr, 0);*/
 
@@ -269,9 +264,7 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 		ui->ui_sport() = so->so_pcb->inp_lport();
 		ui->ui_dport() = so->so_pcb->inp_fport();
 		ui->ui_ulen() = htons((uint16_t)(len + sizeof(udphdr)));
-		ui->ui_sum() = calculate_checksum(*ui, m);
-
-		//ui->ui_sum() = inet.in_cksum(&m->data()[it - m->begin()], static_cast<int>(hdrlen + len));
+		ui->ui_sum() = inet.in_cksum(&m->data()[it - m->begin()], static_cast<int>(hdrlen + len));
 
 		reinterpret_cast<struct L3::iphdr*>(ui)->ip_len = static_cast<short>(hdrlen + len);
 		reinterpret_cast<struct L3::iphdr*>(ui)->ip_ttl = up.udp_inpcb->inp_ip.ip_ttl;	/* XXX */

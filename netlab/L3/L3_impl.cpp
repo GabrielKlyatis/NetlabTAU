@@ -366,9 +366,9 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 	* Check our list of addresses, to see if the packet is for us.
 	*/
 	else if (inet.nic()->ip_addr().s_addr == ip.ip_dst.s_addr)
-		return ours(m, it, ip, hlen);
+		return pr_input_reassemble(m, it, ip, hlen);
 	else if ((inet.nic()->ifa_flags() & IFF_BROADCAST) && inet.nic()->bcast_addr().s_addr == ip.ip_dst.s_addr)
-		return ours(m, it, ip, hlen);
+		return pr_input_reassemble(m, it, ip, hlen);
 	else if (IN_MULTICAST(ntohl(ip.ip_dst.s_addr))) {
 #ifdef NETLAB_L3_MULTICAST
 		struct in_multi *inm;
@@ -420,9 +420,9 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 #endif
 	}
 	else if (ip.ip_dst.s_addr == static_cast<u_long>(INADDR_BROADCAST))
-		return ours(m, it, ip, hlen);
+		return pr_input_reassemble(m, it, ip, hlen);
 	else if (ip.ip_dst.s_addr == INADDR_ANY)
-		return ours(m, it, ip, hlen);
+		return pr_input_reassemble(m, it, ip, hlen);
 	else
 		
 		/*	
@@ -1155,7 +1155,7 @@ void L3_impl::ip_forward(std::shared_ptr<std::vector<byte>> &m, std::vector<byte
 #endif
 }
 
-void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, struct iphdr &ip, int &hlen) 
+void L3_impl::pr_input_reassemble(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, struct iphdr &ip, int &hlen) 
 {
 
 	/*

@@ -852,7 +852,7 @@ private:
 	    \param [in,out]	ip  	The \ref iphdr.
 	    \param [in,out]	hlen	The hlen.
 	*/
-	inline void ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, struct iphdr &ip, int &hlen);
+	inline void pr_input_reassemble(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, struct iphdr &ip, int &hlen);
 
 	/*!
 	    \brief	Prints the \ref iphdr with #checksum as its ip_sum, making sure to use the lock_guard for the print_mutex.
