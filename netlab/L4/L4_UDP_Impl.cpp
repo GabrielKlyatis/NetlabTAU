@@ -171,6 +171,7 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	
 	std::shared_ptr<std::vector<byte>>& m(args.m);
 	std::vector<byte>::iterator& it(args.it);
+	class inpcb_impl* inp(nullptr);
 	const int& iphlen(args.iphlen);
 	const int& udphlen(sizeof(udphdr));
 	
@@ -192,11 +193,12 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	ui->ui_x1() = 0;
 	ui->ui_len() = htons(static_cast<u_short>(ulen));
 
-	u_short checksum(ui->ui_sum());
-	/*if (((ui->ui_sum() = 0) = checksum ^ inet.in_cksum(&m->data()[it - m->begin()], len)) != 0)
-		return drop(nullptr, 0);*/
+	u_short stored_checksum(ui->ui_sum());
+	u_short calculated_checksum = inet.in_cksum(&m->data()[it - m->begin()], len);
 
-	class inpcb_impl* inp(nullptr);
+	if ((stored_checksum ^ calculated_checksum) != 0) {
+		return drop(nullptr, 0);
+	}
 	
 	inp = udp_last_inpcb;
 
@@ -237,9 +239,9 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 
 	long len(so->so_snd.size());
 
-	uint16_t hdrlen(sizeof(udphdr) + sizeof(L3::iphdr));
+	uint16_t udpiphdrlen(sizeof(udphdr) + sizeof(L3::iphdr));
 
-	std::shared_ptr<std::vector<byte>> m(new std::vector<byte>(hdrlen + sizeof(struct L2::ether_header) + len));
+	std::shared_ptr<std::vector<byte>> m(new std::vector<byte>(udpiphdrlen + sizeof(struct L2::ether_header) + len));
 	if (m == nullptr)
 		return out(up, ENOBUFS);
 
@@ -253,20 +255,21 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 	 // Copy data
 	if (len > 0) {
 
-		std::copy(so->so_snd.begin(), so->so_snd.begin() + len, it + hdrlen);
+		std::copy(so->so_snd.begin(), so->so_snd.begin() + len, it + udpiphdrlen);
 		struct L4_UDP_Impl::udpiphdr* ui = reinterpret_cast<struct L4_UDP_Impl::udpiphdr*>(&m->data()[it - m->begin()]);
 
 		ui->ui_x1() = 0;
 		ui->ui_pr() = IPPROTO_UDP;
-		ui->ui_len() = len + hdrlen;
+		ui->ui_len() = len + udpiphdrlen;
 		ui->ui_src() = so->so_pcb->inp_laddr();
 		ui->ui_dst() = so->so_pcb->inp_faddr();
 		ui->ui_sport() = so->so_pcb->inp_lport();
 		ui->ui_dport() = so->so_pcb->inp_fport();
 		ui->ui_ulen() = htons((uint16_t)(len + sizeof(udphdr)));
-		ui->ui_sum() = inet.in_cksum(&m->data()[it - m->begin()], static_cast<int>(hdrlen + len));
+		ui->ui_sum() = 0;
+		ui->ui_sum() = inet.in_cksum(&m->data()[it - m->begin()], static_cast<int>(udpiphdrlen + len));
 
-		reinterpret_cast<struct L3::iphdr*>(ui)->ip_len = static_cast<short>(hdrlen + len);
+		reinterpret_cast<struct L3::iphdr*>(ui)->ip_len = static_cast<short>(udpiphdrlen + len);
 		reinterpret_cast<struct L3::iphdr*>(ui)->ip_ttl = up.udp_inpcb->inp_ip.ip_ttl;	/* XXX */
 		reinterpret_cast<struct L3::iphdr*>(ui)->ip_tos = up.udp_inpcb->inp_ip.ip_tos;	/* XXX */
 		
