@@ -137,7 +137,10 @@ protected:
 		inet_server.stop_slowtimo();
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 
+		ConnectSocket->shutdown(SD_SEND);
 		ListenSocket->shutdown(SD_RECEIVE);
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		
     }
 };
 
@@ -158,18 +161,42 @@ TEST_F(newTests, Test01) {
 	// Accept the connection.
 	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
-	size_t size= 1000;
-	std::string send_msg(size, 'T');
+	size_t size = 10000;
+	std::string send_msg;
+	//send_msg.reserve(size);
+	send_msg = string(size / 5, 'a') + string(size / 5, 'b') + string(size / 5, 'c') + string(size / 5, 'd') + string(size / 5, 'e');
+	int num = 4;
+	netlab::L5_socket_impl* connectSocket = this->ConnectSocket;
+	std::thread([connectSocket, send_msg, num, size]()
+	{
+		//std::this_thread::sleep_for(chrono::seconds(1));
+		for (int i = 0; i < num; i++)
+		{
 
+			cout << "iteration:  " << i << endl;
+			connectSocket->send(send_msg, size, size);
+			std::this_thread::sleep_for(chrono::seconds(8));
+			
+		}
 
-	this_thread::sleep_for(chrono::seconds(3));
+	}).detach();
 
-	ConnectSocket->send(send_msg, size, size);
+	std::this_thread::sleep_for(chrono::seconds(100));
+	cout << "start reciving?" << endl;
+	//
+	//for (int i = 0; i < num; i++)
+	//{
+	//string ret ;
+	//ret.reserve(size);
+	//acceptsocket->recv(ret, size);
+	////	
+	//cout << "received: " << ret << endl;
+	//cout << "len: " << ret.size() << endl;
+	//cout << "org: " << send_msg << endl;
+	//cout << (send_msg == ret) << endl;
+	//	this_thread::sleep_for(chrono::seconds(6));
+	//}
 
-	string ret = "";
-	auto a = AcceptSocket->recv(ret, size);
-
-	cout << "Received: " << ret << endl;
 	cout << "finish" << endl;
 
 }

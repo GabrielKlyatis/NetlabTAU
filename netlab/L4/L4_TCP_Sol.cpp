@@ -843,7 +843,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket &so)
 	*	pointer in the TCP control block is set to point to the Internet PCB passed in by the
 	*	caller.
 	*/
-	tp->t_maxseg = tcp_mssdflt;
+	tp->t_maxseg = tcp_mssdflt / 4;
 	tp->t_flags = tcp_do_rfc1323 ?
 		(L4_TCP::tcpcb::TF_REQ_SCALE | L4_TCP::tcpcb::TF_REQ_TSTMP) :
 		0;
@@ -2531,6 +2531,7 @@ void L4_TCP_impl::pr_input(const struct pr_input_args &args)
 	ti->ti_win() = ntohs(ti->ti_win());
 	ti->ti_urp() = ntohs(ti->ti_urp());
 
+#define NETLAB_L4_TCP_DEBUG
 #ifdef NETLAB_L4_TCP_DEBUG
 		print(ti->ti_t, htons(checksum));
 #endif
@@ -5060,8 +5061,7 @@ void  L4_TCP_impl::tcp_respond(class L4_TCP::tcpcb *tp, struct L4_TCP::tcpiphdr 
 void L4_TCP_impl::tcp_dooptions(L4_TCP::tcpcb &tp, u_char *cp, int cnt, tcpiphdr &ti, int &ts_present, u_long &ts_val, u_long &ts_ecr) 
 {
 	u_short mss;
-	int opt,
-		optlen;
+	int opt,optlen;
 
 	/*
 	*	Fetch option type and length:
@@ -5176,6 +5176,8 @@ int L4_TCP_impl::tcp_mss(class L4_TCP::tcpcb &tp, u_int offer)
 	 *	If a route is not acquired, the default of 512 (tcp_rossdfl t) is returned immediately.
 	 */
 	class inpcb *inp(tp.t_inpcb);
+
+
 	struct L3::route &ro(inp->inp_route);
 	struct L3::rtentry *rt(ro.ro_rt);
 	if (rt == nullptr) {
@@ -5331,10 +5333,7 @@ int L4_TCP_impl::tcp_mss(class L4_TCP::tcpcb &tp, u_int offer)
 	* unless we received an offer at least that large from peer.
 	* However, do not accept offers under 32 bytes.
 	*/
-	mss = 
-		offer ? 
-		std::min(mss, static_cast<int>(offer)) : 
-		std::max(mss, 32); /* sanity */
+	mss = offer ? std::min(mss, static_cast<int>(offer)) : 	std::max(mss, 32); /* sanity */
 
 	/*	
 	 *	If the value of mss has decreased from the default set by tcp_newtcpcb in the
