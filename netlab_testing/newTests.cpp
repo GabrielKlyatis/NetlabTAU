@@ -4,7 +4,8 @@
 #include <string>
 #include <cstdlib>
 #include <pthread.h>
-
+#include <thread>
+#include <chrono>
 #include "pch.h"
 
 using namespace std;
@@ -142,6 +143,9 @@ protected:
 
 TEST_F(newTests, Test01) {
 
+	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
+	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+
 	//----------------------
 	// Connect to server.
 	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
@@ -153,6 +157,20 @@ TEST_F(newTests, Test01) {
 	//----------------------
 	// Accept the connection.
 	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
+
+	size_t size= 1000;
+	std::string send_msg(size, 'T');
+
+
+	this_thread::sleep_for(chrono::seconds(3));
+
+	ConnectSocket->send(send_msg, size, size);
+
+	string ret = "";
+	auto a = AcceptSocket->recv(ret, size);
+
+	cout << "Received: " << ret << endl;
+	cout << "finish" << endl;
 
 }
 

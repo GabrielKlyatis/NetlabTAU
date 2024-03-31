@@ -699,7 +699,7 @@ namespace netlab
 				chunk = so_rcv.size();
 			}
 		}
-		else if (so_type != SOCK_STREAM || so_type != SOCK_DGRAM)
+		else if (so_type != SOCK_STREAM && so_type != SOCK_DGRAM)
 			throw std::runtime_error("soreceive_stream failed with error: EINVAL = " + std::to_string(EINVAL));
 		else if (flags & MSG_OOB)
 			throw std::runtime_error("OOB not supported.");
