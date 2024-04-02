@@ -83,7 +83,10 @@ L4_TCP::tcpcb::~tcpcb()
 	dynamic_cast<socket*>(inp_socket)->soisdisconnected();
 }
 
-void L4_TCP::tcpcb::log_snd_cwnd(u_long snd_cwnd) { log.update(snd_cwnd); }
+void L4_TCP::tcpcb::log_snd_cwnd(u_long snd_cwnd) {
+
+	log.update(snd_cwnd);
+}
 
 int L4_TCP::tcpcb::tcpcb_logger::log_number(0);
 
@@ -843,7 +846,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket &so)
 	*	pointer in the TCP control block is set to point to the Internet PCB passed in by the
 	*	caller.
 	*/
-	tp->t_maxseg = tcp_mssdflt / 4;
+	tp->t_maxseg = tcp_mssdflt;
 	tp->t_flags = tcp_do_rfc1323 ?
 		(L4_TCP::tcpcb::TF_REQ_SCALE | L4_TCP::tcpcb::TF_REQ_TSTMP) :
 		0;
@@ -910,7 +913,15 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket &so)
 	*	when a SYN is sent or received on the connection, tcp_rnss resets snd_cwnd to a single
 	*	segment.
 	*/
-	tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN << TCP_MAX_WINSHIFT);
+
+	if (tcp_do_rfc1323)
+	{
+		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN << TCP_MAX_WINSHIFT);
+	}
+	else
+	{
+		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN / 16);
+	}
 
 	/*
 	*	The default IP TTL in the Internet PCB is set to 64 (ip_defttl) and the PCB is set
@@ -2531,7 +2542,7 @@ void L4_TCP_impl::pr_input(const struct pr_input_args &args)
 	ti->ti_win() = ntohs(ti->ti_win());
 	ti->ti_urp() = ntohs(ti->ti_urp());
 
-#define NETLAB_L4_TCP_DEBUG
+//#define NETLAB_L4_TCP_DEBUG
 #ifdef NETLAB_L4_TCP_DEBUG
 		print(ti->ti_t, htons(checksum));
 #endif
@@ -4242,12 +4253,16 @@ findpcb:
 		*/
 		{
 			u_int cw(tp->snd_cwnd);
-			u_int incr(tp->t_maxseg);
+			float incr(tp->t_maxseg);
+
 			if (cw > tp->snd_ssthresh)
+				// congetion control
 				incr *= incr / cw
 				// + incr / 8		/*	REMOVED	*/
 				;
-			tp->log_snd_cwnd(tp->snd_cwnd = std::min(cw + incr, static_cast<u_int>(TCP_MAXWIN << tp->snd_scale)));
+
+			// slow start increase
+			tp->log_snd_cwnd(tp->snd_cwnd = std::min(cw + (u_int)std::floor(incr), static_cast<u_int>(TCP_MAXWIN << tp->snd_scale)));
 		}
 
 		/*	

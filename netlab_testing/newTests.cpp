@@ -135,11 +135,11 @@ protected:
 
 		inet_server.stop_fasttimo();
 		inet_server.stop_slowtimo();
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		std::this_thread::sleep_for(std::chrono::seconds(2));
 
 		ConnectSocket->shutdown(SD_SEND);
 		ListenSocket->shutdown(SD_RECEIVE);
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		std::this_thread::sleep_for(std::chrono::seconds(2));
 		
     }
 };
@@ -161,28 +161,51 @@ TEST_F(newTests, Test01) {
 	// Accept the connection.
 	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
-	size_t size = 10000;
+	size_t size = 20000;
 	std::string send_msg;
 	//send_msg.reserve(size);
 	send_msg = string(size / 5, 'a') + string(size / 5, 'b') + string(size / 5, 'c') + string(size / 5, 'd') + string(size / 5, 'e');
-	int num = 4;
+	int num = 5;
 	netlab::L5_socket_impl* connectSocket = this->ConnectSocket;
-	std::thread([connectSocket, send_msg, num, size]()
+	std::thread snd_thread([connectSocket, send_msg, num, size]()
 	{
-		//std::this_thread::sleep_for(chrono::seconds(1));
+		//std::this_thread::sleep_for(chrono::milliseconds(500));
 		for (int i = 0; i < num; i++)
 		{
 
 			cout << "iteration:  " << i << endl;
 			connectSocket->send(send_msg, size, size);
-			std::this_thread::sleep_for(chrono::seconds(8));
+			std::this_thread::sleep_for(chrono::milliseconds(2900));
 			
 		}
+		cout << "finish sending!!:  " << endl;
 
-	}).detach();
+	});
 
-	std::this_thread::sleep_for(chrono::seconds(100));
-	cout << "start reciving?" << endl;
+
+	std::thread recv_thread([AcceptSocket, num, size]()
+	{
+		
+		std::this_thread::sleep_for(chrono::milliseconds(500));
+		cout << "start recv" << endl;
+		for (int i = 0; i < num; i++)
+		{
+			string msg;
+			msg.reserve(size);
+			msg = "";
+			
+			int len = AcceptSocket->recv(msg, size, 1);
+			cout << "iteration:  " << i << "recived msg len" << len << endl;
+			std::this_thread::sleep_for(chrono::milliseconds(1600));
+			
+		}
+		cout << "finish sending!!:  " << endl;
+
+	});
+
+	snd_thread.join();
+	recv_thread.join();
+
 	//
 	//for (int i = 0; i < num; i++)
 	//{
@@ -196,7 +219,6 @@ TEST_F(newTests, Test01) {
 	//cout << (send_msg == ret) << endl;
 	//	this_thread::sleep_for(chrono::seconds(6));
 	//}
-
 	cout << "finish" << endl;
 
 }
