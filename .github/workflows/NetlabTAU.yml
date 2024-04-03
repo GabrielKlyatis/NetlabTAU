@@ -21,7 +21,7 @@ jobs:
       - name: Run UDP tests
         run: |
             cd netlab\Debug
-            netlab_testing.exe --gtest_filter=UDPTests.oneWay_noArp
+            ./netlab_testing --gtest_filter=UDPTests.oneWay_noArp
       - name: Upload coverage data to Codecov
         uses: codecov/codecov-action@v2
         with:
