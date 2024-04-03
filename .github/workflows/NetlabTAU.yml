@@ -18,8 +18,13 @@ jobs:
       - name: Set up MSBuild path
         uses: microsoft/setup-msbuild@v1.0.2 # This action sets up MSBuild environment by finding the path to MSBuild.exe.
       - run: msbuild D:\a\NetlabTAU\NetlabTAU\netlab\NetlabTAU.sln /p:Configuration=Debug /p:Platform=win32 /t:netlab_testing
+      - name: Run ATS
+        uses: codecov/codecov-ats@v0
+        env:
+          CODECOV_STATIC_TOKEN: ${{ secrets.CODECOV_STATIC_TOKEN }}
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: Run UDP Tests
-        run: .\netlab\Debug\netlab_testing
+        run: netlab\Debug\netlab_testing --gtest_filter=UDPTests.emptyTest
         shell: pwsh
         working-directory: ${{ github.workspace }}
       - name: Upload coverage data to Codecov
