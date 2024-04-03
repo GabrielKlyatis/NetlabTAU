@@ -10,11 +10,11 @@ jobs:
             choco install cmake
             choco install make
             shell: pwsh
-        - name: Clone Google Test repository
-          run: git clone https://github.com/google/googletest.git
-          shell: pwsh
-        - name: Build Google Test
-          run: |
+      - name: Clone Google Test repository
+        run: git clone https://github.com/google/googletest.git
+        shell: pwsh
+      - name: Build Google Test
+        run: |
             cmake -B build -S googletest
             cmake --build build
           shell: pwsh
