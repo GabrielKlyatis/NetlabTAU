@@ -5,13 +5,25 @@ jobs:
   Explore-GitHub-Actions:
     runs-on: windows-latest
     steps:
+      - name: Install CMake and other build tools
+        run: |
+            choco install cmake
+            choco install make
+            shell: pwsh
+        - name: Clone Google Test repository
+          run: git clone https://github.com/google/googletest.git
+          shell: pwsh
+        - name: Build Google Test
+          run: |
+            cmake -B build -S googletest
+            cmake --build build
+          shell: pwsh
+          working-directory: googletest
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
       - name: Check out repository code
         uses: actions/checkout@v4
-      - name: Setup GoogleTest
-        uses: Bacondish2023/setup-googletest@v1.0.1
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
       - run: echo "🖥️ The workflow is now ready to test your code on the runner."
       - name: List files in the repository
