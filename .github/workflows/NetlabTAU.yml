@@ -9,10 +9,8 @@ jobs:
       - name: Set up MSBuild path
         uses: microsoft/setup-msbuild@v1.0.2 # This action sets up MSBuild environment by finding the path to MSBuild.exe.
       
-      - name: Install CMake and other build tools
-        run: |
-            choco install cmake
-            choco install make
+      - name: Setup CMake
+        uses: lukka/get-cmake@v1.0.4
             
       - name: Clone Google Test repository
         run: git clone https://github.com/google/googletest.git
