@@ -1,2 +1,47 @@
 ﻿C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\amd64\Microsoft.Common.CurrentVersion.targets(2153,5): warning : The referenced project '..\netlab\Solution Items{38B398D3-3824-4CBB-8FC0-9BF67CCC38B8}' does not exist.
+  newTests.cpp
+NetlabTAU.lib(L5_Sol.obj) : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification
+Sniffer.lib(address_range.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(arp.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot11_assoc.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot11_auth.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot11_base.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot11_beacon.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot11_control.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot11_data.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot11_mgmt.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot11_probe.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot1q.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(dot3.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(eapol.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(ethernetII.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(icmp.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(icmpv6.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(internals.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(ip.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(ipsec.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(ipv6.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(ipv6_address.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(ip_address.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(llc.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(loopback.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(network_interface.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(packet_sender.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(pdu.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(ppi.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(pppoe.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(radiotap.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(rawpdu.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(rsn_information.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(sll.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(snap.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(sniffer.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(stp.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(tcp.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(udp.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+Sniffer.lib(utils.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+NetlabTAU.lib(IPv4Address.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+NetlabTAU.lib(NetworkInterface.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+NetlabTAU.lib(Print.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
+NetlabTAU.lib(utils.obj) : warning LNK4204: '' is missing debugging information for referencing module; linking object as if no debug info
   netlab_testing.vcxproj -> C:\Users\niv\NetlabTAU\netlab\Debug\netlab_testing.exe

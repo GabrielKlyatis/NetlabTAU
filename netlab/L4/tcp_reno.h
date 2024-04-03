@@ -5,7 +5,9 @@
 class tcp_reno : public tcp_tahoe
 {
 
-	tcp_reno() = default;
+public:
+
+	tcp_reno(class inet_os& inet);
 	~tcp_reno() = default;
 
 protected:

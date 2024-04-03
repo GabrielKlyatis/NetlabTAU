@@ -329,7 +329,7 @@ private:
 	struct in_addr _dgw_addr;	/*!< NIC's Default Gateway address */
 	
 	const mac_addr _etherbroadcastaddr;   /*!< The etherbroadcastaddr */
-	const u_long	_if_mtu = 1500;		/*!< maximum transmission unit */
+	const u_long	_if_mtu = 900;		/*!< maximum transmission unit */
 	u_short	_ifa_flags;		/*!< mostly rt_flags for cloning */
 
 	class inet_os &inet;	/*!< The inet_os owning this protocol. */

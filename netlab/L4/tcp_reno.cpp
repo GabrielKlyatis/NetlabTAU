@@ -1,5 +1,8 @@
 #include "tcp_reno.h"
 
+
+tcp_reno::tcp_reno(inet_os& inet) : tcp_tahoe(inet) {}
+
 void tcp_reno::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 {
 	int dropsocket = 0;

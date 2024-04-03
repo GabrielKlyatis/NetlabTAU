@@ -1,5 +1,8 @@
+
+
 #include "tcp_tahoe.h"
 
+tcp_tahoe::tcp_tahoe(inet_os& inet) : L4_TCP_impl(inet) {}
 
 void tcp_tahoe::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 {

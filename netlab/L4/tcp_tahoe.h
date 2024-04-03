@@ -12,8 +12,9 @@
 */
 class tcp_tahoe : public L4_TCP_impl
 {
+ public:
 
-	tcp_tahoe();
+	tcp_tahoe(class inet_os& inet);
 	~tcp_tahoe() = default; // automaticlly call father d'tor
 
 protected:

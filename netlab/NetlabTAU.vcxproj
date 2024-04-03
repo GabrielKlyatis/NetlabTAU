@@ -229,6 +229,8 @@
     <ClCompile Include="L4\L4_ICMP_Sol.cpp" />
     <ClCompile Include="L4\L4_UDP_Impl.cpp" />
     <ClCompile Include="L4\L4_TCP_Sol.cpp" />
+    <ClCompile Include="L4\tcp_reno.cpp" />
+    <ClCompile Include="L4\tcp_tahoe.cpp" />
     <ClCompile Include="L5\L5_Sol.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="main2.cpp" />
@@ -257,6 +259,8 @@
     <ClInclude Include="L4\L4_TCP.h" />
     <ClInclude Include="L4\L4_UDP.hpp" />
     <ClInclude Include="L4\L4_UDP_Impl.hpp" />
+    <ClInclude Include="L4\tcp_reno.h" />
+    <ClInclude Include="L4\tcp_tahoe.h" />
     <ClInclude Include="L5\L5.h" />
     <ClInclude Include="infra\NetworkInterface.h" />
     <ClInclude Include="L1\NIC.h" />

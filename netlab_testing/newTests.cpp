@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <thread>
 #include <chrono>
+
 #include "pch.h"
 
 using namespace std;
@@ -65,7 +66,7 @@ protected:
 			new L3_impl(inet_server, 0, 0, 0),	// A default IP layer is defined, using my L3_impl, as in a real BSD system 
 			protosw::SWPROTO_IP);				// I place the layer in the appropriate place, though any place should do. 
 		inet_server.inetsw(
-			new L4_TCP_impl(inet_server),		// Defining the TCP Layer using my L4_TCP_impl
+			new tcp_reno(inet_server),		// Defining the TCP Layer using my tcp_reno
 			protosw::SWPROTO_TCP);				// Placing it in the appropriate place.
 		inet_server.inetsw(
 			new L3_impl(						// The actual IP layer we will use.
@@ -81,7 +82,7 @@ protected:
 
 	
 		inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
-		inet_client.inetsw(new L4_TCP_impl(inet_client), protosw::SWPROTO_TCP);
+		inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
 		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 		inet_client.domaininit();
 		arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); 
@@ -135,14 +136,31 @@ protected:
 
 		inet_server.stop_fasttimo();
 		inet_server.stop_slowtimo();
-		std::this_thread::sleep_for(std::chrono::seconds(2));
+		std::this_thread::sleep_for(std::chrono::seconds(1));
 
 		ConnectSocket->shutdown(SD_SEND);
 		ListenSocket->shutdown(SD_RECEIVE);
-		std::this_thread::sleep_for(std::chrono::seconds(2));
+		std::this_thread::sleep_for(std::chrono::seconds(3));
 		
     }
 };
+
+// Function representing the code block to be executed by each sending thread
+void sendFunction(netlab::L5_socket_impl* connectSocket, const std::string& send_msg, int size) {
+		std::cout << "Sending iteration: " << std::endl;
+		connectSocket->send(send_msg, size, size);
+}
+
+// Function representing the code block to be executed by each receiving thread
+void recvFunction(netlab::L5_socket_impl* AcceptSocket, int size) {
+	std::string msg;
+	msg.reserve(size);
+	msg = "";
+	std::cout << "Received iteration: " << endl;
+	int len = AcceptSocket->recv(msg, size, 1);
+	std::cout << "message length: " << len << std::endl;
+}
+
 
 TEST_F(newTests, Test01) {
 
@@ -161,21 +179,20 @@ TEST_F(newTests, Test01) {
 	// Accept the connection.
 	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
-	size_t size = 20000;
+	size_t size = 8000;
 	std::string send_msg;
 	//send_msg.reserve(size);
 	send_msg = string(size / 5, 'a') + string(size / 5, 'b') + string(size / 5, 'c') + string(size / 5, 'd') + string(size / 5, 'e');
-	int num = 5;
+	int num = 25;
 	netlab::L5_socket_impl* connectSocket = this->ConnectSocket;
 	std::thread snd_thread([connectSocket, send_msg, num, size]()
 	{
-		//std::this_thread::sleep_for(chrono::milliseconds(500));
 		for (int i = 0; i < num; i++)
 		{
 
 			cout << "iteration:  " << i << endl;
 			connectSocket->send(send_msg, size, size);
-			std::this_thread::sleep_for(chrono::milliseconds(2900));
+			std::this_thread::sleep_for(chrono::milliseconds(2600));
 			
 		}
 		cout << "finish sending!!:  " << endl;
@@ -186,40 +203,39 @@ TEST_F(newTests, Test01) {
 	std::thread recv_thread([AcceptSocket, num, size]()
 	{
 		
-		std::this_thread::sleep_for(chrono::milliseconds(500));
-		cout << "start recv" << endl;
+		std::this_thread::sleep_for(chrono::milliseconds(300));
 		for (int i = 0; i < num; i++)
 		{
 			string msg;
-			msg.reserve(size);
+			//msg.reserve(size);
 			msg = "";
-			
+			cout << "start recv iteration:  " << i << endl;
 			int len = AcceptSocket->recv(msg, size, 1);
-			cout << "iteration:  " << i << "recived msg len" << len << endl;
-			std::this_thread::sleep_for(chrono::milliseconds(1600));
+			cout << "iteration:  " << i << "recived msg len  " << len << endl;
+			std::this_thread::sleep_for(chrono::milliseconds(900));
 			
 		}
-		cout << "finish sending!!:  " << endl;
+		cout << "finish recving!!:  " << endl;
 
 	});
 
-	snd_thread.join();
-	recv_thread.join();
 
-	//
-	//for (int i = 0; i < num; i++)
-	//{
-	//string ret ;
-	//ret.reserve(size);
-	//acceptsocket->recv(ret, size);
-	////	
-	//cout << "received: " << ret << endl;
-	//cout << "len: " << ret.size() << endl;
-	//cout << "org: " << send_msg << endl;
-	//cout << (send_msg == ret) << endl;
-	//	this_thread::sleep_for(chrono::seconds(6));
+	// Vector to hold the thread objects for sending and receiving
+	//std::vector<std::thread> threads;
+	//// Create threads for sending
+	//for (int i = 0; i < num; ++i) {
+	//	threads.push_back(std::thread(sendFunction, connectSocket, send_msg, size));
+	//	std::this_thread::sleep_for(chrono::milliseconds(10));
+	//	threads.push_back(std::thread(recvFunction, AcceptSocket, size));
+	//	std::this_thread::sleep_for(chrono::milliseconds(2800));
 	//}
-	cout << "finish" << endl;
+
+	//// Join all threads
+	//for (auto& thread : threads) {
+	//	thread.join();
+	//}
+	snd_thread.join();
+	recv_thread.join();	cout << "finish" << endl;
 
 }
 

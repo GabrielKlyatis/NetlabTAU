@@ -920,7 +920,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket &so)
 	}
 	else
 	{
-		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN / 16);
+		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN / 32);
 	}
 
 	/*
