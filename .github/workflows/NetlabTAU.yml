@@ -10,6 +10,8 @@ jobs:
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
       - name: Check out repository code
         uses: actions/checkout@v4
+      - name: Install Google Test
+        run: conda install -c conda-forge gtest
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
       - run: echo "🖥️ The workflow is now ready to test your code on the runner."
       - name: List files in the repository
@@ -18,8 +20,6 @@ jobs:
       - name: Set up MSBuild path
         uses: microsoft/setup-msbuild@v1.0.2 # This action sets up MSBuild environment by finding the path to MSBuild.exe.
       - run: msbuild D:\a\NetlabTAU\NetlabTAU\netlab\NetlabTAU.sln /p:Configuration=Debug /p:Platform=win32 /t:netlab_testing
-      - name: Install Google Test
-        run: conda install -c conda-forge gtest
       - name: Run UDP Tests
         run: netlab\Debug\netlab_testing --gtest_filter=UDPTests.emptyTest
         shell: pwsh
