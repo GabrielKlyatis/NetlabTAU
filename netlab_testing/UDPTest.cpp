@@ -101,7 +101,7 @@ protected:
 
 TEST_F(UDPTests, emptyTest) {
 
-	//----------------------
+	//---------------------
 	// Create a SOCKET for the server to receive datagrams
 	ServerSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_server));
 }
