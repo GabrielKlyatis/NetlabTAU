@@ -19,8 +19,9 @@ jobs:
         run: netlab\Debug\netlab_testing --gtest_filter=UDPTests.emptyTest
         shell: pwsh
         working-directory: ${{ github.workspace }}
-      - name: Upload coverage data to Codecov
-        uses: codecov/codecov-action@v2
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}  
+      - name: Upload coverage reports to Codecov
+            uses: codecov/codecov-action@v4.0.1
+            with:
+                token: ${{ secrets.CODECOV_TOKEN }}
+                slug: GabrielKlyatis/NetlabTAU
       - run: echo "🍏 This job's status is ${{ job.status }}."
