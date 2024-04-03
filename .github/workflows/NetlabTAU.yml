@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [push]
 jobs:
   Explore-GitHub-Actions:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
@@ -14,6 +14,6 @@ jobs:
       - run: echo "🖥️ The workflow is now ready to test your code on the runner."
       - name: List files in the repository
         run: |
-          ls ${{ github.workspace }}
-      - run: msbuild /home/runner/work/NetlabTAU/NetlabTAU/netlab_testing/netlab_testing.sln /p:Configuration=Debug /p:Platform=win32
+          dir ${{ github.workspace }}
+      - run: msbuild /home/runner/work/NetlabTAU/NetlabTAU/NetlabTAU.sln /p:Configuration=Debug /p:Platform=win32 /t:netlab_testing
       - run: echo "🍏 This job's status is ${{ job.status }}."
