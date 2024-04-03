@@ -1,0 +1,211 @@
+﻿  address_range.cpp
+  arp.cpp
+  bootp.cpp
+  crypto.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\crypto.h(391,23): warning C4267: '=': conversion from 'size_t' to 'uint8_t', possible loss of data
+  (compiling source file 'crypto.cpp')
+  C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\crypto.h(391,23):
+  the template instantiation context (the oldest one first) is
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\crypto.cpp(98,15):
+  	see reference to function template instantiation 'Tins::Crypto::RC4Key::RC4Key<std::_Vector_iterator<std::_Vector_val<std::_Simple_types<_Ty>>>>(ForwardIterator,ForwardIterator)' being compiled
+          with
+          [
+              _Ty=uint8_t,
+              ForwardIterator=std::_Vector_iterator<std::_Vector_val<std::_Simple_types<uint8_t>>>
+          ]
+  
+  dhcp.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcp.cpp(234,40): warning C4267: '=': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+  (compiling source file 'dhcp.cpp')
+  C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26):
+  the template instantiation context (the oldest one first) is
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcp.cpp(76,19):
+  	see reference to class template instantiation 'Tins::PDUOption<uint8_t,Tins::DHCP>' being compiled
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(314,5):
+  	while compiling class template member function 'Tins::PDUOption<uint8_t,Tins::DHCP>::PDUOption(unsigned char,size_t,const Tins::PDUOption<uint8_t,Tins::DHCP>::data_type *)'
+  		C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcp.cpp(75,19):
+  		see the first reference to 'Tins::PDUOption<uint8_t,Tins::DHCP>::PDUOption' in 'Tins::DHCP::DHCP'
+  
+  dhcpv6.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.cpp(98,68): warning C4267: 'argument': conversion from 'size_t' to 'T', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.cpp(98,68): warning C4267:         with
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.cpp(98,68): warning C4267:         [
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.cpp(98,68): warning C4267:             T=unsigned short
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.cpp(98,68): warning C4267:         ]
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+  (compiling source file 'dhcpv6.cpp')
+  C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26):
+  the template instantiation context (the oldest one first) is
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.cpp(76,19):
+  	see reference to class template instantiation 'Tins::PDUOption<uint16_t,Tins::DHCPv6>' being compiled
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(314,5):
+  	while compiling class template member function 'Tins::PDUOption<uint16_t,Tins::DHCPv6>::PDUOption(unsigned short,size_t,const Tins::PDUOption<uint16_t,Tins::DHCPv6>::data_type *)'
+  		C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.cpp(307,15):
+  		see the first reference to 'Tins::PDUOption<uint16_t,Tins::DHCPv6>::PDUOption' in 'Tins::DHCPv6::preference'
+  
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.h(894,67): warning C4267: 'argument': conversion from 'size_t' to 'T', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.h(894,67): warning C4267:         with
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.h(894,67): warning C4267:         [
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.h(894,67): warning C4267:             T=unsigned short
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.h(894,67): warning C4267:         ]
+  (compiling source file 'dhcpv6.cpp')
+  C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.h(894,67):
+  the template instantiation context (the oldest one first) is
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dhcpv6.cpp(372,16):
+  	see reference to function template instantiation 'void Tins::Internals::class_option_data2option<std::_Vector_const_iterator<std::_Vector_val<std::_Simple_types<_Ty>>>>(InputIterator,InputIterator,std::vector<uint8_t,std::allocator<uint8_t>> &,size_t)' being compiled
+          with
+          [
+              _Ty=Tins::DHCPv6::class_option_data_type,
+              InputIterator=std::_Vector_const_iterator<std::_Vector_val<std::_Simple_types<Tins::DHCPv6::class_option_data_type>>>
+          ]
+  
+  dns.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(304,36): warning C4267: 'argument': conversion from 'size_t' to 'const _Elem', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(304,36): warning C4267:         with
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(304,36): warning C4267:         [
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(304,36): warning C4267:             _Elem=char
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(304,36): warning C4267:         ]
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(308,36): warning C4267: 'argument': conversion from 'size_t' to 'const _Elem', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(308,36): warning C4267:         with
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(308,36): warning C4267:         [
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(308,36): warning C4267:             _Elem=char
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dns.cpp(308,36): warning C4267:         ]
+  dot11_assoc.cpp
+  dot11_auth.cpp
+  dot11_base.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_base.cpp(215,39): warning C4267: '=': conversion from 'size_t' to 'uint8_t', possible loss of data
+  dot11_beacon.cpp
+  dot11_control.cpp
+  dot11_data.cpp
+  dot11_mgmt.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(112,49): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(117,39): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(142,54): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(148,58): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(170,54): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(186,57): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(221,16): warning C4267: 'initializing': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(254,32): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(274,55): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(349,39): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(355,18): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\dot11_mgmt.cpp(367,51): warning C4267: 'argument': conversion from 'size_t' to 'uint8_t', possible loss of data
+  dot11_probe.cpp
+  dot1q.cpp
+  dot3.cpp
+  eapol.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\eapol.cpp(161,48): warning C4267: '=': conversion from 'size_t' to 'uint16_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\eapol.cpp(278,33): warning C4267: 'argument': conversion from 'size_t' to 'uint16_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\eapol.cpp(281,33): warning C4267: 'argument': conversion from 'size_t' to 'uint16_t', possible loss of data
+  ethernetII.cpp
+  handshake_capturer.cpp
+  Generating Code...
+  Compiling...
+  icmp.cpp
+  icmpv6.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\icmpv6.cpp(268,60): warning C4267: '=': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+  (compiling source file 'icmpv6.cpp')
+  C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26):
+  the template instantiation context (the oldest one first) is
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\icmpv6.cpp(93,19):
+  	see reference to class template instantiation 'Tins::PDUOption<uint8_t,Tins::ICMPv6>' being compiled
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(314,5):
+  	while compiling class template member function 'Tins::PDUOption<uint8_t,Tins::ICMPv6>::PDUOption(unsigned char,size_t,const Tins::PDUOption<uint8_t,Tins::ICMPv6>::data_type *)'
+  		C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\icmpv6.cpp(92,19):
+  		see the first reference to 'Tins::PDUOption<uint8_t,Tins::ICMPv6>::PDUOption' in 'Tins::ICMPv6::parse_options'
+  
+  internals.cpp
+  ip.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\ip.cpp(107,61): warning C4267: '+=': conversion from 'size_t' to 'uint16_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\ip.cpp(311,24): warning C4267: '+=': conversion from 'size_t' to 'uint16_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\ip.cpp(330,31): warning C4267: '=': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+  (compiling source file 'ip.cpp')
+  C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26):
+  the template instantiation context (the oldest one first) is
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\ip.cpp(101,45):
+  	see reference to class template instantiation 'Tins::PDUOption<Tins::IP::option_identifier,Tins::IP>' being compiled
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(314,5):
+  	while compiling class template member function 'Tins::PDUOption<Tins::IP::option_identifier,Tins::IP>::PDUOption(Tins::IP::option_identifier,size_t,const Tins::PDUOption<Tins::IP::option_identifier,Tins::IP>::data_type *)'
+  		C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\ip.cpp(104,38):
+  		see the first reference to 'Tins::PDUOption<Tins::IP::option_identifier,Tins::IP>::PDUOption' in 'Tins::IP::IP'
+  
+  ipsec.cpp
+  ipv6.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\ipv6.cpp(257,40): warning C4267: '=': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+  (compiling source file 'ipv6.cpp')
+  C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26):
+  the template instantiation context (the oldest one first) is
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\ipv6.cpp(83,27):
+  	see reference to class template instantiation 'Tins::PDUOption<uint8_t,Tins::IPv6>' being compiled
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(314,5):
+  	while compiling class template member function 'Tins::PDUOption<uint8_t,Tins::IPv6>::PDUOption(unsigned char,size_t,const Tins::PDUOption<uint8_t,Tins::IPv6>::data_type *)'
+  		C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\ipv6.cpp(82,27):
+  		see the first reference to 'Tins::PDUOption<uint8_t,Tins::IPv6>::PDUOption' in 'Tins::IPv6::IPv6'
+  
+  ipv6_address.cpp
+  ip_address.cpp
+  ip_reassembler.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\ip_reassembler.cpp(75,33): warning C4267: '=': conversion from 'size_t' to 'uint16_t', possible loss of data
+  llc.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\llc.cpp(193,38): warning C4267: '+=': conversion from 'size_t' to 'uint8_t', possible loss of data
+  loopback.cpp
+  network_interface.cpp
+  offline_packet_filter.cpp
+  packet_sender.cpp
+  packet_writer.cpp
+  pdu.cpp
+  pktap.cpp
+  portscan.cpp
+  ppi.cpp
+  pppoe.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pppoe.cpp(135,72): warning C4267: 'argument': conversion from 'size_t' to 'T', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pppoe.cpp(135,72): warning C4267:         with
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pppoe.cpp(135,72): warning C4267:         [
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pppoe.cpp(135,72): warning C4267:             T=uint16_t
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pppoe.cpp(135,72): warning C4267:         ]
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pppoe.cpp(147,38): warning C4267: '+=': conversion from 'size_t' to 'uint16_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+  (compiling source file 'pppoe.cpp')
+  C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26):
+  the template instantiation context (the oldest one first) is
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pppoe.cpp(78,20):
+  	see reference to class template instantiation 'Tins::PDUOption<Tins::PPPoE::TagTypes,Tins::PPPoE>' being compiled
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(314,5):
+  	while compiling class template member function 'Tins::PDUOption<Tins::PPPoE::TagTypes,Tins::PPPoE>::PDUOption(Tins::PPPoE::TagTypes,size_t,const Tins::PDUOption<Tins::PPPoE::TagTypes,Tins::PPPoE>::data_type *)'
+  		C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pppoe.cpp(77,20):
+  		see the first reference to 'Tins::PDUOption<Tins::PPPoE::TagTypes,Tins::PPPoE>::PDUOption' in 'Tins::PPPoE::PPPoE'
+  
+  Generating Code...
+  Compiling...
+  radiotap.cpp
+  rawpdu.cpp
+  rsn_information.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\rsn_information.cpp(131,36): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\rsn_information.cpp(132,31): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+  sll.cpp
+  snap.cpp
+  sniffer.cpp
+  stp.cpp
+  tcp.cpp
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\tcp.cpp(341,37): warning C4267: '=': conversion from 'size_t' to 'uint8_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\tcp.cpp(358,35): warning C4267: '+=': conversion from 'size_t' to 'uint16_t', possible loss of data
+C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+  (compiling source file 'tcp.cpp')
+  C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(315,26):
+  the template instantiation context (the oldest one first) is
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\tcp.cpp(73,30):
+  	see reference to class template instantiation 'Tins::PDUOption<uint8_t,Tins::TCP>' being compiled
+  	C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\pdu_option.h(314,5):
+  	while compiling class template member function 'Tins::PDUOption<uint8_t,Tins::TCP>::PDUOption(unsigned char,size_t,const Tins::PDUOption<uint8_t,Tins::TCP>::data_type *)'
+  		C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Sniffer\tcp.cpp(73,23):
+  		see the first reference to 'Tins::PDUOption<uint8_t,Tins::TCP>::PDUOption' in 'Tins::TCP::TCP'
+  
+  tcp_stream.cpp
+  udp.cpp
+  utils.cpp
+  Generating Code...
+  Sniffer.vcxproj -> C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab\Debug\Sniffer.lib
