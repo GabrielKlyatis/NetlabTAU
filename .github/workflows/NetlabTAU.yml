@@ -19,7 +19,7 @@ jobs:
         uses: microsoft/setup-msbuild@v1.0.2 # This action sets up MSBuild environment by finding the path to MSBuild.exe.
       - run: msbuild D:\a\NetlabTAU\NetlabTAU\netlab\NetlabTAU.sln /p:Configuration=Debug /p:Platform=win32 /t:netlab_testing
       - run: cd .\netlab\Debug
-      - run: cd
+      - run: dir .
       - name: Run UDP tests
         run: netlab_testing --gtest_filter=UDPTests.oneWay_noArp
       - name: Upload coverage data to Codecov
