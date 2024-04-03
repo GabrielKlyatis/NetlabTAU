@@ -6,6 +6,8 @@ jobs:
     runs-on: windows-latest
     steps:
     
+      - run: microsoft/setup-msbuild@v1.0.2
+      
       - name: Install CMake and other build tools
         run: |
             choco install cmake
