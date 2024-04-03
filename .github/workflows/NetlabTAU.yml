@@ -10,17 +10,18 @@ jobs:
         run: |
             choco install cmake
             choco install make
-            shell: pwsh
             
       - name: Clone Google Test repository
         run: git clone https://github.com/google/googletest.git
+        shell: pwsh
         
       - name: Build Google Test
         run: |
             cmake -B build -S googletest
             cmake --build build
-            shell: pwsh
-            working-directory: googletest
+        shell: pwsh
+        working-directory: googletest
+        
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
