@@ -20,7 +20,8 @@ jobs:
       - run: msbuild D:\a\NetlabTAU\NetlabTAU\netlab\NetlabTAU.sln /p:Configuration=Debug /p:Platform=win32 /t:netlab_testing
       - name: Run UDP tests
         run: |
-          Debug\netlab_testing.exe --gtest_filter=UDPTests.oneWay_noArp
+            cd Debug
+            netlab_testing.exe --gtest_filter=UDPTests.oneWay_noArp
       - name: Upload coverage data to Codecov
         uses: codecov/codecov-action@v2
         with:
