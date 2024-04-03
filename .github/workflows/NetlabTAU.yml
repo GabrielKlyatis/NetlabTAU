@@ -15,5 +15,7 @@ jobs:
       - name: List files in the repository
         run: |
           dir ${{ github.workspace }}
+      - name: Set up MSBuild path
+        uses: microsoft/setup-msbuild@v1.0.2 # This action sets up MSBuild environment by finding the path to MSBuild.exe.
       - run: msbuild /home/runner/work/NetlabTAU/NetlabTAU/NetlabTAU.sln /p:Configuration=Debug /p:Platform=win32 /t:netlab_testing
       - run: echo "🍏 This job's status is ${{ job.status }}."
