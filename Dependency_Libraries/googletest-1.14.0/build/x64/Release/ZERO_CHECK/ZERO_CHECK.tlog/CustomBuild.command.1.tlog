@@ -1,0 +1,10 @@
+^C:\GOOGLETEST-1.14.0\BUILD\CMAKEFILES\7DA6284D28F4836B3DBCD0B4DB697DB5\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/googletest-1.14.0 -BC:/googletest-1.14.0/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/googletest-1.14.0/build/googletest-distribution.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

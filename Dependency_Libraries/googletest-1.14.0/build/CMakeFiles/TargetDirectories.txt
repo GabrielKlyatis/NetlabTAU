@@ -1,0 +1,14 @@
+C:/googletest-1.14.0/build/CMakeFiles/RUN_TESTS.dir
+C:/googletest-1.14.0/build/CMakeFiles/INSTALL.dir
+C:/googletest-1.14.0/build/CMakeFiles/ALL_BUILD.dir
+C:/googletest-1.14.0/build/CMakeFiles/ZERO_CHECK.dir
+C:/googletest-1.14.0/build/googlemock/CMakeFiles/gmock.dir
+C:/googletest-1.14.0/build/googlemock/CMakeFiles/gmock_main.dir
+C:/googletest-1.14.0/build/googlemock/CMakeFiles/RUN_TESTS.dir
+C:/googletest-1.14.0/build/googlemock/CMakeFiles/INSTALL.dir
+C:/googletest-1.14.0/build/googlemock/CMakeFiles/ALL_BUILD.dir
+C:/googletest-1.14.0/build/googletest/CMakeFiles/gtest.dir
+C:/googletest-1.14.0/build/googletest/CMakeFiles/gtest_main.dir
+C:/googletest-1.14.0/build/googletest/CMakeFiles/RUN_TESTS.dir
+C:/googletest-1.14.0/build/googletest/CMakeFiles/INSTALL.dir
+C:/googletest-1.14.0/build/googletest/CMakeFiles/ALL_BUILD.dir
