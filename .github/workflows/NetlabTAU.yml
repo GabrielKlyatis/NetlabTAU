@@ -15,5 +15,6 @@ jobs:
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
+      - run: cd /home/runner/work/NetlabTAU/NetlabTAU
       - run: msbuild netlab_testing/netlab_testing.sln /p:Configuration=Debug /p:Platform=win32
       - run: echo "🍏 This job's status is ${{ job.status }}."
