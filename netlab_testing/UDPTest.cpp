@@ -99,6 +99,9 @@ protected:
 	}
 };
 
+TEST_F(UDPTests, emptyTest) {
+
+}
 
 TEST_F(UDPTests, oneWay_noArp) {
 
