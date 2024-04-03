@@ -44,7 +44,7 @@
     <IncludePath>C:\Projects\WpdPack_4_1_2\WpdPack\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Projects\WpdPack_4_1_2\WpdPack\Include;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectName)\..\..\..\Dependency_Libraries\WpdPack_4_1_2\WpdPack\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
