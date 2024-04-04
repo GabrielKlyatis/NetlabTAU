@@ -19,7 +19,6 @@ jobs:
           dir ${{ github.workspace }}
           
       - name: Set up MSBuild path
-        uses: microsoft/setup-msbuild@v1.0.2 # This action sets up MSBuild environment by finding the path to MSBuild.exe.
         run: msbuild ${{ github.workspace }}\netlab\NetlabTAU.sln /p:Configuration=Debug /p:Platform=win32 /t:netlab_testing
         env:
             IncludePath: ${{ github.workspace }}\Dependency_Libraries\WpdPack_4_1_2\WpdPack\Include;${{ github.workspace }}\Dependency_Libraries\pthreads-w32-2-9-1-release\Pre-built.2\include;${{ github.workspace }}\Dependency_Libraries\boost_1_83_0;${{ github.workspace }}\Dependency_Libraries\googletest-1.14.0\googletest\include
