@@ -18,8 +18,8 @@ jobs:
         run: |
           dir ${{ github.workspace }}
       - name: Run UDP Tests
-        run: netlab\Debug\netlab_testing
-        working-directory: ${{ github.workspace }}
+        run: dir
+        working-directory: .\netlab\Debug
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
