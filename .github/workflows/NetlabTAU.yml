@@ -18,7 +18,7 @@ jobs:
         run: |
           dir ${{ github.workspace }}
       - name: Run UDP Tests
-        run: netlab\Debug\netlab_testing --gtest_filter=UDPTests.emptyTest
+        run: netlab\Debug\netlab_testing
         shell: pwsh
         working-directory: ${{ github.workspace }}
       - name: Upload coverage reports to Codecov
