@@ -19,7 +19,6 @@ jobs:
           dir ${{ github.workspace }}
       - name: Run UDP Tests
         run: netlab\Debug\netlab_testing
-        shell: pwsh
         working-directory: ${{ github.workspace }}
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
