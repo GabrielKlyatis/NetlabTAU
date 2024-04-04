@@ -5,24 +5,8 @@ jobs:
   Explore-GitHub-Actions:
     runs-on: windows-latest
     steps:
-    
       - name: Set up MSBuild path
-        uses: microsoft/setup-msbuild@v1.0.2 # This action sets up MSBuild environment by finding the path to MSBuild.exe.
-      
-      - name: Setup CMake
-        uses: lukka/get-cmake@latest
-            
-      - name: Clone Google Test repository
-        run: git clone https://github.com/google/googletest.git
-        shell: pwsh
-        
-      - name: Build Google Test
-        run: |
-            cmake -B build -S googletest
-            cmake --build build
-        shell: pwsh
-        working-directory: googletest
-        
+        uses: microsoft/setup-msbuild@v1.0.2 # This action sets up MSBuild environment by finding the path to MSBuild.exe.        
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
