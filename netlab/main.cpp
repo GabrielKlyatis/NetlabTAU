@@ -10,7 +10,8 @@
 #include "L2/L2_ARP.h"
 #include "L1/NIC_Cable.h"
 #include "L0/L0_buffer.h"
-
+#include "L4/tcp_reno.h"
+#include "L4/tcp_tahoe.h"
 
 #include <iostream>
 #include <iomanip>
@@ -435,6 +436,7 @@ void test3(size_t size = 32, size_t num = 5)
 void test4(size_t size = 256) 
 {
 	size *= 1024;
+	size *= 1024;
 	/* Declaring the server */
 	inet_os inet_server = inet_os();
 
@@ -446,7 +448,7 @@ void test4(size_t size = 256)
 		nullptr,				// Using my real machine default gateway address.
 		nullptr,				// Using my real machine broadcast address.
 		true,					// Setting the NIC to be in promisc mode
-		"(arp and ether src bb:bb:bb:bb:bb:bb) or (tcp port 8888 and not ether src aa:aa:aa:aa:aa:aa)"); // Declaring a filter to make a cleaner testing.
+		""); // Declaring a filter to make a cleaner testing.
 
 	/* Declaring the server's datalink using my L2_impl */
 	L2_impl datalink_server(inet_server);
@@ -462,7 +464,7 @@ void test4(size_t size = 256)
 		new L3_impl(inet_server, 0, 0, 0),	// A default IP layer is defined, using my L3_impl, as in a real BSD system 
 		protosw::SWPROTO_IP);				// I place the layer in the appropriate place, though any place should do. 
 	inet_server.inetsw(
-		new L4_TCP_impl(inet_server),		// Defining the TCP Layer using my L4_TCP_impl
+		new tcp_reno(inet_server),		// Defining the TCP Layer using my L4_TCP_impl
 		protosw::SWPROTO_TCP);				// Placing it in the appropriate place.
 	inet_server.inetsw(
 		new L3_impl(						// The actual IP layer we will use.
@@ -485,17 +487,18 @@ void test4(size_t size = 256)
 		nullptr,
 		nullptr,
 		true,
-		"(arp and ether src aa:aa:aa:aa:aa:aa) or (tcp port 8888 and not ether src bb:bb:bb:bb:bb:bb)");
+		"");
 
 	L2_impl datalink_client(inet_client);
 	L2_ARP_impl arp_client(inet_client, 10, 10000);
 	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_client.inetsw(new L4_TCP_impl(inet_client), protosw::SWPROTO_TCP);
+	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
 	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 	inet_client.domaininit();
 	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // My
 
 	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac()); // server
+	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
 	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
 
 	/* Spawning both sniffers, 0U means continue forever */
@@ -537,6 +540,7 @@ void test4(size_t size = 256)
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
 	clientService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
+	//inet_pton(AF_INET, "8.8.8.8", &clientService.sin_addr);
 	clientService.sin_port = htons(8888);
 
 	//----------------------
@@ -555,14 +559,19 @@ void test4(size_t size = 256)
 
 	std::string send_msg(size, 'T');
 	
-	//std::thread([ConnectSocket, send_msg, size]() 
-	//{
-	//	ConnectSocket->send(send_msg, size);
-	//}).detach();
-	ConnectSocket->send(send_msg, size);
+	std::thread([ConnectSocket, send_msg, size]() 
+	{
+		ConnectSocket->send(send_msg, size, 512);
+	}).detach();
+	//ConnectSocket->send(send_msg, size, 512);
 	std::string ret("");
-	AcceptSocket->recv(ret, size);
 
+	int a = AcceptSocket->recv(ret, size,2);
+	std::cout << a << ret << std::endl;
+
+	std::cout << ret.size() << std::endl;
+//	std::this_thread::sleep_for(std::chrono::seconds(180));
+	std::cout << "fin?" << std::endl;
 	inet_client.stop_fasttimo();
 	inet_client.stop_slowtimo();
 
@@ -1794,14 +1803,14 @@ void handler(int request)
 		return test3(packet_size, num);
 		break;
 	case 4:
-		std::cout << "Did you remember to define the mac buffer size in L5.h [Y/N] ?" << std::endl;
+		/*std::cout << "Did you remember to define the mac buffer size in L5.h [Y/N] ?" << std::endl;
 		std::cin >> remember;
 		if (remember == 'N')
 		{
 			std::cout << "Then change it and try again, closing program." << std::endl;
 			std::this_thread::sleep_for(std::chrono::seconds(3));
 			return;
-		}
+		}*/
 		std::cout << "Please insert the wanted packet size in MB, or 0 to use the default (256):" << std::endl;
 		std::cin >> packet_size;
 		if (packet_size > 256)
@@ -1850,8 +1859,8 @@ void main()
 		"[9] Application Use Case (with drop)" << std::endl <<
 		"[10] Cwnd Fall Test" << std::endl;
 
-	int request(0);
-	std::cin >> request;
+	int request(4);
+	//std::cin >> request;
 	while (request)
 	{
 

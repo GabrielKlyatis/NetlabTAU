@@ -1933,7 +1933,7 @@ protected:
 	
 	const int 	tcp_mssdflt = TCP_MSS;  /*!< patchable/settable default MSS for tcp */
 	const int 	tcp_rttdflt = TCPTV_SRTTDFLT / PR_SLOWHZ;   /*!< patchable/settable parameters for tcp round trip time */
-	const int	tcp_do_rfc1323 = 0;		/*!< The patchable/settable do rfc1323 for tcp */
+	const int	tcp_do_rfc1323 = 1;		/*!< The patchable/settable do rfc1323 for tcp */
 
 	const int	tcp_keepidle = TCPTV_KEEP_IDLE;			/*!< The TCP keep idle */
 	const int	tcp_keepintvl = TCPTV_KEEPINTVL;		/*!< The TCP keep intvl */

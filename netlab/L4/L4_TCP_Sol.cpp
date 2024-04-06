@@ -920,7 +920,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket &so)
 	}
 	else
 	{
-		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN / 32);
+		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN );
 	}
 
 	/*
@@ -2279,6 +2279,7 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 	*	set. This means that a process cannot issue a connect to a broadcast address, even if it
 	*	sets the SO_BROADCAST socket option.
 	*/
+
 	int error(inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*dynamic_cast<const struct pr_output_args*>(&L3_impl::ip_output_args(m, it, tp.t_inpcb->inp_options, &tp.t_inpcb->inp_route, so.so_options & SO_DONTROUTE, nullptr))));
 	if (error)
 		return out(tp, error);

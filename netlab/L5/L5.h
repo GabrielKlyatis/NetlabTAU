@@ -7,7 +7,8 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <ws2tcpip.h>
-#define BOOST_DISABLE_ASSERTS
+//#define BOOST_DISABLE_ASSERTS
+#define BOOST_CB_ENABLE_DEBUG 1
 #include <boost/circular_buffer.hpp>
 #include <condition_variable>
 #include <vector>
@@ -16,15 +17,15 @@ enum
 {
 	SB_SIZE_SMALL = 2 * 8 * 1024,
 	SB_SIZE_DEFAULT = 8 * 8 * 1024, /*!< largest value for (unscaled) window */
-	SB_SIZE_BIG = 32 * 8 * 1024
+	SB_SIZE_BIG = 32 * 8 * 1024   
 };
 
 enum 
 { 
 	SB_SIZE = 
 	//SB_SIZE_SMALL
-	SB_SIZE_DEFAULT 
-	//SB_SIZE_BIG
+	//SB_SIZE_DEFAULT 
+	SB_SIZE_BIG
 }; /*!< Define for large buffer test */
 
 
@@ -845,9 +846,9 @@ namespace netlab
 				mutex	sb_process_mutex;   /*!< The process mutex to support proccess locks */
 		
 
-				
+
+				mbuf	sb_mb;		/*!< The mbuf ring buffer */
 			private:			
-					mbuf	sb_mb;		/*!< The mbuf ring buffer */
 					cond	sb_cond;	/*!< The condition variable to wait on */
 					mutex	sb_read_mutex;  /*!< The read mutex to lock */
 					mutex	sb_write_mutex; /*!< The write mutex  to lock  */

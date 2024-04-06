@@ -73,13 +73,20 @@ namespace netlab
 
 	void L5_socket::sockbuf::sbappend(std::vector<byte>::iterator first, std::vector<byte>::iterator last)
 	{
-		if (std::distance(first, last) > 0)
+		int to_add = std::distance(first, last);
+		if (to_add > 0)
 		{
 			std::lock_guard<std::mutex> guard(sb_write_mutex);
 			/*
 			* Put the first mbuf on the queue.
 			* Note this permits zero length records.
 			*/
+
+			if (to_add + sb_mb.size() > sb_mb.capacity())
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			}
+
 			sb_mb.insert(sb_mb.end(), first, last);
 		}
 	}
@@ -770,10 +777,15 @@ namespace netlab
 				if (deliver)
 				{
 					/* Fill uio until full or current end of socket buffer is reached. */
-					size_t len(std::min<size_t>(uio_resid, so_rcv.size()));
-
+					auto size = so_rcv.size();
+					size_t len(std::min<size_t>(uio_resid, size));
+					std::cout << "copied len to msg: " << len << std::endl;	
 					/* NB: Must unlock socket buffer as uiomove may sleep. */
-					uio += std::string(so_rcv.begin(), so_rcv.begin() + len);
+					auto start = so_rcv.begin();
+					auto want_end = start + len;
+					auto end = so_rcv.sb_mb.end();
+					auto last = so_rcv.sb_mb.end();
+					uio += std::string(start, want_end);
 					uio_resid -= len;
 
 					/*
