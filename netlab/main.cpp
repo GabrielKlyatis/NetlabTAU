@@ -501,6 +501,9 @@ void test4(size_t size = 256)
 	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
 	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
 
+
+	
+
 	/* Spawning both sniffers, 0U means continue forever */
 	inet_server.connect();
 	inet_client.connect();
@@ -555,22 +558,23 @@ void test4(size_t size = 256)
 	// Accept the connection.
 	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
-
+	inet_client.cable()->set_buf(new L0_buffer(inet_client, 0.5, L0_buffer::uniform_real_distribution_args(0.5, 1), L0_buffer::OUTGOING));
+	inet_server.cable()->set_buf(new L0_buffer(inet_server, 1, L0_buffer::uniform_real_distribution_args(0.5, 1), L0_buffer::OUTGOING));
 
 	std::string send_msg(size, 'T');
 	
 	std::thread([ConnectSocket, send_msg, size]() 
 	{
-		ConnectSocket->send(send_msg, size, 512);
+		ConnectSocket->send(send_msg, size, 1024);
 	}).detach();
 	//ConnectSocket->send(send_msg, size, 512);
 	std::string ret("");
 
-	int a = AcceptSocket->recv(ret, size,2);
-	std::cout << a << ret << std::endl;
+	int a = AcceptSocket->recv(ret, size,3);
+	//std::cout << a << ret << std::endl;
 
 	std::cout << ret.size() << std::endl;
-//	std::this_thread::sleep_for(std::chrono::seconds(180));
+	std::this_thread::sleep_for(std::chrono::seconds(2));
 	std::cout << "fin?" << std::endl;
 	inet_client.stop_fasttimo();
 	inet_client.stop_slowtimo();

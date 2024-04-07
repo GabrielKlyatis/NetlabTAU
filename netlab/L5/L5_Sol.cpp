@@ -52,7 +52,7 @@ namespace netlab
 	{
 		if (cc > static_cast<u_long>(SB_MAX))
 			return (false);
-		std::lock_guard<std::mutex> guard(sb_write_mutex);
+		std::lock_guard<std::mutex> guard(sb_mutex);
 		sb_mb.set_capacity(cc);
 		return (true);
 	}
@@ -63,7 +63,11 @@ namespace netlab
 		return a; 
 	}
 
-	inline L5_socket::sockbuf::size_type L5_socket::sockbuf::size() const { return sb_mb.size(); }
+	inline L5_socket::sockbuf::size_type L5_socket::sockbuf::size() const 
+	{
+		auto a = sb_mb.size();
+		return  a;
+	}
 
 	inline bool L5_socket::sockbuf::empty() const { return sb_mb.empty(); }
 
@@ -73,19 +77,15 @@ namespace netlab
 
 	void L5_socket::sockbuf::sbappend(std::vector<byte>::iterator first, std::vector<byte>::iterator last)
 	{
+		
 		int to_add = std::distance(first, last);
 		if (to_add > 0)
 		{
-			std::lock_guard<std::mutex> guard(sb_write_mutex);
+			//std::lock_guard<std::mutex> guard(sb_mutex);
 			/*
 			* Put the first mbuf on the queue.
 			* Note this permits zero length records.
 			*/
-
-			if (to_add + sb_mb.size() > sb_mb.capacity())
-			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			}
 
 			sb_mb.insert(sb_mb.end(), first, last);
 		}
@@ -93,14 +93,13 @@ namespace netlab
 
 	void L5_socket::sockbuf::sbflush()
 	{
-		std::lock_guard<std::mutex> read_guard(sb_read_mutex);
-		std::lock_guard<std::mutex> write_guard(sb_write_mutex);
+		std::lock_guard<std::mutex> read_guard(sb_mutex);
 		sb_mb.clear();
 	}
 
 	inline void L5_socket::sockbuf::sbdrop(const size_type len)
 	{
-		std::lock_guard<std::mutex> guard(sb_read_mutex);
+		//std::lock_guard<std::mutex> guard(sb_mutex);
 		if (len > size())
 			sb_mb.clear();
 		else {
@@ -122,14 +121,14 @@ namespace netlab
 	inline void L5_socket::sockbuf::sbwait_for_write(size_type chunk)
 	{
 		sb_flags |= sockbuf::SB_WAIT;
-		lock sb_write_lock(sb_write_mutex);
+		lock sb_write_lock(sb_mutex);
 		sb_cond.wait(sb_write_lock, [this, chunk]() -> bool { return chunk <= sbspace(); });
 	}
 
 	inline void L5_socket::sockbuf::sbwait_for_read(size_type chunk)
 	{
 		sb_flags |= sockbuf::SB_WAIT;
-		lock sb_read_lock(sb_read_mutex);
+		lock sb_read_lock(sb_mutex);
 		sb_cond.wait(sb_read_lock, [this, chunk]() -> bool { return (chunk <= size()) || chunk == 1; });
 		sb_flags &= ~sockbuf::SB_WAIT;
 	}
@@ -331,7 +330,7 @@ namespace netlab
 		long resid(uio_resid);
 
 		bool restart(true);
-		lock process_lock(so_snd.sb_process_mutex);
+		lock process_lock(so_snd.sb_mutex);
 		for (size_t i = 0; i < uio_resid;) {
 			if (i + chunk > uio_resid)
 				chunk = uio_resid - i;
@@ -542,7 +541,7 @@ namespace netlab
 		long resid(uio_resid);
 
 		bool restart(true);
-		lock process_lock(so_snd.sb_process_mutex);
+		lock process_lock(so_snd.sb_mutex);
 		for (size_t i = 0; i < uio_resid;) {
 			if (i + chunk > uio_resid)
 				chunk = uio_resid - i;
@@ -701,7 +700,7 @@ namespace netlab
 			chunk = uio_resid;
 		if (so_type == SOCK_DGRAM) { // UDP simple socket for datagrams.
 
-			lock so_rcv_lock(so_rcv.sb_process_mutex);
+			lock so_rcv_lock(so_rcv.sb_mutex);
 			if (so_rcv.size() > 0) {
 				chunk = so_rcv.size();
 			}
@@ -723,7 +722,7 @@ namespace netlab
 			bool restart(true);
 
 			/* Prevent other readers from entering the socket. */
-			lock so_rcv_lock(so_rcv.sb_process_mutex);
+			lock so_rcv_lock(so_rcv.sb_mutex);
 			while (restart) {
 				bool deliver(false);
 				/* Abort if socket has reported problems. */
@@ -777,6 +776,7 @@ namespace netlab
 				if (deliver)
 				{
 					/* Fill uio until full or current end of socket buffer is reached. */
+					//std::unique_lock<std::mutex> so_rcv_lock(so_rcv.sb_mutex);
 					auto size = so_rcv.size();
 					size_t len(std::min<size_t>(uio_resid, size));
 					std::cout << "copied len to msg: " << len << std::endl;	
@@ -787,7 +787,7 @@ namespace netlab
 					auto last = so_rcv.sb_mb.end();
 					uio += std::string(start, want_end);
 					uio_resid -= len;
-
+					//so_rcv_lock.unlock();
 					/*
 					* Remove the delivered data from the socket buffer unless we
 					* were only peeking.
@@ -812,7 +812,7 @@ namespace netlab
 	int L5_socket_impl::recvfrom(std::string& uio, size_t uio_resid, size_t chunk, int flags, _In_ const struct sockaddr* name, _In_ int name_len) {
 
 		bool deliver = false;
-		lock so_rcv_lock(so_rcv.sb_process_mutex);
+		lock so_rcv_lock(so_rcv.sb_mutex);
 		
 		bool restart = true;
 		while (restart)

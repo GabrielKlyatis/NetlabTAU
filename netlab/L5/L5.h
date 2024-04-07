@@ -24,8 +24,8 @@ enum
 { 
 	SB_SIZE = 
 	//SB_SIZE_SMALL
-	//SB_SIZE_DEFAULT 
-	SB_SIZE_BIG
+	SB_SIZE_DEFAULT 
+	//SB_SIZE_BIG
 }; /*!< Define for large buffer test */
 
 
@@ -843,15 +843,16 @@ namespace netlab
 				*/
 				inline void sbwait_for_read(size_type chunk);
 
-				mutex	sb_process_mutex;   /*!< The process mutex to support proccess locks */
+				mutex	sb_mutex;   /*!< The process mutex to support proccess locks */
 		
 
 
 				mbuf	sb_mb;		/*!< The mbuf ring buffer */
+				//mutex	sb_mutex;  /*!< The read mutex to lock */
 			private:			
 					cond	sb_cond;	/*!< The condition variable to wait on */
-					mutex	sb_read_mutex;  /*!< The read mutex to lock */
-					mutex	sb_write_mutex; /*!< The write mutex  to lock  */
+					
+					//mutex	sb_mutex; /*!< The write mutex  to lock  */
 			};
 
 	/*!

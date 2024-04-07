@@ -917,6 +917,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket &so)
 	if (tcp_do_rfc1323)
 	{
 		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN << TCP_MAX_WINSHIFT);
+		tp->snd_ssthresh /= 8;
 	}
 	else
 	{
@@ -1966,7 +1967,7 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 		*	m_copy just references that cluster and doesn't make a copy of the data.
 		*/
 		std::copy(so.so_snd.begin(), so.so_snd.begin() + len, it + hdrlen);
-		
+
 		/*
 		*	Set PSH flag:
 		*	If TCP is sending everything it has from the send buffer, the PSH flag is set.
@@ -2279,8 +2280,8 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 	*	set. This means that a process cannot issue a connect to a broadcast address, even if it
 	*	sets the SO_BROADCAST socket option.
 	*/
-
-	int error(inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*dynamic_cast<const struct pr_output_args*>(&L3_impl::ip_output_args(m, it, tp.t_inpcb->inp_options, &tp.t_inpcb->inp_route, so.so_options & SO_DONTROUTE, nullptr))));
+	const struct pr_output_args* a = dynamic_cast<const struct pr_output_args*>(&L3_impl::ip_output_args(m, it, tp.t_inpcb->inp_options, &tp.t_inpcb->inp_route, so.so_options & SO_DONTROUTE, nullptr));
+	int error(inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*a));
 	if (error)
 		return out(tp, error);
 
@@ -2810,9 +2811,10 @@ findpcb:
 			*	is set to the acknowledgment field and the received mbuf chain is released. (Since the
 			*	length is 0, there should be just a single mbuf containing the headers.)
 			*/
+			so->so_snd.sb_mutex.lock();
 			so->so_snd.sbdrop(ti->ti_ack() - tp->snd_una);
 			tp->snd_una = ti->ti_ack();
-
+			so->so_snd.sb_mutex.unlock();
 			/*
 			*	Stop retransmit timer:
 			*	If the received segment acknowledges all outstanding data (snd_una equals
@@ -2897,6 +2899,7 @@ findpcb:
 			* Drop TCP, IP headers and TCP options then add data
 			* to socket buffer.
 			*/
+			std::lock_guard<std::mutex> lock(so->so_rcv.sb_mutex);
 			so->so_rcv.sbappend(it + (sizeof(struct L4_TCP::tcpiphdr) + off - sizeof(struct L4_TCP::tcphdr)), m->end());
 			so->sorwakeup();
 			tp->t_flags |= L4_TCP::tcpcb::TF_DELACK;
@@ -4173,12 +4176,13 @@ findpcb:
 		 *	FIN occupies 1 byte in the sequence number space.
 		 */
 		int ourfinisacked;
+		so->so_snd.sb_mutex.lock();
 		if (static_cast<u_long>(acked) > so->so_snd.size()) {
 			tp->snd_wnd -= so->so_snd.size();
 			so->so_snd.sbdrop(static_cast<int>(so->so_snd.size()));
 			ourfinisacked = 1;
 		}
-
+		
 		/*	
 		 *	Otherwise the number of bytes acknowledged is less than or equal to the number of
 		 *	bytes in the send buffer, so ourfinisacked is set to 0, and acked bytes of data are
@@ -4189,7 +4193,7 @@ findpcb:
 			tp->snd_wnd -= acked;
 			ourfinisacked = 0;
 		}
-
+		so->so_snd.sb_mutex.unlock();
 		/*	
 		 *	Wakeup processes waiting on send buffer:
 		 *	sowwakeup awakens any processes waiting on the send buffer. snd_una is
@@ -4746,6 +4750,7 @@ void L4_TCP_impl::TCP_REASS(class L4_TCP::tcpcb *tp, struct L4_TCP::tcpiphdr *ti
 		tp->t_flags |= L4_TCP::tcpcb::TF_DELACK;
 		tp->rcv_nxt += ti->ti_len();
 		flags = ti->ti_flags() & L4_TCP::tcphdr::TH_FIN;
+		std::lock_guard<std::mutex> lock(so->so_rcv.sb_mutex);
 		so->so_rcv.sbappend(it, it + ti->ti_len());
 		so->sorwakeup();
 	}
