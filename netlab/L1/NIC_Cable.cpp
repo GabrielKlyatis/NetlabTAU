@@ -6,7 +6,7 @@
 #include "../infra/packet_sender_adapter.h"
 #include "../infra/inet_os.hpp"
 #include "../L0/L0_buffer.h"
-
+#include <algorithm>
 
 struct NIC_Cable::SpawnData 
 {
@@ -70,7 +70,7 @@ bool NIC_Cable::callback(const Tins::PDU &pdu)
 
 #ifdef NIC_CABLE_DEBUG
 	{
-		std::lock_guard<std::mutex> lock(inet.print_mutex);
+		std::lock_guard<std::recursive_mutex> lock(inet.print_mutex);
 		std::cout << "[#] New Packet arrived:" << std::endl;
 		inet.nic()->HexDump(m, m->begin());
 	}

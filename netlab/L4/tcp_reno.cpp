@@ -77,6 +77,44 @@ void tcp_reno::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 void tcp_reno::tcp_rto_timer_handler(tcpcb* tp)
 {
 	// apply fast recovery
-	tcp_tahoe::tcp_rto_timer_handler(tp);
-	tp->log_snd_cwnd(tp->snd_cwnd /= 2);
+	TCPT_RANGESET(tp->t_rxtcur, static_cast<int>(tp->TCP_REXMTVAL() * tcp_backoff(tp->t_rxtshift)),
+		tp->t_rttmin, static_cast<int>(TCPTV_REXMTMAX));
+	tp->t_timer[TCPT_REXMT] = tp->t_rxtcur;
+
+	/*
+		* Close the congestion window down to one segment
+		* (we'll open it by one segment for each ack we get).
+		* Since we probably have a window's worth of unacked
+		* data accumulated, this "slow start" keeps us from
+		* dumping all that data as back-to-back packets (which
+		* might overwhelm an intermediate gateway).
+		*
+		* There are two phases to the opening: Initially we
+		* open by one mss on each ack.  This makes the window
+		* size increase exponentially with time.  If the
+		* window is larger than the path can handle, this
+		* exponential growth results in dropped packet(s)
+		* almost immediately.  To get more time between
+		* drops but still "push" the network to take advantage
+		* of improving conditions, we switch from exponential
+		* to linear window opening at some threshhold size.
+		* For a threshhold, we use half the current window
+		* size, truncated to a multiple of the mss.
+		*
+		* (the minimum cwnd that will give us exponential
+		* growth is 2 mss.  We don't allow the threshhold
+		* to go below this.)
+		*/
+
+	u_int win(std::min(tp->snd_wnd, tp->snd_cwnd) / 2 / tp->t_maxseg);
+	if (win < 2)
+		win = 2;
+
+	tp->log_snd_cwnd(tp->snd_cwnd = win * tp->t_maxseg);
+	tp->snd_ssthresh /= 2;
+	tp->t_dupacks = 0;
+
+	//tcp_tahoe::tcp_rto_timer_handler(tp);
+	//tp->log_snd_cwnd(tp->snd_cwnd /= 2);
 }
+

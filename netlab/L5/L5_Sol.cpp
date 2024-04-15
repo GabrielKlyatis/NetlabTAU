@@ -4,14 +4,18 @@
 #include <iostream>
 #include <Shlobj.h>
 #include "../infra/inet_os.hpp"
+//
+//#ifdef min
+//#undef min
+//#endif
+//
+//#ifdef max
+//#undef max
+//#endif
 
-#ifdef min
-#undef min
-#endif
 
-#ifdef max
-#undef max
-#endif
+
+#include <boost/range.hpp>
 
 
 namespace netlab
@@ -71,43 +75,43 @@ namespace netlab
 
 	inline bool L5_socket::sockbuf::empty() const { return sb_mb.empty(); }
 
-	inline L5_socket::sockbuf::const_iterator L5_socket::sockbuf::begin() const { return sb_mb.begin(); }
+	//inline L5_socket::sockbuf::const_iterator L5_socket::sockbuf::begin() const { return sb_mb.begin(); }
 
 	inline L5_socket::sockbuf::size_type L5_socket::sockbuf::sbspace() const { return sb_mb.reserve(); }
 
-	void L5_socket::sockbuf::sbappend(std::vector<byte>::iterator first, std::vector<byte>::iterator last)
-	{
-		
-		int to_add = std::distance(first, last);
-		if (to_add > 0)
-		{
-			//std::lock_guard<std::mutex> guard(sb_mutex);
-			/*
-			* Put the first mbuf on the queue.
-			* Note this permits zero length records.
-			*/
+	//void L5_socket::sockbuf::sbappend(std::vector<byte>::iterator first, std::vector<byte>::iterator last)
+	//{
+	//	
+	//	int to_add = std::distance(first, last);
+	//	if (to_add > 0)
+	//	{
+	//		//std::lock_guard<std::mutex> guard(sb_mutex);
+	//		/*
+	//		* Put the first mbuf on the queue.
+	//		* Note this permits zero length records.
+	//		*/
 
-			sb_mb.insert(sb_mb.end(), first, last);
-		}
-	}
+	//		sb_mb.insert(sb_mb.end(), first, last);
+	//	}
+	//}
 
-	void L5_socket::sockbuf::sbflush()
-	{
-		std::lock_guard<std::mutex> read_guard(sb_mutex);
-		sb_mb.clear();
-	}
+	//void L5_socket::sockbuf::sbflush()
+	//{
+	//	std::lock_guard<std::mutex> read_guard(sb_mutex);
+	//	sb_mb.clear();
+	//}
 
-	inline void L5_socket::sockbuf::sbdrop(const size_type len)
-	{
-		//std::lock_guard<std::mutex> guard(sb_mutex);
-		if (len > size())
-			sb_mb.clear();
-		else {
-			//sb_mb.erase_begin(len);
-			sb_mb.erase(sb_mb.begin(), sb_mb.begin() + len);
-			notify_all();
-		}
-	}
+	//inline void L5_socket::sockbuf::sbdrop(const size_type len)
+	//{
+	//	//std::lock_guard<std::mutex> guard(sb_mutex);
+	//	if (len > size())
+	//		sb_mb.clear();
+	//	else {
+	//		//sb_mb.erase_begin(len);
+	//		sb_mb.erase(sb_mb.begin(), sb_mb.begin() + len);
+	//		notify_all();
+	//	}
+	//}
 
 	inline void L5_socket::sockbuf::notify_all()
 	{
@@ -124,6 +128,7 @@ namespace netlab
 		lock sb_write_lock(sb_mutex);
 		sb_cond.wait(sb_write_lock, [this, chunk]() -> bool { return chunk <= sbspace(); });
 	}
+
 
 	inline void L5_socket::sockbuf::sbwait_for_read(size_type chunk)
 	{
@@ -330,7 +335,7 @@ namespace netlab
 		long resid(uio_resid);
 
 		bool restart(true);
-		lock process_lock(so_snd.sb_mutex);
+		//lock process_lock(so_snd.sb_mutex);
 		for (size_t i = 0; i < uio_resid;) {
 			if (i + chunk > uio_resid)
 				chunk = uio_resid - i;
@@ -438,9 +443,9 @@ namespace netlab
 
 
 				inet_splnet.unlock();
-				process_lock.unlock();
+				//process_lock.unlock();
 				so_snd.sbwait_for_write(chunk);
-				process_lock.lock();
+				//process_lock.lock();
 
 				restart = true;
 				continue;
@@ -541,7 +546,7 @@ namespace netlab
 		long resid(uio_resid);
 
 		bool restart(true);
-		lock process_lock(so_snd.sb_mutex);
+		//lock process_lock(so_snd.sb_mutex);
 		for (size_t i = 0; i < uio_resid;) {
 			if (i + chunk > uio_resid)
 				chunk = uio_resid - i;
@@ -625,9 +630,9 @@ namespace netlab
 
 
 				inet_splnet.unlock();
-				process_lock.unlock();
+				//process_lock.unlock();
 				so_snd.sbwait_for_write(chunk);
-				process_lock.lock();
+				//process_lock.lock();
 
 				restart = true;
 				continue;
@@ -696,11 +701,13 @@ namespace netlab
 
 	int L5_socket_impl::recv(std::string &uio, size_t uio_resid, size_t chunk, int flags)
 	{
+		uio.resize(uio_resid);
+		auto p = uio.begin();
 		if (chunk == 0)
 			chunk = uio_resid;
 		if (so_type == SOCK_DGRAM) { // UDP simple socket for datagrams.
 
-			lock so_rcv_lock(so_rcv.sb_mutex);
+			//lock so_rcv_lock(so_rcv.sb_mutex);
 			if (so_rcv.size() > 0) {
 				chunk = so_rcv.size();
 			}
@@ -720,16 +727,23 @@ namespace netlab
 			throw std::runtime_error("soreceive_stream failed with error: ENOTCONN = " + std::to_string(ENOTCONN));
 		else {
 			bool restart(true);
+			bool flush = false;
+
+			/* On MSG_WAITALL we must wait until all data or error arrives. */
+		/*	if (flags & MSG_WAITALL)
+				chunk = uio_resid;*/
+		
+
 
 			/* Prevent other readers from entering the socket. */
-			lock so_rcv_lock(so_rcv.sb_mutex);
+			//lock so_rcv_lock(so_rcv.sb_mutex);
 			while (restart) {
 				bool deliver(false);
 				/* Abort if socket has reported problems. */
 				if (so_error)
 					if (so_rcv.size() > 0)
 					{
-						chunk = so_rcv.size();
+						flush = true;
 						deliver = true;
 					}
 					else
@@ -744,14 +758,14 @@ namespace netlab
 				else if (so_state & SS_CANTRCVMORE)
 					if (so_rcv.size() > 0)
 					{
-						chunk = so_rcv.size();
+						flush = true;
 						deliver = true;
 					}
 					else
 						return 0;
 
 				/* Socket buffer is empty and we shall not block. */
-				else if (so_rcv.empty() &&
+				else if (so_rcv.empty() && // may bug
 					((so_state & SS_NBIO) || (flags & (MSG_DONTWAIT))))
 					return 0;
 
@@ -759,42 +773,35 @@ namespace netlab
 				else if (so_rcv.size() >= chunk)
 					deliver = true;
 
-				/* On MSG_WAITALL we must wait until all data or error arrives. */
-				else if ((flags & MSG_WAITALL) &&
-					(so_rcv.size() >= uio_resid || so_rcv.size() >= so_rcv.capacity()))
-					deliver = true;
+				
 				else {
 					/*
 					* Wait and block until (more) data comes in.
 					* NB: Drops the sockbuf lock during wait.
 					*/
-					so_rcv_lock.unlock();
+					//so_rcv_lock.unlock();
 					so_rcv.sbwait_for_read(chunk);
-					so_rcv_lock.lock();
+					//so_rcv_lock.lock();
 					continue;
 				}
+
 				if (deliver)
 				{
 					/* Fill uio until full or current end of socket buffer is reached. */
 					//std::unique_lock<std::mutex> so_rcv_lock(so_rcv.sb_mutex);
-					auto size = so_rcv.size();
-					size_t len(std::min<size_t>(uio_resid, size));
-					std::cout << "copied len to msg: " << len << std::endl;	
-					/* NB: Must unlock socket buffer as uiomove may sleep. */
-					auto start = so_rcv.begin();
-					auto want_end = start + len;
-					auto end = so_rcv.sb_mb.end();
-					auto last = so_rcv.sb_mb.end();
-					uio += std::string(start, want_end);
-					uio_resid -= len;
+					auto data = boost::make_iterator_range(p, uio.end());
+					auto count = so_rcv.sbfill(data, true);
+					//uio += data;
+					//uio_resid -= data.size();
+					uio_resid -= count;
+					p += count;
+					//so_rcv.sbdrops(count);
 					//so_rcv_lock.unlock();
 					/*
 					* Remove the delivered data from the socket buffer unless we
 					* were only peeking.
 					*/
-					if (len > 0)
-						so_rcv.sbdrop(len);
-
+					//auto byte_read = so_rcv.sbdrops(data.size());
 					/*
 					* For MSG_WAITALL we may have to loop again and wait for
 					* more data to come in.
@@ -812,18 +819,18 @@ namespace netlab
 	int L5_socket_impl::recvfrom(std::string& uio, size_t uio_resid, size_t chunk, int flags, _In_ const struct sockaddr* name, _In_ int name_len) {
 
 		bool deliver = false;
-		lock so_rcv_lock(so_rcv.sb_mutex);
+		//lock so_rcv_lock(so_rcv.sb_mutex);
 		
 		bool restart = true;
 		while (restart)
 		{
-			so_rcv_lock.unlock();
+			//so_rcv_lock.unlock();
 			so_rcv.sbwait_for_read(chunk);
 			
 			
 			
 			
-			so_rcv_lock.lock();
+			//so_rcv_lock.lock();
 
 			if (so_rcv.size() >= chunk) {
 				deliver = true;
@@ -832,21 +839,23 @@ namespace netlab
 			if (deliver)
 			{
 				/* Fill uio until full or current end of socket buffer is reached. */
-				size_t len(std::min<size_t>(uio_resid, so_rcv.size()));
+				//size_t len(std::min<size_t>(uio_resid, so_rcv.size()));
 
 				/* NB: Must unlock socket buffer as uiomove may sleep. */
-				uio += std::string(so_rcv.begin(), so_rcv.begin() + len);
-				uio_resid -= len;
+				////auto data = so_rcv.sbpull(uio_resid);
+				//uio += data;
+				//auto len = data.size();
+				//uio_resid -= len;
 
 				/*
 				* Remove the delivered data from the socket buffer unless we
 				* were only peeking.
 				*/
-				if (len > 0)
+				/*if (len > 0)
 				{
-					so_rcv.sbdrop(len);
+					so_rcv.sbdrops(len);
 					break;
-				}
+				}*/
 			}	
 		}
 		return uio.size();

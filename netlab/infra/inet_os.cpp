@@ -10,7 +10,7 @@
 #include "../L1/NIC.h"
 #include "../L1/NIC_Cable.h"
 #include "../L0/L0_buffer.h"
-
+#include <algorithm>
 //std::mutex inet_os::splnet;
 std::mutex inet_os::print_mutex;
 

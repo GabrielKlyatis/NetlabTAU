@@ -5,6 +5,7 @@
 
 #include "L2_ARP.h"
 #include "../L3/L3.h"
+#include <algorithm>
 #include "../L1/NIC.h"
 
 /************************************************************************/

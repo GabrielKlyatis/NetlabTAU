@@ -14,6 +14,7 @@
 #include <iostream>
 #include <Shlobj.h>
 #include <random>
+#include <algorithm>
 
 #ifdef IN
 #undef IN
@@ -30,6 +31,9 @@
 #include "../L5/L5.h"
 
 #include <iomanip>
+
+
+#include <boost/range.hpp>
 
 #define FIXBUG_959
 
@@ -698,7 +702,7 @@ struct sockaddr *nam, size_t nam_len, std::shared_ptr<std::vector<byte>> &contro
 		* marker if URG set.  Possibly send more data.
 		*/
 	case PRU_SEND:
-		dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
+		dynamic_cast<socket*>(so)->so_snd.sbappends(*m);
 		error = tcp_output(*tp);
 		break;
 
@@ -746,7 +750,7 @@ struct sockaddr *nam, size_t nam_len, std::shared_ptr<std::vector<byte>> &contro
 		* of data past the urgent section.
 		* Otherwise, snd_up should be one lower.
 		*/
-		dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
+		dynamic_cast<socket*>(so)->so_snd.sbappends(*m);
 		tp->snd_up = tp->snd_una + dynamic_cast<socket*>(so)->so_snd.size();
 		tp->t_force = 1;
 		error = tcp_output(*tp);
@@ -917,7 +921,6 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket &so)
 	if (tcp_do_rfc1323)
 	{
 		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN << TCP_MAX_WINSHIFT);
-		tp->snd_ssthresh /= 8;
 	}
 	else
 	{
@@ -1186,7 +1189,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_disconnect(class L4_TCP::tcpcb &tp)
 		tcp_drop(tp, 0);
 	else {
 		so->soisdisconnecting();
-		so->so_rcv.sbflush();
+		so->so_rcv.sbdrops();
 		tcp_usrclosed(tp);
 		if (&tp)
 			(void)tcp_output(tp);
@@ -1966,7 +1969,10 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 		*	description of m_copy in Section 2.9, where we showed that if the data is in a cluster,
 		*	m_copy just references that cluster and doesn't make a copy of the data.
 		*/
-		std::copy(so.so_snd.begin(), so.so_snd.begin() + len, it + hdrlen);
+		//std::copy(so.so_snd.begin(), so.so_snd.begin() + len, it + hdrlen);
+		auto slot = boost::make_iterator_range(it + hdrlen, it + hdrlen + len);
+		so.so_snd.sbfill(slot);
+	
 
 		/*
 		*	Set PSH flag:
@@ -2281,7 +2287,7 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 	*	sets the SO_BROADCAST socket option.
 	*/
 	const struct pr_output_args* a = dynamic_cast<const struct pr_output_args*>(&L3_impl::ip_output_args(m, it, tp.t_inpcb->inp_options, &tp.t_inpcb->inp_route, so.so_options & SO_DONTROUTE, nullptr));
-	int error(inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*a));
+ 	int error(inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*a));
 	if (error)
 		return out(tp, error);
 
@@ -2811,10 +2817,10 @@ findpcb:
 			*	is set to the acknowledgment field and the received mbuf chain is released. (Since the
 			*	length is 0, there should be just a single mbuf containing the headers.)
 			*/
-			so->so_snd.sb_mutex.lock();
-			so->so_snd.sbdrop(ti->ti_ack() - tp->snd_una);
+			//so->so_snd.sb_mutex.lock();
+			so->so_snd.sbdrops(ti->ti_ack() - tp->snd_una);
 			tp->snd_una = ti->ti_ack();
-			so->so_snd.sb_mutex.unlock();
+			//so->so_snd.sb_mutex.unlock();
 			/*
 			*	Stop retransmit timer:
 			*	If the received segment acknowledges all outstanding data (snd_una equals
@@ -2899,8 +2905,9 @@ findpcb:
 			* Drop TCP, IP headers and TCP options then add data
 			* to socket buffer.
 			*/
-			std::lock_guard<std::mutex> lock(so->so_rcv.sb_mutex);
-			so->so_rcv.sbappend(it + (sizeof(struct L4_TCP::tcpiphdr) + off - sizeof(struct L4_TCP::tcphdr)), m->end());
+			//std::lock_guard<std::mutex> lock(so->so_rcv.sb_mutex);
+			auto view = boost::make_iterator_range(it + (sizeof(struct L4_TCP::tcpiphdr) + off - sizeof(struct L4_TCP::tcphdr)), m->end());
+			so->so_rcv.sbappends(view);
 			so->sorwakeup();
 			tp->t_flags |= L4_TCP::tcpcb::TF_DELACK;
 			return;
@@ -4176,24 +4183,27 @@ findpcb:
 		 *	FIN occupies 1 byte in the sequence number space.
 		 */
 		int ourfinisacked;
-		so->so_snd.sb_mutex.lock();
-		if (static_cast<u_long>(acked) > so->so_snd.size()) {
-			tp->snd_wnd -= so->so_snd.size();
-			so->so_snd.sbdrop(static_cast<int>(so->so_snd.size()));
-			ourfinisacked = 1;
-		}
-		
-		/*	
-		 *	Otherwise the number of bytes acknowledged is less than or equal to the number of
-		 *	bytes in the send buffer, so ourfinisacked is set to 0, and acked bytes of data are
-		 *	dropped from the send buffer.
-		 */
-		else {
-			so->so_snd.sbdrop(acked);
-			tp->snd_wnd -= acked;
-			ourfinisacked = 0;
-		}
-		so->so_snd.sb_mutex.unlock();
+		//so->so_snd.sb_mutex.lock();
+		auto dropped = so->so_snd.sbdrops(acked);
+		tp->snd_wnd -= dropped;
+		ourfinisacked = acked > dropped;
+		//if (static_cast<u_long>(acked) > so->so_snd.size()) {
+		//	tp->snd_wnd -= so->so_snd.size();
+		//	so->so_snd.sbdrop(static_cast<int>(so->so_snd.size()));
+		//	ourfinisacked = 1;
+		//}
+		//
+		///*	
+		// *	Otherwise the number of bytes acknowledged is less than or equal to the number of
+		// *	bytes in the send buffer, so ourfinisacked is set to 0, and acked bytes of data are
+		// *	dropped from the send buffer.
+		// */
+		//else {
+		//	//so->so_snd.sbdrops(acked);
+		//	tp->snd_wnd -= acked;
+		//	ourfinisacked = 0;
+		//}
+		//so->so_snd.sb_mutex.unlock();
 		/*	
 		 *	Wakeup processes waiting on send buffer:
 		 *	sowwakeup awakens any processes waiting on the send buffer. snd_una is
@@ -4750,8 +4760,9 @@ void L4_TCP_impl::TCP_REASS(class L4_TCP::tcpcb *tp, struct L4_TCP::tcpiphdr *ti
 		tp->t_flags |= L4_TCP::tcpcb::TF_DELACK;
 		tp->rcv_nxt += ti->ti_len();
 		flags = ti->ti_flags() & L4_TCP::tcphdr::TH_FIN;
-		std::lock_guard<std::mutex> lock(so->so_rcv.sb_mutex);
-		so->so_rcv.sbappend(it, it + ti->ti_len());
+		//std::lock_guard<std::mutex> lock(so->so_rcv.sb_mutex);
+		auto view = boost::make_iterator_range(it, it + ti->ti_len());
+		so->so_rcv.sbappends(view);
 		so->sorwakeup();
 	}
 	else {

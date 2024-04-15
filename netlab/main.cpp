@@ -2,7 +2,7 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #endif
 #include <iostream>
-
+#include <algorithm>
 #include "L2/L2.h"
 #include "L3/L3.h"
 #include "L4/L4_TCP.h"
@@ -435,8 +435,8 @@ void test3(size_t size = 32, size_t num = 5)
 
 void test4(size_t size = 256) 
 {
-	size *= 1024;
-	size *= 1024;
+	size *= 1000;
+	size *= 1000;
 	/* Declaring the server */
 	inet_os inet_server = inet_os();
 
@@ -558,14 +558,15 @@ void test4(size_t size = 256)
 	// Accept the connection.
 	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
-	inet_client.cable()->set_buf(new L0_buffer(inet_client, 0.5, L0_buffer::uniform_real_distribution_args(0.5, 1), L0_buffer::OUTGOING));
-	inet_server.cable()->set_buf(new L0_buffer(inet_server, 1, L0_buffer::uniform_real_distribution_args(0.5, 1), L0_buffer::OUTGOING));
+	//inet_client.cable()->set_buf(new L0_buffer(inet_client, 0.9, L0_buffer::uniform_real_distribution_args(0.05, 0.1), L0_buffer::OUTGOING));
+	//inet_server.cable()->set_buf(new L0_buffer(inet_server, 1, L0_buffer::uniform_real_distribution_args(0.05, 0.1), L0_buffer::OUTGOING));
 
 	std::string send_msg(size, 'T');
 	
 	std::thread([ConnectSocket, send_msg, size]() 
 	{
 		ConnectSocket->send(send_msg, size, 1024);
+		std::cout << "finish shending" << std::endl;
 	}).detach();
 	//ConnectSocket->send(send_msg, size, 512);
 	std::string ret("");
@@ -574,15 +575,19 @@ void test4(size_t size = 256)
 	//std::cout << a << ret << std::endl;
 
 	std::cout << ret.size() << std::endl;
+//	std::this_thread::sleep_for(std::chrono::seconds(2));
+	//std::cout << "fin?" << std::endl;
+	ConnectSocket->shutdown(SD_SEND);
+	ListenSocket->shutdown(SD_RECEIVE);
 	std::this_thread::sleep_for(std::chrono::seconds(2));
-	std::cout << "fin?" << std::endl;
 	inet_client.stop_fasttimo();
 	inet_client.stop_slowtimo();
 
 	inet_server.stop_fasttimo();
 	inet_server.stop_slowtimo();
-	std::this_thread::sleep_for(std::chrono::seconds(1));
-
+	std::this_thread::sleep_for(std::chrono::seconds(2));
+	//std::this_thread::sleep_for(std::chrono::seconds(10));
+	
 }
 
 void test5() 

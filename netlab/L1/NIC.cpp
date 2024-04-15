@@ -10,6 +10,7 @@
 #include "NIC_Cable.h"
 #include "../L2/L2.h"
 #include "../infra/utils.h"
+#include <algorithm>
 
 struct netlab::NetworkInterface::Info 
 {
