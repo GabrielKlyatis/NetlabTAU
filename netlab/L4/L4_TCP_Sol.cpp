@@ -14,6 +14,7 @@
 #include <iostream>
 #include <Shlobj.h>
 #include <random>
+#include <algorithm>
 
 #ifdef IN
 #undef IN
@@ -30,6 +31,9 @@
 #include "../L5/L5.h"
 
 #include <iomanip>
+
+
+#include <boost/range.hpp>
 
 #define FIXBUG_959
 
@@ -83,7 +87,10 @@ L4_TCP::tcpcb::~tcpcb()
 	dynamic_cast<socket*>(inp_socket)->soisdisconnected();
 }
 
-void L4_TCP::tcpcb::log_snd_cwnd(u_long snd_cwnd) { log.update(snd_cwnd); }
+void L4_TCP::tcpcb::log_snd_cwnd(u_long snd_cwnd) {
+
+	log.update(snd_cwnd);
+}
 
 int L4_TCP::tcpcb::tcpcb_logger::log_number(0);
 
@@ -695,7 +702,7 @@ struct sockaddr *nam, size_t nam_len, std::shared_ptr<std::vector<byte>> &contro
 		* marker if URG set.  Possibly send more data.
 		*/
 	case PRU_SEND:
-		dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
+		dynamic_cast<socket*>(so)->so_snd.sbappends(*m);
 		error = tcp_output(*tp);
 		break;
 
@@ -743,7 +750,7 @@ struct sockaddr *nam, size_t nam_len, std::shared_ptr<std::vector<byte>> &contro
 		* of data past the urgent section.
 		* Otherwise, snd_up should be one lower.
 		*/
-		dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
+		dynamic_cast<socket*>(so)->so_snd.sbappends(*m);
 		tp->snd_up = tp->snd_una + dynamic_cast<socket*>(so)->so_snd.size();
 		tp->t_force = 1;
 		error = tcp_output(*tp);
@@ -910,7 +917,15 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket &so)
 	*	when a SYN is sent or received on the connection, tcp_rnss resets snd_cwnd to a single
 	*	segment.
 	*/
-	tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN << TCP_MAX_WINSHIFT);
+
+	if (tcp_do_rfc1323)
+	{
+		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN << TCP_MAX_WINSHIFT);
+	}
+	else
+	{
+		tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh = TCP_MAXWIN );
+	}
 
 	/*
 	*	The default IP TTL in the Internet PCB is set to 64 (ip_defttl) and the PCB is set
@@ -980,9 +995,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_timers(class L4_TCP::tcpcb *tp, int timer)
 			break;
 		}
 
-		TCPT_RANGESET(tp->t_rxtcur, static_cast<int>(tp->TCP_REXMTVAL() * tcp_backoff(tp->t_rxtshift)),
-			tp->t_rttmin, static_cast<int>(TCPTV_REXMTMAX));
-		tp->t_timer[TCPT_REXMT] = tp->t_rxtcur;
+		tcp_rto_timer_handler(tp);
 		
 		/*
 		* If losing, let the lower level know and try for
@@ -1004,39 +1017,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_timers(class L4_TCP::tcpcb *tp, int timer)
 		* If timing a segment in this window, stop the timer.
 		*/
 		tp->t_rtt = 0;
-		
-		/*
-		* Close the congestion window down to one segment
-		* (we'll open it by one segment for each ack we get).
-		* Since we probably have a window's worth of unacked
-		* data accumulated, this "slow start" keeps us from
-		* dumping all that data as back-to-back packets (which
-		* might overwhelm an intermediate gateway).
-		*
-		* There are two phases to the opening: Initially we
-		* open by one mss on each ack.  This makes the window
-		* size increase exponentially with time.  If the
-		* window is larger than the path can handle, this
-		* exponential growth results in dropped packet(s)
-		* almost immediately.  To get more time between
-		* drops but still "push" the network to take advantage
-		* of improving conditions, we switch from exponential
-		* to linear window opening at some threshhold size.
-		* For a threshhold, we use half the current window
-		* size, truncated to a multiple of the mss.
-		*
-		* (the minimum cwnd that will give us exponential
-		* growth is 2 mss.  We don't allow the threshhold
-		* to go below this.)
-		*/
-		{
-			u_int win(std::min(tp->snd_wnd, tp->snd_cwnd) / 2 / tp->t_maxseg);
-			if (win < 2)
-				win = 2;
-			tp->log_snd_cwnd(tp->snd_cwnd = tp->t_maxseg);
-			tp->snd_ssthresh = win * tp->t_maxseg;
-			tp->t_dupacks = 0;
-		}
+			
 
 		(void)tcp_output(*tp);
 		break;
@@ -1190,7 +1171,7 @@ inline void L4_TCP_impl::tcp_setpersist(class L4_TCP::tcpcb &tp)
 		tp.t_rxtshift++;
 }
 
-int L4_TCP_impl::tcp_backoff(const int backoff)
+int L4_TCP_impl::tcp_backoff(const int backoff) // TODO: move to tahoe
 {
 	if (0 <= backoff && backoff <= 5)
 		return 0x1 << backoff;
@@ -1208,7 +1189,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_disconnect(class L4_TCP::tcpcb &tp)
 		tcp_drop(tp, 0);
 	else {
 		so->soisdisconnecting();
-		so->so_rcv.sbflush();
+		so->so_rcv.sbdrops();
 		tcp_usrclosed(tp);
 		if (&tp)
 			(void)tcp_output(tp);
@@ -1988,8 +1969,11 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 		*	description of m_copy in Section 2.9, where we showed that if the data is in a cluster,
 		*	m_copy just references that cluster and doesn't make a copy of the data.
 		*/
-		std::copy(so.so_snd.begin(), so.so_snd.begin() + len, it + hdrlen);
-		
+		//std::copy(so.so_snd.begin(), so.so_snd.begin() + len, it + hdrlen);
+		auto slot = boost::make_iterator_range(it + hdrlen, it + hdrlen + len);
+		so.so_snd.sbfill(slot);
+	
+
 		/*
 		*	Set PSH flag:
 		*	If TCP is sending everything it has from the send buffer, the PSH flag is set.
@@ -2302,7 +2286,8 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 	*	set. This means that a process cannot issue a connect to a broadcast address, even if it
 	*	sets the SO_BROADCAST socket option.
 	*/
-	int error(inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*dynamic_cast<const struct pr_output_args*>(&L3_impl::ip_output_args(m, it, tp.t_inpcb->inp_options, &tp.t_inpcb->inp_route, so.so_options & SO_DONTROUTE, nullptr))));
+	const struct pr_output_args* a = dynamic_cast<const struct pr_output_args*>(&L3_impl::ip_output_args(m, it, tp.t_inpcb->inp_options, &tp.t_inpcb->inp_route, so.so_options & SO_DONTROUTE, nullptr));
+ 	int error(inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*a));
 	if (error)
 		return out(tp, error);
 
@@ -2531,6 +2516,7 @@ void L4_TCP_impl::pr_input(const struct pr_input_args &args)
 	ti->ti_win() = ntohs(ti->ti_win());
 	ti->ti_urp() = ntohs(ti->ti_urp());
 
+//#define NETLAB_L4_TCP_DEBUG
 #ifdef NETLAB_L4_TCP_DEBUG
 		print(ti->ti_t, htons(checksum));
 #endif
@@ -2831,9 +2817,10 @@ findpcb:
 			*	is set to the acknowledgment field and the received mbuf chain is released. (Since the
 			*	length is 0, there should be just a single mbuf containing the headers.)
 			*/
-			so->so_snd.sbdrop(ti->ti_ack() - tp->snd_una);
+			//so->so_snd.sb_mutex.lock();
+			so->so_snd.sbdrops(ti->ti_ack() - tp->snd_una);
 			tp->snd_una = ti->ti_ack();
-
+			//so->so_snd.sb_mutex.unlock();
 			/*
 			*	Stop retransmit timer:
 			*	If the received segment acknowledges all outstanding data (snd_una equals
@@ -2918,7 +2905,9 @@ findpcb:
 			* Drop TCP, IP headers and TCP options then add data
 			* to socket buffer.
 			*/
-			so->so_rcv.sbappend(it + (sizeof(struct L4_TCP::tcpiphdr) + off - sizeof(struct L4_TCP::tcphdr)), m->end());
+			//std::lock_guard<std::mutex> lock(so->so_rcv.sb_mutex);
+			auto view = boost::make_iterator_range(it + (sizeof(struct L4_TCP::tcpiphdr) + off - sizeof(struct L4_TCP::tcphdr)), m->end());
+			so->so_rcv.sbappends(view);
 			so->sorwakeup();
 			tp->t_flags |= L4_TCP::tcpcb::TF_DELACK;
 			return;
@@ -4008,69 +3997,9 @@ findpcb:
 				 *	to one segment, as was done with the timeout.
 				 */
 				else if (++tp->t_dupacks == tcprexmtthresh) {
-					u_int win(std::min(tp->snd_wnd, tp->snd_cwnd) / 2 / tp->t_maxseg);
-					if (win < 2)
-						win = 2;
-					
-					tp->snd_ssthresh = win * tp->t_maxseg;
-
-					/*	
-					 *	Turn off retransmission timer:
-					 *	The retransmission timer is turned off and, in case a segment is currently being
-					 *	timed, t_rtt is set to 0.
-					 */
-					tp->t_timer[TCPT_REXMT] = 0;
-					tp->t_rtt = 0;
-
-					/*	
-					 *	Retransmit missing segment:
-					 *	snd_nxt is set to the starting sequence number of the segment that appears to have
-					 *	been lost (the acknowledgment field of the duplicate ACK) and the congestion window
-					 *	is set to one segment. This causes tcp_output to send only the missing segment.
-					 *	(This is shown by segment 63 in Figure 21.7 of Volume 1.)
-					 */
-					tcp_seq onxt(tp->snd_nxt);
-					tp->snd_nxt = ti->ti_ack();
-					tp->log_snd_cwnd(tp->snd_cwnd = tp->t_maxseg);
-					(void)tcp_output(*tp);
-
-					/*	
-					 *	Set congestion window:
-					 *	The congestion window is set to the slow start threshold plus the number of segments
-					 *	that the other end has cached. By cached we mean the number of out-of-order
-					 *	segments that the other end has received and generated duplicate ACKs for. These cannot
-					 *	be passed to the process at the other end until the missing segment (which was just
-					 *	sent) is received. Figures 21.10 and 21.11 in Volume 1 show what happens with the congestion
-					 *	window and slow start threshold when the fast recovery algorithm is in effect.
-					 */
-					tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh + tp->t_maxseg * tp->t_dupacks);
-
-					/*	
-					 *	Set snd_nxt:
-					 *	The value of the next sequence number to send is set to the maximum of its previous
-					 *	value (onxt) and its current value. Its current value was modified by tcp_output
-					 *	when the segment was retransmitted. Normally this causes snd_nxt to be set back to
-					 *	its previous value, which means that only the missing segment is retransmitted, and
-					 *	that future calls to tcp_output carry on with the next segment in sequence.
-					 */
-					if (L4_TCP::tcpcb::SEQ_GT(onxt, tp->snd_nxt))
-						tp->snd_nxt = onxt;
-					return drop(tp, dropsocket);
+					tcp_dupacks_handler(tp, ti->ti_ack());
 				}
 
-				/*	
-				 *	Number of consecutive duplicate ACKs exceeds threshold of 3:
-				 *	The missing segment was retransmitted when t_dupacks equaled 3, so the receipt
-				 *	of each additional duplicate ACK means that another packet has left the network. The
-				 *	congestion window is incremented by one segment. tcp_output sends the next segment
-				 *	in sequence, and the duplicate ACK is dropped. (This is shown by segments 67,
-				 *	69, and 71 in Figure 21.7 of Volume 1.)
-				 */
-				else if(tp->t_dupacks > tcprexmtthresh) {
-					tp->log_snd_cwnd(tp->snd_cwnd += tp->t_maxseg);
-					(void)tcp_output(*tp);
-					return drop(tp, dropsocket);
-				}
 			}
 
 			/*	
@@ -4240,13 +4169,7 @@ findpcb:
 		* (maxseg * (maxseg / cwnd) per packet).
 		*/
 		{
-			u_int cw(tp->snd_cwnd);
-			u_int incr(tp->t_maxseg);
-			if (cw > tp->snd_ssthresh)
-				incr *= incr / cw
-				// + incr / 8		/*	REMOVED	*/
-				;
-			tp->log_snd_cwnd(tp->snd_cwnd = std::min(cw + incr, static_cast<u_int>(TCP_MAXWIN << tp->snd_scale)));
+			tcp_congestion_conrol_handler(tp);
 		}
 
 		/*	
@@ -4260,23 +4183,27 @@ findpcb:
 		 *	FIN occupies 1 byte in the sequence number space.
 		 */
 		int ourfinisacked;
-		if (static_cast<u_long>(acked) > so->so_snd.size()) {
-			tp->snd_wnd -= so->so_snd.size();
-			so->so_snd.sbdrop(static_cast<int>(so->so_snd.size()));
-			ourfinisacked = 1;
-		}
-
-		/*	
-		 *	Otherwise the number of bytes acknowledged is less than or equal to the number of
-		 *	bytes in the send buffer, so ourfinisacked is set to 0, and acked bytes of data are
-		 *	dropped from the send buffer.
-		 */
-		else {
-			so->so_snd.sbdrop(acked);
-			tp->snd_wnd -= acked;
-			ourfinisacked = 0;
-		}
-
+		//so->so_snd.sb_mutex.lock();
+		auto dropped = so->so_snd.sbdrops(acked);
+		tp->snd_wnd -= dropped;
+		ourfinisacked = acked > dropped;
+		//if (static_cast<u_long>(acked) > so->so_snd.size()) {
+		//	tp->snd_wnd -= so->so_snd.size();
+		//	so->so_snd.sbdrop(static_cast<int>(so->so_snd.size()));
+		//	ourfinisacked = 1;
+		//}
+		//
+		///*	
+		// *	Otherwise the number of bytes acknowledged is less than or equal to the number of
+		// *	bytes in the send buffer, so ourfinisacked is set to 0, and acked bytes of data are
+		// *	dropped from the send buffer.
+		// */
+		//else {
+		//	//so->so_snd.sbdrops(acked);
+		//	tp->snd_wnd -= acked;
+		//	ourfinisacked = 0;
+		//}
+		//so->so_snd.sb_mutex.unlock();
 		/*	
 		 *	Wakeup processes waiting on send buffer:
 		 *	sowwakeup awakens any processes waiting on the send buffer. snd_una is
@@ -4833,7 +4760,9 @@ void L4_TCP_impl::TCP_REASS(class L4_TCP::tcpcb *tp, struct L4_TCP::tcpiphdr *ti
 		tp->t_flags |= L4_TCP::tcpcb::TF_DELACK;
 		tp->rcv_nxt += ti->ti_len();
 		flags = ti->ti_flags() & L4_TCP::tcphdr::TH_FIN;
-		so->so_rcv.sbappend(it, it + ti->ti_len());
+		//std::lock_guard<std::mutex> lock(so->so_rcv.sb_mutex);
+		auto view = boost::make_iterator_range(it, it + ti->ti_len());
+		so->so_rcv.sbappends(view);
 		so->sorwakeup();
 	}
 	else {
@@ -5060,8 +4989,7 @@ void  L4_TCP_impl::tcp_respond(class L4_TCP::tcpcb *tp, struct L4_TCP::tcpiphdr 
 void L4_TCP_impl::tcp_dooptions(L4_TCP::tcpcb &tp, u_char *cp, int cnt, tcpiphdr &ti, int &ts_present, u_long &ts_val, u_long &ts_ecr) 
 {
 	u_short mss;
-	int opt,
-		optlen;
+	int opt,optlen;
 
 	/*
 	*	Fetch option type and length:
@@ -5176,6 +5104,8 @@ int L4_TCP_impl::tcp_mss(class L4_TCP::tcpcb &tp, u_int offer)
 	 *	If a route is not acquired, the default of 512 (tcp_rossdfl t) is returned immediately.
 	 */
 	class inpcb *inp(tp.t_inpcb);
+
+
 	struct L3::route &ro(inp->inp_route);
 	struct L3::rtentry *rt(ro.ro_rt);
 	if (rt == nullptr) {
@@ -5331,10 +5261,7 @@ int L4_TCP_impl::tcp_mss(class L4_TCP::tcpcb &tp, u_int offer)
 	* unless we received an offer at least that large from peer.
 	* However, do not accept offers under 32 bytes.
 	*/
-	mss = 
-		offer ? 
-		std::min(mss, static_cast<int>(offer)) : 
-		std::max(mss, 32); /* sanity */
+	mss = offer ? std::min(mss, static_cast<int>(offer)) : 	std::max(mss, 32); /* sanity */
 
 	/*	
 	 *	If the value of mss has decreased from the default set by tcp_newtcpcb in the
@@ -5487,86 +5414,16 @@ void L4_TCP_impl::print(struct L4_TCP::tcphdr& tcp, uint16_t tcp_checksum, std::
 	std::swap(tcp_checksum, tcp.th_sum);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- 
-
-
-
+void L4_TCP_impl::tcp_congestion_conrol_handler(tcpcb* tp)
+{
+	u_int cw(tp->snd_cwnd);
+	float incr(tp->t_maxseg);
+
+	// slow start increase
+	tp->log_snd_cwnd(tp->snd_cwnd = std::min(cw + (u_int)std::floor(incr), static_cast<u_int>(TCP_MAXWIN << tp->snd_scale)));
+}
+
+void  L4_TCP_impl::tcp_rto_timer_handler(tcpcb* tp)
+{
+
+}

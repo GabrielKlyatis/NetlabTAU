@@ -254,7 +254,7 @@ public:
 	*/
 	virtual void pr_slowtimo() = 0;
 
-private:
+protected:
 	virtual void pr_drain() { }
 	virtual int pr_sysctl() { return 0; }
 	virtual void pr_ctlinput() { }
@@ -560,8 +560,10 @@ class L4_TCP::tcpcb
 	: public inpcb_impl 
 {
 	friend class L4_TCP_impl;
+	friend class tcp_tahoe;
+	friend class tcp_reno;
 
-private:
+protected:
 	/*!
 	    \enum	TCPS_
 	
@@ -929,7 +931,7 @@ private:
 		friend class L4_TCP::tcpcb;
 	public:
 		~tcpcb_logger()	{ log.close(); }
-	private:
+	protected:
 		typedef std::chrono::duration<double> seconds;
 		tcpcb_logger();
 		tcpcb_logger(const tcpcb_logger&)
@@ -963,6 +965,9 @@ private:
 class L4_TCP_impl : public L4_TCP
 {
 	friend class L4_UDP_Impl;
+
+
+
 public:
 	/*!
 		\typedef	class netlab::socket socket
@@ -977,6 +982,17 @@ public:
 	*/
 	typedef	u_long		tcp_seq;
 
+	//handlers
+protected:
+
+	virtual void tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq) {} // no dup acks in tcp base
+
+	virtual void tcp_congestion_conrol_handler(tcpcb* tp); // todo
+
+	virtual void tcp_rto_timer_handler(tcpcb* tp);
+
+
+public:
 	/*!
 	    \enum	TCPT_
 	
@@ -1115,7 +1131,7 @@ public:
 			tv = tvmax;
 	}
 
-private:
+protected:
 
 	/*!
 	    \enum	TCPO_
@@ -1176,7 +1192,7 @@ private:
 public:
 	virtual int pr_usrreq(class netlab::L5_socket *so, int req, std::shared_ptr<std::vector<byte>> &m,
 		struct sockaddr *nam, size_t nam_len, std::shared_ptr<std::vector<byte>> &control);
-private:
+protected:
 	/*!
 	    \fn	int L4_TCP_impl::tcp_attach(class netlab::socket &so);
 	

@@ -4,14 +4,18 @@
 #include <iostream>
 #include <Shlobj.h>
 #include "../infra/inet_os.hpp"
+//
+//#ifdef min
+//#undef min
+//#endif
+//
+//#ifdef max
+//#undef max
+//#endif
 
-#ifdef min
-#undef min
-#endif
 
-#ifdef max
-#undef max
-#endif
+
+#include <boost/range.hpp>
 
 
 namespace netlab
@@ -52,7 +56,7 @@ namespace netlab
 	{
 		if (cc > static_cast<u_long>(SB_MAX))
 			return (false);
-		std::lock_guard<std::mutex> guard(sb_write_mutex);
+		std::lock_guard<std::mutex> guard(sb_mutex);
 		sb_mb.set_capacity(cc);
 		return (true);
 	}
@@ -63,45 +67,51 @@ namespace netlab
 		return a; 
 	}
 
-	inline L5_socket::sockbuf::size_type L5_socket::sockbuf::size() const { return sb_mb.size(); }
+	inline L5_socket::sockbuf::size_type L5_socket::sockbuf::size() const 
+	{
+		auto a = sb_mb.size();
+		return  a;
+	}
 
 	inline bool L5_socket::sockbuf::empty() const { return sb_mb.empty(); }
 
-	inline L5_socket::sockbuf::const_iterator L5_socket::sockbuf::begin() const { return sb_mb.begin(); }
+	//inline L5_socket::sockbuf::const_iterator L5_socket::sockbuf::begin() const { return sb_mb.begin(); }
 
 	inline L5_socket::sockbuf::size_type L5_socket::sockbuf::sbspace() const { return sb_mb.reserve(); }
 
-	void L5_socket::sockbuf::sbappend(std::vector<byte>::iterator first, std::vector<byte>::iterator last)
-	{
-		if (std::distance(first, last) > 0)
-		{
-			std::lock_guard<std::mutex> guard(sb_write_mutex);
-			/*
-			* Put the first mbuf on the queue.
-			* Note this permits zero length records.
-			*/
-			sb_mb.insert(sb_mb.end(), first, last);
-		}
-	}
+	//void L5_socket::sockbuf::sbappend(std::vector<byte>::iterator first, std::vector<byte>::iterator last)
+	//{
+	//	
+	//	int to_add = std::distance(first, last);
+	//	if (to_add > 0)
+	//	{
+	//		//std::lock_guard<std::mutex> guard(sb_mutex);
+	//		/*
+	//		* Put the first mbuf on the queue.
+	//		* Note this permits zero length records.
+	//		*/
 
-	void L5_socket::sockbuf::sbflush()
-	{
-		std::lock_guard<std::mutex> read_guard(sb_read_mutex);
-		std::lock_guard<std::mutex> write_guard(sb_write_mutex);
-		sb_mb.clear();
-	}
+	//		sb_mb.insert(sb_mb.end(), first, last);
+	//	}
+	//}
 
-	inline void L5_socket::sockbuf::sbdrop(const size_type len)
-	{
-		std::lock_guard<std::mutex> guard(sb_read_mutex);
-		if (len > size())
-			sb_mb.clear();
-		else {
-			//sb_mb.erase_begin(len);
-			sb_mb.erase(sb_mb.begin(), sb_mb.begin() + len);
-			notify_all();
-		}
-	}
+	//void L5_socket::sockbuf::sbflush()
+	//{
+	//	std::lock_guard<std::mutex> read_guard(sb_mutex);
+	//	sb_mb.clear();
+	//}
+
+	//inline void L5_socket::sockbuf::sbdrop(const size_type len)
+	//{
+	//	//std::lock_guard<std::mutex> guard(sb_mutex);
+	//	if (len > size())
+	//		sb_mb.clear();
+	//	else {
+	//		//sb_mb.erase_begin(len);
+	//		sb_mb.erase(sb_mb.begin(), sb_mb.begin() + len);
+	//		notify_all();
+	//	}
+	//}
 
 	inline void L5_socket::sockbuf::notify_all()
 	{
@@ -115,14 +125,15 @@ namespace netlab
 	inline void L5_socket::sockbuf::sbwait_for_write(size_type chunk)
 	{
 		sb_flags |= sockbuf::SB_WAIT;
-		lock sb_write_lock(sb_write_mutex);
+		lock sb_write_lock(sb_mutex);
 		sb_cond.wait(sb_write_lock, [this, chunk]() -> bool { return chunk <= sbspace(); });
 	}
+
 
 	inline void L5_socket::sockbuf::sbwait_for_read(size_type chunk)
 	{
 		sb_flags |= sockbuf::SB_WAIT;
-		lock sb_read_lock(sb_read_mutex);
+		lock sb_read_lock(sb_mutex);
 		sb_cond.wait(sb_read_lock, [this, chunk]() -> bool { return (chunk <= size()) || chunk == 1; });
 		sb_flags &= ~sockbuf::SB_WAIT;
 	}
@@ -324,7 +335,7 @@ namespace netlab
 		long resid(uio_resid);
 
 		bool restart(true);
-		lock process_lock(so_snd.sb_process_mutex);
+		//lock process_lock(so_snd.sb_mutex);
 		for (size_t i = 0; i < uio_resid;) {
 			if (i + chunk > uio_resid)
 				chunk = uio_resid - i;
@@ -432,9 +443,9 @@ namespace netlab
 
 
 				inet_splnet.unlock();
-				process_lock.unlock();
+				//process_lock.unlock();
 				so_snd.sbwait_for_write(chunk);
-				process_lock.lock();
+				//process_lock.lock();
 
 				restart = true;
 				continue;
@@ -503,6 +514,189 @@ namespace netlab
 				throw std::runtime_error("sosend failed with error = " + std::to_string(error));
 			i += chunk;
 		}
+	}
+
+	void L5_socket_impl::sendto(std::string uio, size_t uio_resid, size_t chunk, int flags, _In_ const struct sockaddr* name, _In_ int name_len) {
+
+		/*
+		* If protocol is connection-based, can only connect once.
+		* Otherwise, if connected, try to disconnect first.
+		* This allows user to disconnect by connecting to, e.g.,
+		* a null address.
+		*/
+		int error(0);
+
+		if (uio_resid == 0)
+			uio_resid = uio.size();
+		if (chunk == 0)
+			chunk = uio_resid;
+		/*
+		*	If requested, disable routing:
+		*	dontroute is set when the routing tables should be bypassed for this message only.
+		*	clen is the number of bytes in the optional control mbuf.
+		*/
+		int dontroute((flags & MSG_DONTROUTE) && (so_options & SO_DONTROUTE) == 0 && (so_proto->pr_flags() & protosw::PR_ATOMIC));
+			
+		const int atomic(sosendallatonce());
+
+		/*
+		*	resid is the number of bytes in the iovec buffers or the number of bytes in the
+		*	top mbuf chain. Exercise 16.1 discusses why res id might be negative.
+		*/
+		long resid(uio_resid);
+
+		bool restart(true);
+		//lock process_lock(so_snd.sb_mutex);
+		for (size_t i = 0; i < uio_resid;) {
+			if (i + chunk > uio_resid)
+				chunk = uio_resid - i;
+			if (restart)
+				restart = false;
+
+			/*
+			*	Protocol processing is suspended to prevent the buffer from changing while it is
+			*	being examined. Before each transfer, sosend checks several conditions:
+			*/
+			lock inet_splnet(splnet());
+			/*
+			*	If output from the socket is prohibited (e.g., the write-half of a TCP connection
+			*	has been closed), EPIPE is returned.
+			*/
+			if (so_state & SS_CANTSENDMORE)
+				throw std::runtime_error("sosend failed with error EPIPE = " + std::to_string(EPIPE));
+
+			/*
+			*	If the socket is in an error state (e.g., an ICMP port unreachable may have been
+			*	generated by a previous datagram), so_error is returned. sendit discards
+			*	the error if some data has been sent before the error occurs (Figure 16.21, line 389).*/
+			else if (so_error)
+				throw std::runtime_error("sosend failed with so_error = " + std::to_string(so_error));
+			/*
+			*	Compute available space:
+			*	sbspace computes the amount of free space remaining in the send buffer. This is
+			*	an administrative limit based on the buffer's high-water mark, but is also limited by
+			*	sb_mbmax to prevent many small messages from consuming too many mbufs (Figure
+			*	16.6). sosend gives out-of-band data some priority by relaxing the limits on the
+			*	buffer size by 1024 bytes.
+			*/
+			sockbuf::size_type space(so_snd.sbspace());
+			if (flags & MSG_OOB)
+				space += 1024;
+
+			/*
+			*	Enforce message size limit:
+			*	If atomic is set and the message is larger than the high-water mark, EMSGSIZE is
+			*	returned; the message is too large to be accepted by the protocol-even if the buffer
+			*	were empty. If the control information is larger than the high-water mark, EMSGSIZE is
+			*	also returned. This is the test that limits the size of a datagram or record.
+			*/
+			if (atomic && (resid > static_cast<long>(so_snd.capacity())))
+				throw std::runtime_error("sosend failed with error EMSGSIZE = " + std::to_string(EMSGSIZE));
+
+			/*
+			*	Wilt for more space?
+			*	If there is not enough space in the send buffer, the data is from a process (versus
+			*	from the kernel in top), and one of the following conditions is true, then sosend must
+			*	wait for additional space before continuing:
+			*		a.	the message must be passed to protocol in a single request (atomic is set), or
+			*		b.	the message may be split, but the free space has dropped below the low-water mark, or
+			*		c.	the message may be split, but the control information does not fit in the available space.
+			*
+			*	When the data is passed to sosend in top (i.e., when uio is null), the data is
+			*	already located in mbufs. Therefore sosend ignores the high- and low-water marks
+			*	since no additional mbuf allocations are required to pass the data to the protocol.
+			*		If the send buffer low-water mark is not used in this test, an interesting interaction
+			*	occurs between the socket layer and the transport layer that leads to performance
+			*	degradation. [Crowcroft et al. 1992] provides details on this scenario.
+			*/
+			else if (static_cast<long>(space) < resid && !uio.empty() && space < chunk) {
+
+				/*
+				*	Wait for space:
+				*	If sosend must wait for space and the socket is nonblocking, EWOULDBLOCK is
+				*	returned. Otherwise, the buffer lock is released and sosend waits with sbwait until
+				*	the status of the buffer changes. When sbwait returns, sosend reenables protocol processing
+				*	and jumps back to restart to obtain a lock on the buffer and to check the error
+				*	and space conditions again before continuing.
+				*		By default, sbwait blocks until data can be sent. By changing sb_timeo in the
+				*	buffer through the so_SNDTIMEO socket option, the process selects an upper bound for
+				*	the wait time. If the timer expires, sbwait returns EWOULDBLOCK. Recall from Figure
+				*	16.21 that this error is discarded by sendit if some data has already been transferred
+				*	to the protocol. This timer does not limit the length of the entire call, just the
+				*	inactivity time between filling mbufs.
+				*/
+				if (so_state & SS_NBIO)
+					throw std::runtime_error("sosend failed with error EWOULDBLOCK = " + std::to_string(EWOULDBLOCK));
+
+
+				inet_splnet.unlock();
+				//process_lock.unlock();
+				so_snd.sbwait_for_write(chunk);
+				//process_lock.lock();
+
+				restart = true;
+				continue;
+			}
+
+			/*
+			*	At this point, sosend has determined that some data may be passed to the protocol.
+			*	splx enables interrupts since they should not be blocked during the relatively long
+			*	time it takes to copy data from the process to the kernel. mp holds a pointer used to construct
+			*	the mbuf chain. The size of the control information (clen) is subtracted from the
+			*	space available before sosend transfers any data from the process.
+			*/
+			inet_splnet.unlock();
+
+			/*
+			*	The socket's SO_DONTROUTE option is toggled if necessary before and after passing
+			*	the data to the protocol layer to bypass the routing tables on this message. This is the
+			*	only option that can be enabled for a single message and, as described with Figure 16.23,
+			*	it is controlled by the MSG_DONTROUTE flag during a write.
+			*		pr_usrreq is bracketed with splnet and splx to block interrupts while the
+			*	protocol is processing the message. This is a paranoid assumption since some protocols
+			*	{such as UDP) may be able to do output processing without blocking interrupts, but this
+			*	information is not available at the socket layer.
+			*		If the process tagged this message as out-of-band data, sosend issues the
+			*	PRU_SENOOOB request; othenvise it issues the PRU_SEND request. Address and control
+			*	mbufs are also passed to the protocol at this time.
+			*/
+			if (dontroute)
+				so_options |= SO_DONTROUTE;
+			std::shared_ptr<std::vector<byte>> top(new std::vector<byte>(uio.begin() + i, uio.begin() + i + chunk));
+			inet_splnet.lock();
+			try {
+
+				error = so_proto->pr_usrreq(this, protosw::PRU_SEND, top, const_cast<struct sockaddr*>(name), name_len, std::shared_ptr<std::vector<byte>>(nullptr));
+				if (error)
+					throw std::runtime_error("sendto failed with error = " + std::to_string(error));
+			}
+			catch (std::runtime_error& e)
+			{
+				std::cout << e.what() << std::endl;
+			}
+			inet_splnet.unlock();
+
+			resid -= top->size();
+
+			if (dontroute)
+				so_options &= ~SO_DONTROUTE;
+
+			/*
+			*	clen, control, top, and mp are reset, since control information is passed to the
+			*	protocol only once and a new mbuf chain is constructed for the next part of the message.
+			*	res id is nonzero only when atomic is not set (e.g., TCP). In that case, if space
+			*	remains in the buffer, sosend loops back to fill another mbuf. If there is no more space,
+			*	sosend loops back to wait for more space (Figure 16.24).
+			*		We'll see in Chapter 23 that unreliable protocols, such as UDP, immediately queue
+			*	the data for transmission on the network. Chapter 26 describes how reliable protocols,
+			*	such as TCP, add the data to the socket's send buffer where it remains until it is sent to,
+			*	and acknowledged by, the destination.
+			*/
+			if (error)
+				throw std::runtime_error("sosend failed with error = " + std::to_string(error));
+			i += chunk;
+		}
+
 	}
 
 	void L5_socket_impl::sendto(std::string uio, size_t uio_resid, size_t chunk, int flags, _In_ const struct sockaddr* name, _In_ int name_len) {
@@ -690,16 +884,18 @@ namespace netlab
 
 	int L5_socket_impl::recv(std::string &uio, size_t uio_resid, size_t chunk, int flags)
 	{
+		uio.resize(uio_resid);
+		auto p = uio.begin();
 		if (chunk == 0)
 			chunk = uio_resid;
 		if (so_type == SOCK_DGRAM) { // UDP simple socket for datagrams.
 
-			lock so_rcv_lock(so_rcv.sb_process_mutex);
+			//lock so_rcv_lock(so_rcv.sb_mutex);
 			if (so_rcv.size() > 0) {
 				chunk = so_rcv.size();
 			}
 		}
-		else if (so_type != SOCK_STREAM || so_type != SOCK_DGRAM)
+		else if (so_type != SOCK_STREAM && so_type != SOCK_DGRAM)
 			throw std::runtime_error("soreceive_stream failed with error: EINVAL = " + std::to_string(EINVAL));
 		else if (flags & MSG_OOB)
 			throw std::runtime_error("OOB not supported.");
@@ -714,16 +910,23 @@ namespace netlab
 			throw std::runtime_error("soreceive_stream failed with error: ENOTCONN = " + std::to_string(ENOTCONN));
 		else {
 			bool restart(true);
+			bool flush = false;
+
+			/* On MSG_WAITALL we must wait until all data or error arrives. */
+		/*	if (flags & MSG_WAITALL)
+				chunk = uio_resid;*/
+		
+
 
 			/* Prevent other readers from entering the socket. */
-			lock so_rcv_lock(so_rcv.sb_process_mutex);
+			//lock so_rcv_lock(so_rcv.sb_mutex);
 			while (restart) {
 				bool deliver(false);
 				/* Abort if socket has reported problems. */
 				if (so_error)
 					if (so_rcv.size() > 0)
 					{
-						chunk = so_rcv.size();
+						flush = true;
 						deliver = true;
 					}
 					else
@@ -738,14 +941,14 @@ namespace netlab
 				else if (so_state & SS_CANTRCVMORE)
 					if (so_rcv.size() > 0)
 					{
-						chunk = so_rcv.size();
+						flush = true;
 						deliver = true;
 					}
 					else
 						return 0;
 
 				/* Socket buffer is empty and we shall not block. */
-				else if (so_rcv.empty() &&
+				else if (so_rcv.empty() && // may bug
 					((so_state & SS_NBIO) || (flags & (MSG_DONTWAIT))))
 					return 0;
 
@@ -753,36 +956,35 @@ namespace netlab
 				else if (so_rcv.size() >= chunk)
 					deliver = true;
 
-				/* On MSG_WAITALL we must wait until all data or error arrives. */
-				else if ((flags & MSG_WAITALL) &&
-					(so_rcv.size() >= uio_resid || so_rcv.size() >= so_rcv.capacity()))
-					deliver = true;
+				
 				else {
 					/*
 					* Wait and block until (more) data comes in.
 					* NB: Drops the sockbuf lock during wait.
 					*/
-					so_rcv_lock.unlock();
+					//so_rcv_lock.unlock();
 					so_rcv.sbwait_for_read(chunk);
-					so_rcv_lock.lock();
+					//so_rcv_lock.lock();
 					continue;
 				}
+
 				if (deliver)
 				{
 					/* Fill uio until full or current end of socket buffer is reached. */
-					size_t len(std::min<size_t>(uio_resid, so_rcv.size()));
-
-					/* NB: Must unlock socket buffer as uiomove may sleep. */
-					uio += std::string(so_rcv.begin(), so_rcv.begin() + len);
-					uio_resid -= len;
-
+					//std::unique_lock<std::mutex> so_rcv_lock(so_rcv.sb_mutex);
+					auto data = boost::make_iterator_range(p, uio.end());
+					auto count = so_rcv.sbfill(data, true);
+					//uio += data;
+					//uio_resid -= data.size();
+					uio_resid -= count;
+					p += count;
+					//so_rcv.sbdrops(count);
+					//so_rcv_lock.unlock();
 					/*
 					* Remove the delivered data from the socket buffer unless we
 					* were only peeking.
 					*/
-					if (len > 0)
-						so_rcv.sbdrop(len);
-
+					//auto byte_read = so_rcv.sbdrops(data.size());
 					/*
 					* For MSG_WAITALL we may have to loop again and wait for
 					* more data to come in.
@@ -800,18 +1002,18 @@ namespace netlab
 	int L5_socket_impl::recvfrom(std::string& uio, size_t uio_resid, size_t chunk, int flags, _In_ const struct sockaddr* name, _In_ int name_len) {
 
 		bool deliver = false;
-		lock so_rcv_lock(so_rcv.sb_process_mutex);
+		//lock so_rcv_lock(so_rcv.sb_mutex);
 		
 		bool restart = true;
 		while (restart)
 		{
-			so_rcv_lock.unlock();
+			//so_rcv_lock.unlock();
 			so_rcv.sbwait_for_read(chunk);
 			
 			
 			
 			
-			so_rcv_lock.lock();
+			//so_rcv_lock.lock();
 
 			if (so_rcv.size() >= chunk) {
 				deliver = true;
@@ -820,21 +1022,23 @@ namespace netlab
 			if (deliver)
 			{
 				/* Fill uio until full or current end of socket buffer is reached. */
-				size_t len(std::min<size_t>(uio_resid, so_rcv.size()));
+				//size_t len(std::min<size_t>(uio_resid, so_rcv.size()));
 
 				/* NB: Must unlock socket buffer as uiomove may sleep. */
-				uio += std::string(so_rcv.begin(), so_rcv.begin() + len);
-				uio_resid -= len;
+				////auto data = so_rcv.sbpull(uio_resid);
+				//uio += data;
+				//auto len = data.size();
+				//uio_resid -= len;
 
 				/*
 				* Remove the delivered data from the socket buffer unless we
 				* were only peeking.
 				*/
-				if (len > 0)
+				/*if (len > 0)
 				{
-					so_rcv.sbdrop(len);
+					so_rcv.sbdrops(len);
 					break;
-				}
+				}*/
 			}	
 		}
 		return uio.size();
