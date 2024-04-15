@@ -290,7 +290,7 @@ void L3_impl::pr_input(const struct pr_input_args &args)
 	ip.ip_id = ntohs(ip.ip_id);
 	ip.ip_off = ntohs(ip.ip_off );
 
-#define NETLAB_L3_DEBUG
+
 #ifdef NETLAB_L3_DEBUG
 	print(ip, ntohs(checksum));
 #endif
