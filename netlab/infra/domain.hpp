@@ -48,6 +48,7 @@ private:
 	{
 		for (size_t i = 0; i < protosw::SWPROTO_LEN; i++) {
 			this->dom_protosw[i] = dom_protosw[i];
+			if (i < 2)
 			this->dom_protoswNPROTOSW[i] = dom_protoswNPROTOSW[i];
 		}
 	}

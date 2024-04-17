@@ -5,7 +5,6 @@
 
 
 
-
 L0_buffer::L0_buffer(class inet_os &inet, double reliability, distribution dist_delay, DIRECTION d)
 	: cable(*inet.cable()), uniform_real_reli(std::uniform_real_distribution<>()), dist_delay(dist_delay),
 	reliability((reliability >= 0 && reliability <= 1) ? reliability : 0.5), d(d)

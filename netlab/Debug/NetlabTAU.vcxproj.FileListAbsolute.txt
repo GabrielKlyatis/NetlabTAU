@@ -1,2 +1,0 @@
-C:\Users\niv\NetlabTAU\netlab\Debug\NetlabTAU.lib
-C:\Users\gabri\OneDrive\Desktop\NetlabTAU\netlab\Debug\NetlabTAU.lib

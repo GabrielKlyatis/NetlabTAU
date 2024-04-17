@@ -2,6 +2,7 @@
 #include "../L1/NIC.h"
 #include "../L3/L3.h"
 #include <Shlobj.h>
+#include <algorithm>
 
 const struct in_addr zeroin_addr;
 

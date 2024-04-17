@@ -190,7 +190,11 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	// Copy data
 	if (data_len > 0) {
 
+<<<<<<< HEAD
 		so->so_rcv.sbappend(it + sizeof(struct udpiphdr), it + sizeof(struct udpiphdr) + data_len);
+=======
+		//so->so_rcv.sbappend(it + udphlen + iphlen, it + udphlen + iphlen + data_len);
+>>>>>>> master
 		so->sorwakeup();
 		return;
 	}
@@ -219,8 +223,13 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 	 // Copy data
 	if (len > 0) {
 
+<<<<<<< HEAD
 		std::copy(so->so_snd.begin(), so->so_snd.begin() + len, it + udpiphdrlen);
 		struct L4_UDP_Impl::udpiphdr* ui = reinterpret_cast<struct L4_UDP_Impl::udpiphdr*>(&m->data()[it - m->begin()]);
+=======
+		// Copy data
+		//std::copy(so->so_snd.begin(), so->so_snd.begin() + len, it + sizeof(udphdr));
+>>>>>>> master
 
 		ui->ui_x1() = 0;
 		ui->ui_pr() = IPPROTO_UDP;
@@ -299,7 +308,7 @@ int L4_UDP_Impl::pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr
 
 			if (error = inp->in_pcbconnect(reinterpret_cast<sockaddr_in*>(const_cast<struct sockaddr*>(nam)), nam_len))
 				break;
-			dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
+			//dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
 			error = udp_output(*up);
 			break;
 		}

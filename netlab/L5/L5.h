@@ -7,24 +7,26 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <ws2tcpip.h>
-#define BOOST_DISABLE_ASSERTS
+//#define BOOST_DISABLE_ASSERTS
+//#define BOOST_CB_ENABLE_DEBUG 1
 #include <boost/circular_buffer.hpp>
 #include <condition_variable>
 #include <vector>
+#include <algorithm>
 
 enum
 {
 	SB_SIZE_SMALL = 2 * 8 * 1024,
 	SB_SIZE_DEFAULT = 8 * 8 * 1024, /*!< largest value for (unscaled) window */
-	SB_SIZE_BIG = 32 * 8 * 1024
+	SB_SIZE_BIG = 32 * 8 * 1024   
 };
 
 enum 
 { 
 	SB_SIZE = 
 	//SB_SIZE_SMALL
-	SB_SIZE_DEFAULT 
-	//SB_SIZE_BIG
+	//SB_SIZE_DEFAULT 
+	SB_SIZE_BIG
 }; /*!< Define for large buffer test */
 
 
@@ -703,7 +705,7 @@ namespace netlab
 		
 					\return	An iterator to the beginning of this range.
 				*/
-				inline const_iterator begin() const;
+				//inline const_iterator begin() const;
 
 				/*! \brief Get the maximum number of elements which can be inserted into the
 							<code>circular_buffer_space_optimized</code> without overwriting any of already stored elements.
@@ -774,7 +776,7 @@ namespace netlab
 						 this:<br><br><code>|6|7|8|9|3|4|</code><br><br>For comparison if the capacity would not be preserved the
 						 internal buffer would then result in <code>|1|2|5|6|7|8|9|3|4|</code>.
 				*/
-				void sbappend(std::vector<byte>::iterator first, std::vector<byte>::iterator last);
+				//void sbappend(std::vector<byte>::iterator first, std::vector<byte>::iterator last);
 
 				//! Remove all stored elements from the space optimized circular buffer.
 				/*!
@@ -790,7 +792,7 @@ namespace netlab
 					\par Complexity
 						Linear (in the size of the <code>circular_buffer_space_optimized</code>).
 				*/
-				void sbflush();
+				//void sbflush();
 
 				//! Remove first <code>n</code> elements (with constant complexity for scalar types).
 				/*!
@@ -813,7 +815,7 @@ namespace netlab
 					<code>\link circular_buffer::rerase(iterator, iterator) rerase(begin(), begin() + n)\endlink</code>.
 					\sa <code>notify_all()</code>, <code>sbflush()</code>,
 				*/
-				inline void sbdrop(const size_type len);
+				//inline void sbdrop(const size_type len);
 
 				/*!
 					\fn	void notify_all()
@@ -842,15 +844,65 @@ namespace netlab
 				*/
 				inline void sbwait_for_read(size_type chunk);
 
-				mutex	sb_process_mutex;   /*!< The process mutex to support proccess locks */
+				//mutex	sb_mutex;   /*!< The process mutex to support proccess locks */
 		
 
-				
+
+				//mbuf	sb_mb;		/*!< The mbuf ring buffer */
+				//mutex	sb_mutex;  /*!< The read mutex to lock */
+
+				// remove bytes from buffer
+				size_type sbdrops(size_type max_len = SB_SIZE) {
+					if (max_len == 0) return 0;
+					std::lock_guard<std::mutex> lock(sb_mutex);
+					size_type len = std::min(max_len, sb_mb.size());
+					sb_mb.erase(sb_mb.begin(), sb_mb.begin() + len);
+					return len;
+				}
+				//// pull len bytes from buffer (no len means all)
+				//std::string sbpull(size_type len = SB_SIZE) {
+				//	std::lock_guard<std::mutex> lock(sb_mutex);
+				//	len = std::min(len, sb_mb.size());
+				//	std::string data(sb_mb.begin(), sb_mb.begin() + len);
+				//	sb_mb.erase(sb_mb.begin(), sb_mb.begin() + len);
+				//	return data;
+				//}
+				// copy bytes to buffer
+				template<typename T>
+				size_type sbfill(const T& data, bool drop = false) {
+
+					//static_assert(std::is_same<decltype(/*std::begin(data)), decltype(std::end(data))>::value,
+					//	"The type does not support itera*/tion");
+					std::lock_guard<std::mutex> lock(sb_mutex);
+					size_type len = std::min(std::size(data), sb_mb.size());
+					auto start = sb_mb.begin();
+					auto end = sb_mb.begin() + len;
+					std::copy(start, end, std::begin(data));
+					if (drop)
+						sb_mb.erase(start, end);
+					return len;
+				}
+                template<typename T>
+                size_type sbappends(const T& data) {
+                    static_assert(std::is_same<decltype(std::begin(data)), decltype(std::end(data))>::value,
+                                  "The type does not support iteration");
+                    std::lock_guard<std::mutex> lock(sb_mutex);
+					size_type len = std::min(static_cast<size_type>(std::size(data)), static_cast<size_type>(sb_mb.capacity()));
+                    sb_mb.insert(sb_mb.end(), std::begin(data), std::begin(data) + len);
+                    return len;
+                }
+
+				//inline void sbwait_for_read(size_type chunk);
+				//inline void sbwait_for_write(size_type chunk);
+
+
 			private:			
-					mbuf	sb_mb;		/*!< The mbuf ring buffer */
 					cond	sb_cond;	/*!< The condition variable to wait on */
-					mutex	sb_read_mutex;  /*!< The read mutex to lock */
-					mutex	sb_write_mutex; /*!< The write mutex  to lock  */
+					
+					mutex	sb_mutex; /*!< The write mutex  to lock  */
+
+
+					mbuf	sb_mb;		/*!< The mbuf ring buffer */
 			};
 
 	/*!

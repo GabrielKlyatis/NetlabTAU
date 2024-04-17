@@ -16,3 +16,5 @@
 #include "../netlab/infra/HWAddress.hpp"
 #include "../netlab/L4/L4_UDP_Impl.hpp"
 
+#include "../netlab/L4/tcp_tahoe.h"
+#include "../netlab/L4/tcp_reno.h"
