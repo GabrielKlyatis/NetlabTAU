@@ -6,6 +6,8 @@
 [Dd]ebug10/
 [Dd]ebug_dll/
 [Rr]elease10/
+[Dd]ebug/
+[Rr]elease/
 
 # My logs
 log/
