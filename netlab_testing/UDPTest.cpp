@@ -99,58 +99,58 @@ protected:
 	}
 };
 
-TEST_F(UDPTests, emptyTest) {
-
-	//---------------------
-	// Create a SOCKET for the server to receive datagrams
-	ServerSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_server));
-}
-
-//TEST_F(UDPTests, oneWay_noArp) {
+//TEST_F(UDPTests, emptyTest) {
 //
-//	//----------------------
-//	// Insert corresponding addresses into arp cache
-//	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
-//	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-//
-//	//----------------------
+//	//---------------------
 //	// Create a SOCKET for the server to receive datagrams
 //	ServerSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_server));
-//
-//	//----------------------
-//	// The sockaddr_in structure specifies the address family,
-//	// IP address, and port for the socket that is being bound.
-//	sockaddr_in server_socket_addr;
-//	server_socket_addr.sin_family = AF_INET;
-//	server_socket_addr.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-//	server_socket_addr.sin_port = htons(8888);
-//
-//	////----------------------
-//	//// Bind the socket.
-//	ServerSocket->bind((SOCKADDR*)&server_socket_addr, sizeof(service));
-//
-//	////----------------------
-//	//// Create a SOCKET for the client
-//	ClientSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_client));
-//
-//	//----------------------
-//	// The sockaddr_in structure specifies the address family,
-//	// IP address, and port for the socket that is being bound.
-//	sockaddr_in server_socket_addr_for_client;
-//	server_socket_addr_for_client.sin_family = AF_INET;
-//	server_socket_addr_for_client.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-//	server_socket_addr_for_client.sin_port = htons(8888);
-//
-//	std::string send_msg_client;
-//	send_msg_client = "Client: Hi, I am Client!";
-//	std::string recv_msg;
-//	recv_msg = "";
-//
-//	ClientSocket->sendto(send_msg_client, send_msg_client.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
-//	ServerSocket->recvfrom(recv_msg, size, 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
-//
-//	std::cout << recv_msg << std::endl;
 //}
+
+TEST_F(UDPTests, oneWay_noArp) {
+
+	//----------------------
+	// Insert corresponding addresses into arp cache
+	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
+	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+
+	//----------------------
+	// Create a SOCKET for the server to receive datagrams
+	ServerSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_server));
+
+	//----------------------
+	// The sockaddr_in structure specifies the address family,
+	// IP address, and port for the socket that is being bound.
+	sockaddr_in server_socket_addr;
+	server_socket_addr.sin_family = AF_INET;
+	server_socket_addr.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
+	server_socket_addr.sin_port = htons(8888);
+
+	////----------------------
+	//// Bind the socket.
+	ServerSocket->bind((SOCKADDR*)&server_socket_addr, sizeof(service));
+
+	////----------------------
+	//// Create a SOCKET for the client
+	ClientSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_DGRAM, IPPROTO_UDP, inet_client));
+
+	//----------------------
+	// The sockaddr_in structure specifies the address family,
+	// IP address, and port for the socket that is being bound.
+	sockaddr_in server_socket_addr_for_client;
+	server_socket_addr_for_client.sin_family = AF_INET;
+	server_socket_addr_for_client.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
+	server_socket_addr_for_client.sin_port = htons(8888);
+
+	std::string send_msg_client;
+	send_msg_client = "Client: Hi, I am Client!";
+	std::string recv_msg;
+	recv_msg = "";
+
+	ClientSocket->sendto(send_msg_client, send_msg_client.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
+	ServerSocket->recvfrom(recv_msg, size, 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
+
+	std::cout << recv_msg << std::endl;
+}
 
 //TEST_F(UDPTests, oneWay_Arp) {
 //
@@ -236,10 +236,8 @@ TEST_F(UDPTests, emptyTest) {
 //	ServerSocket->recvfrom(recv_msg, size, 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
 //
 //	std::cout <<  recv_msg << std::endl;
-//
 //}
-//
-//
+
 //TEST_F(UDPTests, bigPacket_Arp) {
 //
 //	//----------------------
@@ -278,7 +276,6 @@ TEST_F(UDPTests, emptyTest) {
 //	ServerSocket->recvfrom(recv_msg, size, 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
 //
 //	std::cout << recv_msg << std::endl;
-//
 //}
 
 //TEST_F(UDPTests, twoWay_noArp) {
@@ -350,8 +347,8 @@ TEST_F(UDPTests, emptyTest) {
 //	ClientSocket->recvfrom(recv_msg, size, 0, 0, (SOCKADDR*)&client_socket_addr_for_server, sizeof(service));
 //
 //	std::cout << recv_msg << std::endl;
-//
 //}
+
 //TEST_F(UDPTests, twoWay_Arp) {
 //
 //	//----------------------
@@ -416,5 +413,4 @@ TEST_F(UDPTests, emptyTest) {
 //	ClientSocket->recvfrom(recv_msg, size, 0, 0, (SOCKADDR*)&client_socket_addr_for_server, sizeof(service));
 //
 //	std::cout << recv_msg << std::endl;
-//
 //}

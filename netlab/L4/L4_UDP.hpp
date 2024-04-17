@@ -88,7 +88,6 @@ public:
 	virtual int pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr<std::vector<byte>>& m,
 		struct sockaddr* nam, size_t nam_len, std::shared_ptr<std::vector<byte>>& control) = 0;
 
-
 private:
 
 	/* Unused - protosw virtual functions */
