@@ -433,50 +433,70 @@ void test3(size_t size = 32, size_t num = 5)
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
+void handleConnections(SOCKET server_socket, size_t expected_bytes) {
+	struct sockaddr_in client_addr;
+	int client_addr_len = sizeof(client_addr);
+	int total = 0;
+	char* a = new char[expected_bytes];
+	std::fill(a, a + expected_bytes, 'T');
+
+
+	while (true) {
+		// Accept incoming connections
+		SOCKET client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len);
+		if (client_socket == INVALID_SOCKET) {
+			std::cerr << "Accept failed: " << WSAGetLastError() << std::endl;
+			return;
+		}
+
+		std::cout << "Connection accepted from " << inet_ntoa(client_addr.sin_addr) << ":" << ntohs(client_addr.sin_port) << std::endl;
+
+		// Receive data from the client
+		char* buffer = new char[expected_bytes];
+		memset(buffer, 0, expected_bytes); // Clear the buffer (optional
+		int bytes_received;
+		while ((bytes_received = recv(client_socket, buffer + total, sizeof(buffer), 0)) > 0) {
+			// Process received data (here, we just print it)
+			//buffer[bytes_received] = '\0'; // Null-terminate the received data
+			//std::cout << "Received from client " << inet_ntoa(client_addr.sin_addr) << ":" << ntohs(client_addr.sin_port) << ": " << buffer << std::endl;
+			total +=bytes_received;
+			if (total >= expected_bytes)
+			{
+				break;
+			}
+		}
+		
+		std::cout << "Total bytes received: " << total << endl;	
+		auto c = memcmp(buffer, a, expected_bytes);
+		if (memcmp(buffer, a, expected_bytes) == 0)
+		{
+			std::cout << "Data received successfully" << std::endl;
+		}
+		else
+		{
+			std::cerr << "Data received is corrupted" << std::endl;
+		}
+
+		// Check if recv failed
+		if (bytes_received == SOCKET_ERROR) {
+			std::cerr << "Receive failed: " << WSAGetLastError() << std::endl;
+		}
+
+		// Close client socket
+		closesocket(client_socket);
+		delete buffer;
+		delete a;
+		break;
+	}
+}
+
 void test4(size_t size = 256) 
 {
 	size *= 1000;
 	size *= 1000;
 	/* Declaring the server */
-	inet_os inet_server = inet_os();
+	//in//et_os inet_server = inet_os();
 
-	/* Declaring the server's NIC */
-	NIC nic_server(
-		inet_server,			// Binding this NIC to our server
-		"10.0.0.10",			// Giving it an IP address
-		"aa:aa:aa:aa:aa:aa",	// Givinig it a MAC address
-		nullptr,				// Using my real machine default gateway address.
-		nullptr,				// Using my real machine broadcast address.
-		true,					// Setting the NIC to be in promisc mode
-		""); // Declaring a filter to make a cleaner testing.
-
-	/* Declaring the server's datalink using my L2_impl */
-	L2_impl datalink_server(inet_server);
-
-	/* Declaring the server's arp using my L2_ARP_impl */
-	L2_ARP_impl arp_server(
-		inet_server,	// Binding this NIC to our server
-		10,			// arp_maxtries parameter
-		10000);		// arpt_down parameter
-
-	/* Declaring protocols is a bit different: */
-	inet_server.inetsw(
-		new L3_impl(inet_server, 0, 0, 0),	// A default IP layer is defined, using my L3_impl, as in a real BSD system 
-		protosw::SWPROTO_IP);				// I place the layer in the appropriate place, though any place should do. 
-	inet_server.inetsw(
-		new tcp_reno(inet_server),		// Defining the TCP Layer using my L4_TCP_impl
-		protosw::SWPROTO_TCP);				// Placing it in the appropriate place.
-	inet_server.inetsw(
-		new L3_impl(						// The actual IP layer we will use.
-		inet_server,						// Binding this NIC to our server
-		SOCK_RAW,							// The protocol type
-		IPPROTO_RAW,						// The protocol
-		protosw::PR_ATOMIC | protosw::PR_ADDR),	// Protocol flags
-		protosw::SWPROTO_IP_RAW);			// Placing it in the appropriate place.
-
-	inet_server.domaininit();	// This calls each pr_init() for each defined protocol.
-
-	arp_server.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac()); // Inserting my address
 
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
@@ -497,15 +517,15 @@ void test4(size_t size = 256)
 	inet_client.domaininit();
 	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // My
 
-	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac()); // server
-	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
-	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
+	//arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac()); // server
+	//arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
+	//arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac()); // client
 
 
 	
 
 	/* Spawning both sniffers, 0U means continue forever */
-	inet_server.connect();
+	//inet_server.connect();
 	inet_client.connect();
 
 	// The socket address to be passed to bind
@@ -514,24 +534,24 @@ void test4(size_t size = 256)
 	//----------------------
 	// Create a SOCKET for listening for 
 	// incoming connection requests
-	netlab::L5_socket_impl *ListenSocket(new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_server));
+	//netlab::L5_socket_impl *ListenSocket(new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_server));
 
 	//----------------------
 	// The sockaddr_in structure specifies the address family,
 	// IP address, and port for the socket that is being bound.
-	service.sin_family = AF_INET;
-	service.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-	service.sin_port = htons(8888);
+	//service.sin_family = AF_INET;
+	//service.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
+	//service.sin_port = htons(8888);
 
 	//----------------------
 	// Bind the socket.
-	ListenSocket->bind((SOCKADDR *)&service, sizeof(service));
+	//ListenSocket->bind((SOCKADDR *)&service, sizeof(service));
 
 	//----------------------
 	// Listen for incoming connection requests 
 	// on the created socket
 	// 
-	ListenSocket->listen(5);
+	//ListenSocket->listen(5);
 
 	//----------------------
 	// Create a SOCKET for connecting to server
@@ -542,9 +562,59 @@ void test4(size_t size = 256)
 	// IP address, and port of the server to be connected to.
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
+	clientService.sin_addr.s_addr = inet_addr("192.168.1.239");
 	//inet_pton(AF_INET, "8.8.8.8", &clientService.sin_addr);
 	clientService.sin_port = htons(8888);
+
+
+	WSADATA wsaData;
+	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (result != 0) {
+		std::cerr << "WSAStartup failed: " << result << std::endl;
+		//return 1;
+	}
+
+	// Create a TCP socket
+	SOCKET server_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (server_socket == INVALID_SOCKET) {
+		std::cerr << "Socket creation failed: " << WSAGetLastError() << std::endl;
+		WSACleanup();
+		//return 1;
+	}
+
+	// Set up the server address structure
+	struct sockaddr_in server_addr;
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = INADDR_ANY; // Listen on all available interfaces
+	server_addr.sin_port = htons(8888);       // Port number
+	
+	// Bind the socket to the server address
+	if (::bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) == SOCKET_ERROR) {
+		std::cerr << "Bind failed: " << WSAGetLastError() << std::endl;
+		closesocket(server_socket);
+		WSACleanup();
+		//return 1;
+	}
+
+	// Listen for incoming connections
+	if (listen(server_socket, SOMAXCONN) == SOCKET_ERROR) { // Allow up to SOMAXCONN pending connections in the queue
+		std::cerr << "Listen failed: " << WSAGetLastError() << std::endl;
+		closesocket(server_socket);
+		WSACleanup();
+		//return 1;
+	}
+
+	std::cout << "Server listening on port 8888..." << std::endl;
+
+	// Create a thread to handle incoming connections
+	std::thread connectionThread(handleConnections, server_socket, size);
+
+	// Perform other tasks in the main thread
+	// For example, you can wait for user input or do other processing
+
+
+
+
 
 	//----------------------
 	// Connect to server.
@@ -556,7 +626,7 @@ void test4(size_t size = 256)
 
 	//----------------------
 	// Accept the connection.
-	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
+	//AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
 	//inet_client.cable()->set_buf(new L0_buffer(inet_client, 0.9, L0_buffer::uniform_real_distribution_args(0.05, 0.1), L0_buffer::OUTGOING));
 	//inet_server.cable()->set_buf(new L0_buffer(inet_server, 1, L0_buffer::uniform_real_distribution_args(0.05, 0.1), L0_buffer::OUTGOING));
@@ -571,20 +641,26 @@ void test4(size_t size = 256)
 	//ConnectSocket->send(send_msg, size, 512);
 	std::string ret("");
 
-	int a = AcceptSocket->recv(ret, size,3);
+	//int a = AcceptSocket->recv(ret, size,3);
 	//std::cout << a << ret << std::endl;
+		// Join the connection thread to wait for it to finish
+	connectionThread.join();
+
+	// Close server socket
+	closesocket(server_socket);
+	WSACleanup();
 
 	std::cout << ret.size() << std::endl;
 //	std::this_thread::sleep_for(std::chrono::seconds(2));
 	//std::cout << "fin?" << std::endl;
 	ConnectSocket->shutdown(SD_SEND);
-	ListenSocket->shutdown(SD_RECEIVE);
-	std::this_thread::sleep_for(std::chrono::seconds(2));
+	//ListenSocket->shutdown(SD_RECEIVE);
+	std::this_thread::sleep_for(std::chrono::seconds(5));
 	inet_client.stop_fasttimo();
 	inet_client.stop_slowtimo();
 
-	inet_server.stop_fasttimo();
-	inet_server.stop_slowtimo();
+	//inet_server.stop_fasttimo();
+	//inet_server.stop_slowtimo();
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 	//std::this_thread::sleep_for(std::chrono::seconds(10));
 	
