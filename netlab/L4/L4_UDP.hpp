@@ -25,7 +25,7 @@ public:
 		\brief	UDP pseudo header: UDP + IP header, after ip options removed.
 	*/
 
-	struct pseudo_header;
+	struct udpiphdr;
 
 	/*!
 		\fn	L4_UDP::L4_UDP(class inet_os &inet)
@@ -88,7 +88,6 @@ public:
 	virtual int pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr<std::vector<byte>>& m,
 		struct sockaddr* nam, size_t nam_len, std::shared_ptr<std::vector<byte>>& control) = 0;
 
-
 private:
 
 	/* Unused - protosw virtual functions */
@@ -130,7 +129,7 @@ private:
 
 	udpcb(socket& so, inpcb_impl& head);
 
-	~udpcb() {};
+	~udpcb();
 
 	/*!
 		\fn	static inline udpcb* L4_UDP::udpcb::intoudpcb(inpcb_impl *ip)
@@ -182,7 +181,7 @@ private:
 	void udp_template();
 
 
-	struct	pseudo_header *udp_ip_template;	/*!< skeletal packet for transmit */
+	struct	udpiphdr *udp_ip_template;	/*!< skeletal packet for transmit */
 	class	inpcb_impl *udp_inpcb;	/*!< back pointer to internet pcb */
 
 	class udpcb_logger {

@@ -26,6 +26,12 @@ L4_UDP::udpcb::udpcb(socket& so, inpcb_impl& head)
 	: inpcb_impl(so, head), udp_ip_template(nullptr), udp_inpcb(dynamic_cast<inpcb_impl*>(this)),
 	log(udpcb_logger()) { }
 
+L4_UDP::udpcb::~udpcb() {
+
+	if (this != dynamic_cast<class L4_UDP::udpcb*>(udp_inpcb))
+		delete udp_inpcb;
+}
+
 /************************************************************************/
 /*                         L4_UDP_Impl::udphdr                          */
 /************************************************************************/
@@ -33,25 +39,71 @@ L4_UDP::udpcb::udpcb(socket& so, inpcb_impl& head)
 std::ostream& operator<<(std::ostream& out, const struct L4_UDP_Impl::udphdr& udp) {
 
 	std::ios::fmtflags f(out.flags());
-	out << "< UDP (" << "SourcePort = " << std::dec << ntohs(static_cast<uint16_t>(udp.src_port_number)) <<
-		" , DestinationPort = " << std::dec << ntohs(static_cast<uint16_t>(udp.dst_port_number)) <<
-		" , HeaderLength = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint16_t>(udp.udp_datagram_length) <<
-		" , Checksum = 0x" << std::setfill('0') << std::setw(3) << std::hex << static_cast<uint16_t>(udp.udp_checksum) <<
+	out << "< UDP (" << "SourcePort = " << std::dec << ntohs(static_cast<uint16_t>(udp.uh_sport)) <<
+		" , DestinationPort = " << std::dec << ntohs(static_cast<uint16_t>(udp.uh_dport)) <<
+		" , HeaderLength = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint16_t>(udp.uh_ulen) <<
+		" , Checksum = 0x" << std::setfill('0') << std::setw(3) << std::hex << static_cast<uint16_t>(udp.uh_sum) <<
 		" )";
 	out.flags(f);
 	return out;
 }
 
 /************************************************************************/
-/*                         L4_UDP_Impl::pseudo_header                   */
+/*                    L4_UDP_Impl::udpiphdr::ipovly                     */
 /************************************************************************/
 
-L4_UDP_Impl::pseudo_header::pseudo_header(const in_addr& ip_src_addr, const in_addr& ip_dst_addr, const u_char& protocol, const short& udp_length) 
-	: ip_src_addr(ip_src_addr), ip_dst_addr(ip_dst_addr), protocol(protocol), udp_length(udp_length) { } 
+L4_UDP_Impl::udpiphdr::ipovly::ipovly()
+	: ih_pr(0), ih_len(0), ih_src(struct in_addr()), ih_dst(struct in_addr()), ih_x1(0x00), ih_next(nullptr), ih_prev(nullptr) { }
 
+L4_UDP_Impl::udpiphdr::ipovly::ipovly(const u_char& ih_pr, const short& ih_len, const in_addr& ih_src, const in_addr& ih_dst)
+	: ih_pr(ih_pr), ih_len(ih_len), ih_src(ih_src), ih_dst(ih_dst), ih_x1(0x00), ih_next(nullptr), ih_prev(nullptr) { }
+
+std::ostream& operator<<(std::ostream& out, const struct L4_UDP_Impl::udpiphdr::ipovly& ip) {
+	std::ios::fmtflags f(out.flags());
+	out << "< Pseudo IP (" << static_cast<uint32_t>(sizeof(struct L4_UDP_Impl::udpiphdr::ipovly)) <<
+		" bytes) :: Unsused = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint8_t>(ip.ih_x1) <<
+		" , Protocol = 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<uint8_t>(ip.ih_pr) <<
+		" , Protocol Length = " << std::dec << htons(static_cast<uint16_t>(ip.ih_len)) <<
+		" , SourceIP = " << inet_ntoa(ip.ih_src);
+	out << " , DestinationIP = " << inet_ntoa(ip.ih_dst) <<
+		" , >";
+	out.flags(f);
+	return out;
+}
+
+/************************************************************************/
+/*                         L4_UDP_Impl::udpiphdr                        */
+/************************************************************************/
+
+L4_UDP_Impl::udpiphdr::udpiphdr() : ui_i(ipovly()), ui_u(udphdr()) { }
+
+std::ostream& operator<<(std::ostream& out, const struct L4_UDP_Impl::udpiphdr& ui)
+{
+	return out << ui.ui_i << ui.ui_u;
+}
+
+inline void L4_UDP_Impl::udpiphdr::insque(struct L4_UDP_Impl::udpiphdr& head)
+{
+	ui_next(head.ui_next());
+	head.ui_next(this);
+	ui_prev(&head);
+	if (ui_next())
+		ui_next()->ui_prev(this);
+}
+
+inline void L4_UDP_Impl::udpiphdr::remque()
+{
+	if (ui_next())
+		ui_next()->ui_prev(ui_prev());
+	if (ui_prev()) {
+		ui_prev()->ui_next(ui_next());
+		ui_prev(nullptr);
+	}
+}
 
 
 /************************** UTILS *********************************/
+
 uint16_t ones_complement_add(uint16_t a, uint16_t b) {
 	uint32_t sum = a + b; // Use a larger type to capture potential carry
 	// Handle end-around carry
@@ -61,46 +113,12 @@ uint16_t ones_complement_add(uint16_t a, uint16_t b) {
 	return static_cast<uint16_t>(sum); // Convert back to 16 bits
 }
 
-uint16_t L4_UDP_Impl::calculate_checksum(pseudo_header& udp_pseudo_header, std::shared_ptr<std::vector<byte>>& m) {
-
-	uint16_t checksum = 0;
-	uint8_t* byte_ptr = reinterpret_cast<uint8_t*>(&udp_pseudo_header);
-	uint16_t udp_pseudo_header_length = sizeof(udp_pseudo_header);
-
-	for (size_t i = 0; i < udp_pseudo_header_length; i += 2) {
-
-		uint16_t word = 0;
-		word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
-
-		checksum = ones_complement_add(checksum, word);
-	}
-
-	byte_ptr = reinterpret_cast<uint8_t*>(&(*(m->begin() + sizeof(L2::ether_header) + sizeof(L3::iphdr))));
-
-	auto udp_length_in_host = ntohs(udp_pseudo_header.udp_length);
-
-	for (size_t i = 0; i < udp_length_in_host; i += 2) {
-
-		uint16_t word = 0;
-		if ((udp_length_in_host % 2) != 0) {
-			word = (byte_ptr[i] << 8);
-		}
-		else {
-			word = (byte_ptr[i] << 8) + byte_ptr[i + 1];
-		}
-		checksum = ones_complement_add(checksum, word);
-	}
-
-	return ~checksum;
-}
-
-
 /************************************************************************/
 /*                         L4_UDP_Impl			                        */
 /************************************************************************/
 
 L4_UDP_Impl::L4_UDP_Impl(class inet_os &inet)
-	: L4_UDP(inet), ucb(inet), udp_last_inpcb(nullptr) {}
+	: L4_UDP(inet), udb(inet), udp_last_inpcb(nullptr) {}
 
 L4_UDP_Impl::~L4_UDP_Impl() {
 	if (udp_last_inpcb)
@@ -108,9 +126,10 @@ L4_UDP_Impl::~L4_UDP_Impl() {
 }
 
 void L4_UDP_Impl::pr_init() {
-	ucb.inp_next = ucb.inp_prev = &ucb;
+
+	udb.inp_next = udb.inp_prev = &udb;
 	udp_last_inpcb = nullptr;
-	udp_last_inpcb = dynamic_cast<class inpcb_impl*>(&ucb);
+	udp_last_inpcb = dynamic_cast<class inpcb_impl*>(&udb);
 }
 
 
@@ -118,43 +137,40 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	
 	std::shared_ptr<std::vector<byte>>& m(args.m);
 	std::vector<byte>::iterator& it(args.it);
+	class inpcb_impl* inp(nullptr);
 	const int& iphlen(args.iphlen);
-	const int& udphlen(sizeof(udphdr));
+
+	uint16_t udpiphdrlen(sizeof(udphdr) + sizeof(L3::iphdr));
 	
+	struct L4_UDP_Impl::udpiphdr* ui(reinterpret_cast<struct L4_UDP_Impl::udpiphdr*>(&m->data()[it - m->begin()]));
+
 	// Strip options if needed.
 	if (iphlen > sizeof(struct L3::iphdr))
 		L3_impl::ip_stripoptions(m, it);
 
-	if (m->end() - it < (iphlen + sizeof(udphdr))) { // why??
+	if (m->end() - it < sizeof(struct udpiphdr)) {
 		return drop(nullptr, 0);
 	}
 
-	// Get IP header from buffer
-	struct L3::iphdr* ip_header = reinterpret_cast<struct L3::iphdr*>(&(*it));
+	int len(reinterpret_cast<struct L3::iphdr*>(ui)->ip_len);
+	int ui_len(len - sizeof(struct L3::iphdr));
 
-	// Get UDP header from buffer
-	struct udphdr* udp_header = reinterpret_cast<struct udphdr*>(&(*(it+iphlen)));
+	ui->ui_next(0);
+	ui->ui_prev(0);
+	ui->ui_x1() = 0;
+	ui->ui_len() = htons((uint16_t)ui_len);
 
-	// Calculate UDP pseudo header and checksum 
-	struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
-
-	int len(sizeof(struct L3::iphdr) + ip_header->ip_len);
-	
-	uint16_t udp_checksum = calculate_checksum(udp_pseudo_header, m);
-
-	if (udp_checksum != 0) {
-		return drop(nullptr, 0); // TODO
-	}
-
-	class inpcb_impl* inp(nullptr);
+	u_short checksum(ui->ui_sum());
+	if (((ui->ui_sum() = 0) = checksum ^ inet.in_cksum(&m->data()[it - m->begin()], len)) != 0)
+		return drop(nullptr, 0);
 	
 	inp = udp_last_inpcb;
 
-	if ((inp->inp_lport() != udp_header->dst_port_number ||
-		inp->inp_fport() != udp_header->src_port_number ||
-		inp->inp_faddr().s_addr != ip_header->ip_src.s_addr ||
-		inp->inp_laddr().s_addr != ip_header->ip_dst.s_addr) &&
-		(inp = ucb.in_pcblookup(ip_header->ip_src, udp_header->src_port_number, ip_header->ip_dst, udp_header->dst_port_number, inpcb::INPLOOKUP_WILDCARD))) {
+	if ((inp->inp_lport() != ui->ui_dport() ||
+		inp->inp_fport() != ui->ui_sport() ||
+		inp->inp_faddr().s_addr != ui->ui_src().s_addr ||
+		inp->inp_laddr().s_addr != ui->ui_dst().s_addr) &&
+		(inp = udb.in_pcblookup(ui->ui_src(), ui->ui_sport(), ui->ui_dst(), ui->ui_dport(), inpcb::INPLOOKUP_WILDCARD))) {
 
 		udp_last_inpcb = inp;
 	}
@@ -167,15 +183,14 @@ void L4_UDP_Impl::pr_input(const struct pr_input_args& args) {
 	socket* so(dynamic_cast<socket*>(up->inp_socket));
 
 	up = L4_UDP::udpcb::sotoudpcb(so);
-	up->inp_laddr() = ip_header->ip_dst;
-	up->inp_lport() = udp_header->src_port_number;
+	up->inp_laddr() = ui->ui_dst();
 
-	long data_len = m->end() - it - udphlen - iphlen;
+	long data_len = m->end() - it - sizeof(struct udpiphdr);
 
 	// Copy data
 	if (data_len > 0) {
 
-		//so->so_rcv.sbappend(it + udphlen + iphlen, it + udphlen + iphlen + data_len);
+		so->so_rcv.sbappend(it + sizeof(struct udpiphdr), it + sizeof(struct udpiphdr) + data_len);
 		so->sorwakeup();
 		return;
 	}
@@ -188,52 +203,49 @@ int L4_UDP_Impl::udp_output(L4_UDP::udpcb& up) {
 
 	long len(so->so_snd.size());
 
-	uint16_t hdrlen(sizeof(udphdr) + sizeof(L3::iphdr));
+	uint16_t udpiphdrlen(sizeof(udphdr) + sizeof(L3::iphdr));
 
-	std::shared_ptr<std::vector<byte>> m(new std::vector<byte>(hdrlen + sizeof(struct L2::ether_header) + len));
+	std::shared_ptr<std::vector<byte>> m(new std::vector<byte>(udpiphdrlen + sizeof(struct L2::ether_header) + len));
 	if (m == nullptr)
 		return out(up, ENOBUFS);
 
-	std::vector<byte>::iterator it(m->begin() + sizeof(struct L2::ether_header) + sizeof(L3::iphdr));
+	std::vector<byte>::iterator it(m->begin() + sizeof(struct L2::ether_header));
 
+	/*
+	 * Fill in mbuf with extended UDP header
+	 * and addresses and length put into network format.
+	 */
+
+	 // Copy data
 	if (len > 0) {
 
-		// Copy data
-		//std::copy(so->so_snd.begin(), so->so_snd.begin() + len, it + sizeof(udphdr));
+		std::copy(so->so_snd.begin(), so->so_snd.begin() + len, it + udpiphdrlen);
+		struct L4_UDP_Impl::udpiphdr* ui = reinterpret_cast<struct L4_UDP_Impl::udpiphdr*>(&m->data()[it - m->begin()]);
 
-		// Create udp header
-		struct udphdr* udp_header = reinterpret_cast<struct udphdr*>(&(*it));
+		ui->ui_x1() = 0;
+		ui->ui_pr() = IPPROTO_UDP;
+		ui->ui_len() = htons((uint16_t)(len + sizeof(udphdr)));
+		ui->ui_src() = so->so_pcb->inp_laddr();
+		ui->ui_dst() = so->so_pcb->inp_faddr();
+		ui->ui_sport() = so->so_pcb->inp_lport();
+		ui->ui_dport() = so->so_pcb->inp_fport();
+		ui->ui_ulen() = ui->ui_len();
+		ui->ui_sum() = 0;
+		ui->ui_sum() = inet.in_cksum(&m->data()[it - m->begin()], static_cast<int>(udpiphdrlen + len));
 
-		// Update header
-		udp_header->dst_port_number = so->so_pcb->inp_fport();
-		udp_header->src_port_number = so->so_pcb->inp_lport();
-		udp_header->udp_datagram_length = htons((uint16_t)(len + sizeof(udphdr)));
-
-		// Create atrophied IP header with only src and dst IP addresses
-
-		struct L3::iphdr* ip_header = reinterpret_cast<struct L3::iphdr*> (&(*(it - sizeof(L3::iphdr))));
-
-		ip_header->ip_src = so->so_pcb->inp_laddr();
-		ip_header->ip_dst = so->so_pcb->inp_faddr();
-		ip_header->ip_len = len + hdrlen;
-		ip_header->ip_ttl = 99;
-		ip_header->ip_p = IPPROTO_UDP;
-
-		// Calculate UDP pseudo header and checksum 
-
-		struct pseudo_header udp_pseudo_header(ip_header->ip_src, ip_header->ip_dst, IPPROTO_UDP, udp_header->udp_datagram_length);
-		udp_header->udp_checksum = htons(calculate_checksum(udp_pseudo_header, m));
-
+		reinterpret_cast<struct L3::iphdr*>(ui)->ip_len = static_cast<short>(udpiphdrlen + len);
+		reinterpret_cast<struct L3::iphdr*>(ui)->ip_ttl = up.udp_inpcb->inp_ip.ip_ttl;	/* XXX */
+		reinterpret_cast<struct L3::iphdr*>(ui)->ip_tos = up.udp_inpcb->inp_ip.ip_tos;	/* XXX */
+		
 		// Send encapsualted result with udp header to IP layer
-
 		int error(
 			inet.inetsw(protosw::SWPROTO_IP_RAW)->pr_output(*dynamic_cast<const struct pr_output_args*>(
-				&L3_impl::ip_output_args(m, it - sizeof(L3::iphdr), up.udp_inpcb->inp_options, &up.udp_inpcb->inp_route, so->so_options & SO_DONTROUTE, nullptr)
+				&L3_impl::ip_output_args(m, it, up.udp_inpcb->inp_options, &up.udp_inpcb->inp_route, so->so_options & SO_DONTROUTE, nullptr)
 				)));
 		if (error)
 			return out(up, error);
-
 	}
+
 	return 0;
 }
 
@@ -284,9 +296,10 @@ int L4_UDP_Impl::pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr
 			if (inp->inp_lport() == 0)
 				if (error = inp->in_pcbbind(nullptr, 0))
 					break;
+
 			if (error = inp->in_pcbconnect(reinterpret_cast<sockaddr_in*>(const_cast<struct sockaddr*>(nam)), nam_len))
 				break;
-			//dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
+			dynamic_cast<socket*>(so)->so_snd.sbappend(m->begin(), m->end());
 			error = udp_output(*up);
 			break;
 		}
@@ -335,7 +348,7 @@ int L4_UDP_Impl::udp_attach(socket& so)
 	 */
 
 	
-	class L4_UDP::udpcb* up(new L4_UDP::udpcb(so, ucb));
+	class L4_UDP::udpcb* up(new L4_UDP::udpcb(so, udb));
 	//up->seg_next = tp->seg_prev = reinterpret_cast<struct L4_UDP::tcpiphdr*>(up);
 	if (up->udp_inpcb == nullptr)
 		up->udp_inpcb = dynamic_cast<class inpcb_impl*>(up);
