@@ -8,11 +8,6 @@
 #include "BaseTest.h"
 #include "pch.h"
 
-/******************************/
-/* System socket test switch */
-bool system_socket_test = false;
-/******************************/
-
 class UDP_Tests : public test_base {
 
 protected:
@@ -27,11 +22,7 @@ protected:
 
 		int receive_result(0);
 
-		//----------------------
-		// Insert corresponding addresses into arp cache
-		arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
-		arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-
+		sockaddr_in service;
 		service.sin_family = AF_INET;
 		service.sin_addr.s_addr = inet_addr("10.100.102.3");
 		service.sin_port = htons(8888);
@@ -72,7 +63,7 @@ protected:
 		recv_msg = "";
 		std::string recv_msg_system_socket;
 		recv_msg = "";
-
+		
 		ClientSocket->sendto(send_msg_client, send_msg_client.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
 		ServerSocket->recvfrom(recv_msg, send_msg_client.size(), 0, 0, (SOCKADDR*)&server_socket_addr_for_client, sizeof(service));
 		receive_result = recvfrom(server_socket, &recv_msg_system_socket[0], send_msg_client.size(), 0, (SOCKADDR*)&server_socket_addr_for_client, &sender_addr_size);
