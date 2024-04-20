@@ -2276,6 +2276,7 @@ int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool senda
 	reinterpret_cast<struct L3::iphdr *>(ti)->ip_len = static_cast<short>(hdrlen + len);
 	reinterpret_cast<struct L3::iphdr *>(ti)->ip_ttl = tp.t_inpcb->inp_ip.ip_ttl;	/* XXX */
 	reinterpret_cast<struct L3::iphdr *>(ti)->ip_tos = tp.t_inpcb->inp_ip.ip_tos;	/* XXX */
+	reinterpret_cast<struct L3::iphdr*>(ti)->ip_off = 0x4000;
 
 	/*
 	*	Pass datagram to IP:

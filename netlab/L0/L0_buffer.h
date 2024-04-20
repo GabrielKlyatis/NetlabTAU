@@ -12,8 +12,8 @@
 \def	NETLAB_L3_L0_buffer_DEBUG
 Define in order to printout the L3 packets for debug
 */
-#define NETLAB_L0_DROP_DEBUG
-#define NETLAB_L0_DELAY_DEBUG
+//#define NETLAB_L0_DROP_DEBUG
+//#define NETLAB_L0_DELAY_DEBUG
 
 #include <random>
 #include <chrono>
