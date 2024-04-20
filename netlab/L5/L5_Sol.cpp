@@ -1001,44 +1001,38 @@ namespace netlab
 
 	int L5_socket_impl::recvfrom(std::string& uio, size_t uio_resid, size_t chunk, int flags, _In_ const struct sockaddr* name, _In_ int name_len) {
 
+		uio.resize(uio_resid);
+		auto p = uio.begin();
+
 		bool deliver = false;
-		//lock so_rcv_lock(so_rcv.sb_mutex);
 		
 		bool restart = true;
 		while (restart)
-		{
-			//so_rcv_lock.unlock();
-			so_rcv.sbwait_for_read(chunk);
-			
-			
-			
-			
-			//so_rcv_lock.lock();
-
+		{	
+			bool deliver(false);
 			if (so_rcv.size() >= chunk) {
 				deliver = true;
+			}
+			else {
+				so_rcv.sbwait_for_read(chunk);
+				continue;
 			}
 
 			if (deliver)
 			{
 				/* Fill uio until full or current end of socket buffer is reached. */
-				//size_t len(std::min<size_t>(uio_resid, so_rcv.size()));
+					//std::unique_lock<std::mutex> so_rcv_lock(so_rcv.sb_mutex);
+				
+				auto data = boost::make_iterator_range(p, uio.end());
+				auto count = so_rcv.sbfill(data, true);
 
-				/* NB: Must unlock socket buffer as uiomove may sleep. */
-				////auto data = so_rcv.sbpull(uio_resid);
-				//uio += data;
-				//auto len = data.size();
-				//uio_resid -= len;
+				uio_resid -= count;
+				p += count;
 
-				/*
-				* Remove the delivered data from the socket buffer unless we
-				* were only peeking.
-				*/
-				/*if (len > 0)
-				{
-					so_rcv.sbdrops(len);
-					break;
-				}*/
+				if (uio_resid > 0) {
+					continue;
+				}
+				break;
 			}	
 		}
 		return uio.size();

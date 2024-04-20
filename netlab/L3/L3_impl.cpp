@@ -1171,8 +1171,6 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 	* if the packet was previously fragmented,
 	* but it's not worth the time; just let them time out.)
 	*/
-	//remove
-	ip.ip_off = iphdr::IP_DF;
 
 	// check if dont fragment bit is on
 
