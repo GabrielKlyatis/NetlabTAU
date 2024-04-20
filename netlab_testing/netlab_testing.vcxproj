@@ -116,7 +116,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="BaseTest.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
