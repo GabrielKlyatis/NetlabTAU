@@ -27,5 +27,3 @@
 #include <pthread.h>
 #include <thread>
 #include <chrono>
-
-void handleConnections(SOCKET server_socket, size_t expected_bytes);
