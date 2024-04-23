@@ -6,6 +6,7 @@
 #include "../L2/L2.h"
 #include "../L3/L3.h"
 #include "../infra/pcb.h"
+#include "boost/range.hpp"
 
 class L4_UDP : public protosw {
 public:

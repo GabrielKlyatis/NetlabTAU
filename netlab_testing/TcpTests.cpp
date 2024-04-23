@@ -18,6 +18,24 @@ enum tcp_flavor
 	TCP_RENO
 };
 
+std::string get_my_ip() {
+	char ac[80];
+	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
+		std::cerr << "Error " << WSAGetLastError() << " when getting local host name." << std::endl;
+		return "";
+	}
+	struct hostent* phe = gethostbyname(ac);
+	if (phe == 0) {
+		std::cerr << "Bad host lookup." << std::endl;
+		return "";
+	}
+	for (int i = 0; phe->h_addr_list[i] != 0; ++i) {
+		struct in_addr addr;
+		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
+		return inet_ntoa(addr);
+	}
+	return "";
+}
 
 typedef netlab::HWAddress<> mac_addr;
 
@@ -73,6 +91,9 @@ class TCP_Tests : public testing::Test {
 
 protected:
 
+	/* Declaring the ip address from the current machine */
+	std::string ip_address;
+
 	/* Declaring the client and the server */
 	inet_os inet_server;
 	inet_os inet_client;
@@ -117,6 +138,7 @@ protected:
 
     void SetUp() override {
         
+		ip_address = get_my_ip();
 		inet_server.connect(0U);
 		inet_client.connect(0U);
     }
@@ -166,7 +188,7 @@ protected:
 
 		sockaddr_in client_service;
 		client_service.sin_family = AF_INET;
-		client_service.sin_addr.s_addr = inet_addr("192.168.1.239");
+		client_service.sin_addr.s_addr = inet_addr("10.100.102.3");
 		client_service.sin_port = htons(8888);
 
 		WSADATA wsaData;
@@ -443,5 +465,6 @@ TEST_F(TCP_Tests, test_base)
 	run_all_test(TCP_BASE);
 	std::cout << "PASS TEST TCP BASIC" << std::endl;
 }
+
 
 
