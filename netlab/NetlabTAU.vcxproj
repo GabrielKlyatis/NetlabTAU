@@ -272,6 +272,8 @@
     <ClInclude Include="infra\pcb.h" />
     <ClInclude Include="infra\Print.h" />
     <ClInclude Include="infra\protosw.hpp" />
+    <ClInclude Include="L5\TLS.h" />
+    <ClInclude Include="L5\TLS.hpp" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="infra\utils.h" />
   </ItemGroup>

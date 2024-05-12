@@ -167,6 +167,12 @@
     <ClInclude Include="L4\tcp_reno.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="L5\TLS.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L5\TLS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="dot11\CMakeLists.txt" />
