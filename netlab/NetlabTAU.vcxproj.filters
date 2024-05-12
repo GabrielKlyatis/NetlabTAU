@@ -87,6 +87,9 @@
     <ClCompile Include="L4\tcp_reno.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="L5\tls_socket.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="L1\NIC.h">
@@ -165,6 +168,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="L4\tcp_reno.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L5\tls_socket.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

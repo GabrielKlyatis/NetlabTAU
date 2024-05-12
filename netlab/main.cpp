@@ -12,6 +12,7 @@
 #include "L0/L0_buffer.h"
 #include "L4/tcp_reno.h"
 #include "L4/tcp_tahoe.h"
+#include "L5/tls_socket.h"
 
 #include <iostream>
 #include <iomanip>
@@ -489,6 +490,43 @@ void handleConnections(SOCKET server_socket, size_t expected_bytes) {
 		break;
 	}
 }
+
+void tls_playground()
+{
+	/* Client is declared similarly: */
+	inet_os inet_client = inet_os();
+	inet_os dflt = inet_os();
+	NIC nic_client(inet_client,	"192.168.1.239", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"");
+	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
+	L2_impl datalink_client(inet_client);
+	L2_ARP_impl arp_client(inet_client, 10, 10000);
+	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
+	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
+	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
+	inet_client.domaininit();
+	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+	//arp_client.insertPermanent(dflt_gtw.ip_addr().s_addr, dflt_gtw.mac());
+	inet_client.connect();
+
+	sockaddr_in clientService;
+	clientService.sin_family = AF_INET;
+	clientService.sin_addr.s_addr = inet_addr("192.168.1.1");
+	clientService.sin_port = htons(443);
+	
+	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
+
+	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+
+	std::string send_msg(100, 'T');
+
+
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+	 
+	ConnectSocket->send(send_msg, 100,1 ,0);
+
+}
+
+
 
 void test4(size_t size = 256) 
 {
@@ -1931,6 +1969,7 @@ void handler(int request)
 
 void main() 
 {
+
 	std::cout << "Hello and Welcome to the test Unit!" << std::endl <<
 		"Please insert the wanted test number:" << std::endl <<
 		"[1] Resolving an IP address Using ARP" << std::endl <<
@@ -1943,6 +1982,9 @@ void main()
 		"[8] Application Use Case" << std::endl <<
 		"[9] Application Use Case (with drop)" << std::endl <<
 		"[10] Cwnd Fall Test" << std::endl;
+
+	tls_playground();
+	return;
 
 	int request(4);
 	//std::cin >> request;
