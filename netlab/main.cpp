@@ -496,7 +496,7 @@ void tls_playground()
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 	inet_os dflt = inet_os();
-	NIC nic_client(inet_client,	"192.168.1.239", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"");
+	NIC nic_client(inet_client,	"192.168.1.225", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"");
 	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
 	L2_impl datalink_client(inet_client);
 	L2_ARP_impl arp_client(inet_client, 10, 10000);

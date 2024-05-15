@@ -22,6 +22,7 @@ public:
         delete p_socket;
     }
 
+
     enum tls_connection_type
     {
         TLS_CONNECTION_TYPE_CHANGE_CIPHER_SPEC = 0x14,
@@ -78,6 +79,28 @@ public:
         uint8_t random_bytes[32]; // 28 bytes for random data
     };
 
+    struct tls_certificate
+    {
+        hand_shake_type msg_type; // Handshake message
+        uint8_t length[3];          // Length of the handshake message
+        uint8_t cert_length[3];     // Length of the certificate
+        std::vector<uint8_t> cert;      // certificate vector
+
+        tls_certificate(char* raw) 
+        {
+            msg_type = (hand_shake_type)raw[0];
+			length[0] = raw[1];
+			length[1] = raw[2];
+			length[2] = raw[3];
+			uint32_t len = (length[0] << 16) | (length[1] << 8) | length[2];
+			cert_length[0] = raw[4];
+			cert_length[1] = raw[5];
+			cert_length[2] = raw[6];
+			uint32_t cert_len = (cert_length[0] << 16) | (cert_length[1] << 8) | cert_length[2];
+			cert = std::vector<uint8_t>(raw + 7, raw + 7 + cert_len);
+        }
+    };
+
     struct TLSHello {
         hand_shake_type msg_type; // Handshake message
         uint8_t length[3];          // Length of the handshake message
@@ -87,6 +110,28 @@ public:
         std::vector<uint16_t> cipher_suites; // cipher vector
         std::vector<uint8_t> compression_methods; // comp method length
         std::vector<uint8_t> extensions; // extantuion length
+
+        TLSHello() {}
+        TLSHello(char* raw_header)
+        {
+            char a[500];
+
+            msg_type = (hand_shake_type)raw_header[0];
+			length[0] = raw_header[1];
+			length[1] = raw_header[2];
+			length[2] = raw_header[3];
+            uint32_t len = (length[0] << 16) | (length[1] << 8) | length[2];
+            memcpy(a, raw_header, len + 4);
+
+            tls_version = ntohs(*(uint16_t*)(raw_header + 4));
+            random = *(TLSRandom*)(raw_header + 6);
+
+            auto session_id_len = (uint8_t)raw_header[38] ;
+            session_id = std::vector<uint8_t>(raw_header + 39 , raw_header + 39 + session_id_len);
+            cipher_suites = { ntohs(*(uint16_t*)(raw_header + 39 + session_id_len)) };
+            compression_methods = { (uint8_t)raw_header[41 + session_id_len]};
+
+        }
 
         std::string parse()
         {
@@ -126,6 +171,28 @@ public:
         }
 
     };
+
+    struct tls_key_exchanege_msg
+    {
+        hand_shake_type msg_type; // Handshake message
+        uint8_t length[3];          // Length of the handshake message
+        std::string premaster; // key exchange data
+
+        std::string parse()
+        {
+            std::string str;
+			str.append((char*)&msg_type, sizeof(hand_shake_type));
+			str.append((char*)&length, sizeof(length) );
+            uint16_t len = htons(premaster.size());
+            str.append((char*)&len, 2);
+			str.append(premaster);
+			return str;
+
+        }
+
+    };
+
+   
 
     // Restore the default packing
 #pragma pack(pop)
@@ -190,6 +257,9 @@ protected:
 
     std::vector < uint16_t> get_cipher_suites() const;
 
+    RSA* p_rsa;
+
+    int extract_public_key(const unsigned char* raw_cert, size_t raw_cert_len);
 
 
 };
