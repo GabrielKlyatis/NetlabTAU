@@ -1,6 +1,7 @@
 #pragma once
 
 #include "L5.h"
+#include "tls_definition.hpp"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <iostream>
@@ -22,67 +23,16 @@ public:
         delete p_socket;
     }
 
-    enum tls_connection_type
-    {
-        TLS_CONNECTION_TYPE_CHANGE_CIPHER_SPEC = 0x14,
-        TLS_CONNECTION_TYPE_ALERT = 0x15,
-        TLS_CONNECTION_TYPE_HANDSHAKE = 0x16,
-        TLS_CONNECTION_TYPE_APPLICATION_DATA = 0x17,
- 
-    };
-
-    enum tls_version
-    {
-        TLS_VERSION_SSLv3 = 0x0300,
-        TLS_VERSION_TLSv1_0 = 0x0301,
-        TLS_VERSION_TLSv1_1 = 0x0302,
-        TLS_VERSION_TLSv1_2 = 0x0303,
-        TLS_VERSION_TLSv1_3 = 0x0304,
-
-    };
-
-    enum tls_state
-    {
-        NONE,                // No TLS state yet
-        HELLO_SENT,          // ClientHello or ServerHello message sent
-        HELLO_RECEIVED,      // ClientHello or ServerHello message received
-        KEY_EXCHANGE,        // Key exchange message sent/received
-        CERTIFICATE_ST,         // Certificate message sent/received
-        CERTIFICATE_VERIFY_ST,  // CertificateVerify message sent/received
-        FINISHED_ST             // Finished message
-    };
-
-    enum hand_shake_type : uint8_t {
-        CLIENT_HELLO = 0x01,
-        SERVER_HELLO = 0x02,
-        CERTIFICATE = 0x0B,
-        SERVER_KEY_EXCHANGE = 0x0C,
-        CERTIFICATE_REQUEST = 0x0D,
-        SERVER_HELLO_DONE = 0x0E,
-        CERTIFICATE_VERIFY = 0x0F,
-        CLIENT_KEY_EXCHANGE = 0x10,
-        FINISHED = 0x14
-    };
 
 #pragma pack(push, 1) // Pack struct tightly without any padding
 
-    struct tls_header {
-        uint8_t type;             // Content Type (TLS_ContentType)
-        uint16_t version;         // TLS Version (tls_version)
-        uint16_t length;          // Length of the TLS record payload
-    } ;
-
-    // maybe define as union or as 32 bytes array or as describe here
-    struct TLSRandom {
-      //  uint32_t timestemp;
-        uint8_t random_bytes[32]; // 28 bytes for random data
-    };
+    
 
     struct TLSHello {
-        hand_shake_type msg_type; // Handshake message
+        HandshakeType msg_type; // Handshake message
         uint8_t length[3];          // Length of the handshake message
         uint16_t tls_version; // highest version supported by the client
-        TLSRandom random;       // 32 bytes of random data
+        Random random;       // 32 bytes of random data
         std::vector<uint8_t> session_id; // session id vector
         std::vector<uint16_t> cipher_suites; // cipher vector
         std::vector<uint8_t> compression_methods; // comp method length
@@ -94,7 +44,7 @@ public:
 			str.append((char*)&msg_type, sizeof(hand_shake_type));
 			str.append((char*)&length, sizeof(length));
 			str.append((char*)&tls_version, sizeof(uint16_t));
-			str.append((char*)&random, sizeof(TLSRandom));
+			str.append((char*)&random, sizeof(Random));
 
             // add sesion length
             uint8_t session_id_len = session_id.size();
@@ -113,7 +63,7 @@ public:
             uint8_t compression_methods_len = compression_methods.size();
 			str.append((char*)&compression_methods_len,1);
             if (compression_methods_len > 0)
-                auto a = compression_methods.data();
+                uint8_t* a = compression_methods.data();
 			    str.append((char*)compression_methods.data(), compression_methods.size());
             
 			// add extensions
@@ -159,12 +109,11 @@ protected:
 
 
 
-class tls_socket : public secure_socket
-{
+class TLSSocket : public secure_socket {
 public:
 
-    tls_socket(inet_os& inet);
-    ~tls_socket();
+    TLSSocket(inet_os& inet);
+    ~TLSSocket();
 
     void bind(_In_ const struct sockaddr* addr, _In_ int addr_len) override;
 
@@ -190,9 +139,9 @@ protected:
 
     std::vector < uint16_t> get_cipher_suites() const;
 
-
-
+private:
+    SSL_CTX* ctx;
+    SSL* ssl;
 };
-
 
 }
