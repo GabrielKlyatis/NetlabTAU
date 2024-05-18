@@ -64,7 +64,7 @@ namespace netlab {
 		MAX_VALUE = 255,
 	};
 
-/**************************** TLS Alert Layer **************************/
+/**************************** TLS Alert Protocol **************************/
 
 	enum AlertLevel : uint8_t {
 
@@ -293,6 +293,14 @@ namespace netlab {
 		} fragment;
 	};
 
+/************************ TLS Alert Protocol ***********************/
+
+	struct Alert {
+
+		AlertLevel level;
+		AlertDescription description;
+	};
+
 /************************ TLS Handshake Protocol ***********************/
 
 	struct Random {
@@ -467,9 +475,9 @@ namespace netlab {
 		std::array<uint8_t, 32> server_random;
 	};
 		
-	/************************************************************************/
-	/*                         The Cipher Suite                             */
-	/************************************************************************/
+/************************************************************************/
+/*                         The Cipher Suite                             */
+/************************************************************************/
 
 	/* The following CipherSuite definitions require that the server provide
 	   an RSA certificate that can be used for key exchange.  The server may
