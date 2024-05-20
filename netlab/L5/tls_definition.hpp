@@ -53,7 +53,7 @@ namespace netlab {
 		TLS_CONTENT_TYPE_ALERT = 0x15,
 		TLS_CONTENT_TYPE_HANDSHAKE = 0x16,
 		TLS_CONTENT_TYPE_APPLICATION_DATA = 0x17,
-		MAX_VALUE = 255,
+		TLS_CONTENT_TYPE_MAX_VALUE = 255,
 	};
 
 
@@ -61,7 +61,7 @@ namespace netlab {
 
 	enum Type {
 		CHANGE_CIPHER_SPEC = 1,
-		MAX_VALUE = 255,
+		CHANGE_CIPHER_SPEC_MAX_VALUE = 255,
 	};
 
 /**************************** TLS Alert Protocol **************************/
@@ -70,7 +70,7 @@ namespace netlab {
 
 		WARNING = 1,
 		FATAL = 2,
-		MAX_VALUE = 255,
+		ALERT_LEVEL_MAX_VALUE = 255,
 	};
 
 	enum AlertDescription : uint8_t {
@@ -105,7 +105,7 @@ namespace netlab {
 		BAD_CERTIFICATE_HASH_VALUE = 113,
 		UNKNOWN_PSK_IDENTITY = 115,
 		NO_APPLICATION_PROTOCOL = 120,
-		MAX_VALUE = 255,
+		ALERT_DESCRIPTION_MAX_VALUE = 255,
 	};
 
 /************************ TLS Handshake Protocol ***********************/
@@ -122,35 +122,35 @@ namespace netlab {
 		CERTIFICATE_VERIFY = 0x0F,
 		CLIENT_KEY_EXCHANGE = 0x10,
 		FINISHED = 0x14,
-		MAX_VALUE = 0X100,
+		HANDSHAKE_TYPE_MAX_VALUE = 255,
 	};
 
 	enum ExtensionType {
 		SIGNATURE_ALGORITHMS = 13,
-		MAX_VALUE = 65535,
+		EXTENSION_TYPE_MAX_VALUE = 65535,
 	};
 
 	enum HashAlgorithm {
-		NONE = 0,
+		HASH_ALGORITHM_NONE = 0,
 		MD5 = 1,
 		SHA1 = 2,
 		SHA224 = 3,
 		SHA256 = 4,
 		SHA384 = 5,
 		SHA512 = 6,
-		MAX_VALUE = 255,
+		HASH_ALGORITHM_MAX_VALUE = 255,
 	};
 
 	enum SignatureAlgorithm {
 		ANONYMOUS = 0,
-		RSA = 1,
+		SIGNATURE_ALGORITHM_RSA = 1,
 		DSA = 2,
 		ECDSA = 3,
-		MAX_VALUE = 255,
+		SIGNATURE_ALGORITHM_MAX_VALUE = 255,
 	};
 
 	enum KeyExchangeAlgorithm {
-		RSA = 1,
+		KEY_EXCHANGE_ALGORITHM_RSA = 1,
 		DH_DSS = 2,
 		DH_RSA = 3,
 		DHE_DSS = 4,
@@ -164,7 +164,7 @@ namespace netlab {
 		DHE_PSK = 12,
 		RSA_PSK = 13,
 		ECDHE_PSK = 14,
-		MAX_VALUE = 255,
+		KEY_EXCHANGE_ALGORITHM_MAX_VALUE = 255,
 	};
 
 	enum ClientCertificateType {
@@ -175,7 +175,7 @@ namespace netlab {
 		RSA_EPHEMERAL_DH_RESERVED = 5,
 		DSS_EPHEMERAL_DH_RESERVED = 6,
 		FORTEZZA_DMS_RESERVED = 20,
-		MAX_VALUE = 255,
+		CLIENT_CERTIFICATE_TYPE_MAX_VALUE = 255,
 	};
 
 	enum PublicValueEncoding {
@@ -188,7 +188,7 @@ namespace netlab {
 	enum CompressionMethod {
 
 		NULL_COMPRESSION = 0,
-		MAX_VALUE = 255
+		COMPRESSION_METHOD_MAX_VALUE = 255
 	};
 
 	enum ConnectionEnd {
@@ -316,49 +316,29 @@ namespace netlab {
 
 	struct HelloRequest { };
 
+	union ExtensionUnion{
+		struct { } no_extensions; /* empty */
+		std::vector<Extension> extensions; /* Represents Extension extensions<0..2^16-1>; */
+	};
+
 	struct ClientHello {
 		ProtocolVersion client_version;
 		Random random;
 		SessionID session_id;
-		CipherSuite cipher_suites;
+		std::vector<CipherSuite> cipher_suites;
 		std::vector<CompressionMethod> compression_methods;
 		bool extensions_present;
-		union {
-			struct { }; /* empty */
-			std::vector<Extension> extensions; /* Represents Extension extensions<0..2^16-1>; */
-		} extensions_union;
+		ExtensionUnion extensions_union;
 	};
 
 	struct ServerHello {
 		ProtocolVersion server_version;
 		Random random;
 		SessionID session_id;
-		CipherSuite cipher_suites;
+		CipherSuite cipher_suite;
 		std::vector<CompressionMethod> compression_methods;
 		bool extensions_present;
-		union {
-			struct { }; /* empty */
-			std::vector<Extension> extensions; /* Represents Extension extensions<0..2^16-1>; */
-		} extensions_union;
-	};
-
-	struct Handshake {
-
-		HandshakeType msg_type;    /* handshake type */
-		uint32_t length;           /* bytes in message */
-
-		union Body {
-			HelloRequest helloRequest;
-			ClientHello clientHello;
-			ServerHello serverHello;
-			Certificate certificate;
-			ServerKeyExchange serverKeyExchange;
-			CertificateRequest certificateRequest;
-			ServerHelloDone serverHelloDone;
-			CertificateVerify certificateVerify;
-			ClientKeyExchange clientKeyExchange;
-			Finished finished;
-		};
+		ExtensionUnion extensions_union;
 	};
 
 	struct SignatureAndHashAlgorithm {
@@ -403,16 +383,6 @@ namespace netlab {
 
 	struct ServerHelloDone { };
 
-	struct ClientKeyExchange {
-
-		KeyExchangeAlgorithm key_exchange_algorithm;
-		union ClientExchangeKeys {
-			EncryptedPreMasterSecret encryptedPreMasterSecret; /* KeyExchangeAlgorithm = RSA (1) */
-			ClientDiffieHellmanPublic clientDiffieHellmanPublic; /* KeyExchangeAlgorithm = DH_ANON (6) */
-			struct {} dhe_dss_dhe_rsa_dh_dss_dh_rsa; /* KeyExchangeAlgorithm = DHE_DSS (4), DHE_RSA (5), DH_DSS (2), DH_RSA (3) */
-		} client_exchange_keys;
-	};
-
 	struct PreMasterSecret {
 		ProtocolVersion client_version;
 		std::array<uint8_t, 46> random;
@@ -426,9 +396,18 @@ namespace netlab {
 	struct ClientDiffieHellmanPublic {
 		PublicValueEncoding public_value_encoding;
 		union {
-			struct {}; /* implicit encoding */
+			struct {} implicit; /* implicit encoding */
 			std::vector<uint8_t> dh_Yc; /* explicit encoding */
 		} dh_public;
+	};
+
+	struct ClientKeyExchange {
+		KeyExchangeAlgorithm key_exchange_algorithm;
+		union ClientExchangeKeys {
+			EncryptedPreMasterSecret encryptedPreMasterSecret; /* KeyExchangeAlgorithm = RSA (1) */
+			ClientDiffieHellmanPublic clientDiffieHellmanPublic; /* KeyExchangeAlgorithm = DH_ANON (6) */
+			struct {} dhe_dss_dhe_rsa_dh_dss_dh_rsa; /* KeyExchangeAlgorithm = DHE_DSS (4), DHE_RSA (5), DH_DSS (2), DH_RSA (3) */
+		} client_exchange_keys;
 	};
 
 	struct CertificateVerify {
@@ -439,6 +418,30 @@ namespace netlab {
 
 	struct Finished {
 		std::vector<uint8_t> verify_data;
+	};
+
+	union Body { 				   
+		HelloRequest helloRequest;
+		ClientHello clientHello;
+		ServerHello serverHello;
+		Certificate certificate;
+		ServerKeyExchange serverKeyExchange;
+		CertificateRequest certificateRequest;
+		ServerHelloDone serverHelloDone;
+		CertificateVerify certificateVerify;
+		ClientKeyExchange clientKeyExchange;
+		Finished finished;
+
+		Body() { }; // Default constructor
+		~Body() { }; // Destructor
+	};
+
+	struct Handshake {
+		HandshakeType msg_type;    /* handshake type */
+		uint32_t length;           /* bytes in message */
+		Body body;                 /* message contents */
+
+		Handshake() : msg_type(), length(0) { } // Default constructor
 	};
 
 /************************** Security Parameters *************************/
