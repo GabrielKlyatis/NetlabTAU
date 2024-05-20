@@ -121,7 +121,7 @@ public:
 			length[1] = raw_header[2];
 			length[2] = raw_header[3];
             uint32_t len = (length[0] << 16) | (length[1] << 8) | length[2];
-            memcpy(a, raw_header, len + 4);
+        //    memcpy(a, raw_header, len + 4);
 
             tls_version = ntohs(*(uint16_t*)(raw_header + 4));
             random = *(TLSRandom*)(raw_header + 6);
@@ -261,6 +261,7 @@ protected:
 
     int extract_public_key(const unsigned char* raw_cert, size_t raw_cert_len);
 
+    std::vector<uint8_t> extract_master_secret(const std::vector<uint8_t>& preMasterSecret, const std::vector<uint8_t>& clientRandom,  const std::vector<uint8_t>& serverRandom);
 
 };
 
