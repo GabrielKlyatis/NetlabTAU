@@ -182,6 +182,9 @@
     <ClInclude Include="L5\tls_definition.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="L5\tls_implementation.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="dot11\CMakeLists.txt" />

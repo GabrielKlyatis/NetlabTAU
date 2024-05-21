@@ -41,7 +41,7 @@ public:
         std::string parse()
         {
             std::string str;
-			str.append((char*)&msg_type, sizeof(hand_shake_type));
+			str.append((char*)&msg_type, sizeof(HandshakeType));
 			str.append((char*)&length, sizeof(length));
 			str.append((char*)&tls_version, sizeof(uint16_t));
 			str.append((char*)&random, sizeof(Random));

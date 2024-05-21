@@ -36,17 +36,6 @@ namespace netlab {
 
 /**************************** TLS Record Layer **************************/
 
-	enum ConnectionState {
-
-		NONE,					// No TLS state yet
-		HELLO_SENT,				// ClientHello or ServerHello message sent
-		HELLO_RECEIVED,			// ClientHello or ServerHello message received
-		KEY_EXCHANGE,			// Key exchange message sent/received
-		CERTIFICATE_ST,         // Certificate message sent/received
-		CERTIFICATE_VERIFY_ST,  // CertificateVerify message sent/received
-		FINISHED_ST,             // Finished message
-	};
-
 	enum ContentType {
 
 		TLS_CONTENT_TYPE_CHANGE_CIPHER_SPEC = 0x14,
@@ -306,7 +295,7 @@ namespace netlab {
 	struct Random {
 
 		uint32_t gmt_unix_time; /* Timestamp in seconds since 1st January 1970. */
-		uint8_t random_bytes[28];
+		std::array<uint8_t, 28> random_bytes;
 	};
 
 	struct Extension {
@@ -438,7 +427,7 @@ namespace netlab {
 
 	struct Handshake {
 		HandshakeType msg_type;    /* handshake type */
-		uint32_t length;           /* bytes in message */
+		uint32_t length;           /* bytes in message */ /***** Maybe needs to be uint16_t*/
 		Body body;                 /* message contents */
 
 		Handshake() : msg_type(), length(0) { } // Default constructor
