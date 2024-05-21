@@ -496,8 +496,8 @@ void tls_playground()
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 	inet_os dflt = inet_os();
-	NIC nic_client(inet_client,	"192.168.1.225", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"");
-	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
+	NIC nic_client(inet_client,	"10.100.102.3", "a8:6d:aa:68:39:a4",nullptr,nullptr,true,"ether src 5c:e9:1e:73:4a:e1");
+	NIC dflt_gtw(dflt, "10.100.102.6", "5c:e9:1e:73:4a:e1", nullptr, nullptr, true, "");
 	L2_impl datalink_client(inet_client);
 	L2_ARP_impl arp_client(inet_client, 10, 10000);
 	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
@@ -505,12 +505,12 @@ void tls_playground()
 	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 	inet_client.domaininit();
 	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-	//arp_client.insertPermanent(dflt_gtw.ip_addr().s_addr, dflt_gtw.mac());
+	arp_client.insertPermanent(dflt_gtw.ip_addr().s_addr, dflt_gtw.mac());
 	inet_client.connect();
 
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_addr("192.168.1.1");
+	clientService.sin_addr.s_addr = inet_addr("10.100.102.6");
 	clientService.sin_port = htons(443);
 	
 	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);

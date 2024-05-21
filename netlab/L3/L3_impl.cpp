@@ -1214,7 +1214,7 @@ void L3_impl::ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::ite
 		if (found)
 		{
 			ip_fragment* pointer = fp->fragments;
-			while (pointer->next_fragment != nullptr)
+			while (pointer != nullptr)
 			{
 				pointer = pointer->next_fragment;
 			}
