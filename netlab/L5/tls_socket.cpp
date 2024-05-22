@@ -15,6 +15,7 @@
 #include <openssl/kdf.h>
 #include <stdexcept>
 #include <openssl/rand.h>
+#include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <random>
 extern "C" {
@@ -24,6 +25,7 @@ extern "C" {
 #pragma warning(disable : 4996)
 
 using namespace netlab;
+
 
 
 // Helper function to perform HMAC-SHA384
@@ -613,7 +615,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
 
     // add client key exchange + header
     
-   plaintext.insert(plaintext.end(), msg_to_send2.begin(), msg_to_send2.end());
+    plaintext.insert(plaintext.end(), msg_to_send2.begin(), msg_to_send2.end());
 
 
 
