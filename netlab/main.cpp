@@ -513,7 +513,7 @@ void tls_playground()
 	clientService.sin_addr.s_addr = inet_addr("192.168.1.1");
 	clientService.sin_port = htons(443);
 	
-	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
+	netlab::TLSSocket* ConnectSocket = new netlab::TLSSocket(inet_client);
 
 	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
 

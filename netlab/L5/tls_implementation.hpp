@@ -7,6 +7,7 @@
 #include <iostream>
 #include <array>
 #include <vector>
+#include <iterator>
 #include <string>
 #include <ctime>
 
@@ -600,10 +601,21 @@ namespace netlab {
 				it += session_id_length;
 				auto cipher_suites_length = *it;
 				it++;
+
 				for (int i = 0; i < cipher_suites_length; i++) {
-					std::copy_n(it, sizeof(CipherSuite), protocol.handshake.body.clientHello.cipher_suites.begin()); //TODO
-					it += sizeof(CipherSuite);
+					// Read the size of the next Extension
+					size_t cipher_size = sizeof(CipherSuite);
+
+					// Read the CipherSuite
+					std::vector<CipherSuite> cipher_suite(it, it + cipher_size);
+					protocol.handshake.body.clientHello.cipher_suites
+						.insert(protocol.handshake.body.clientHello.cipher_suites.end(),
+						cipher_suite.begin(),
+						cipher_suite.end());
+
+					it += cipher_size;
 				}
+
 				auto compression_methods_length = *it;
 				it++;
 				std::copy_n(it, compression_methods_length, protocol.handshake.body.clientHello.compression_methods.begin());
@@ -613,9 +625,19 @@ namespace netlab {
 				if (protocol.handshake.body.clientHello.extensions_present) {
 					auto extensions_length = *it;
 					it++;
+
 					for (int i = 0; i < extensions_length; i++) {
-						std::copy_n(it, sizeof(Extension), protocol.handshake.body.clientHello.extensions_union.extensions.begin()); //TODO
-						it += sizeof(Extension);
+						// Read the size of the next Extension
+						size_t extension_size = sizeof(Extension);
+
+						// Read the Extension
+						std::vector<Extension> extension(it, it + extension_size);
+						protocol.handshake.body.clientHello.extensions_union.extensions
+							.insert(protocol.handshake.body.clientHello.extensions_union.extensions.end(),
+							extension.begin(),
+							extension.end());
+
+						it += extension_size;
 					}
 				}
 				break;
@@ -644,9 +666,19 @@ namespace netlab {
 				if (protocol.handshake.body.serverHello.extensions_present) {
 					auto extensions_length = *it;
 					it++;
+
 					for (int i = 0; i < extensions_length; i++) {
-						std::copy_n(it, sizeof(Extension), protocol.handshake.body.serverHello.extensions_union.extensions.begin()); //TODO
-						it += sizeof(Extension);
+						// Read the size of the next Extension
+						size_t extension_size = sizeof(Extension);
+
+						// Read the Extension
+						std::vector<Extension> extension(it, it + extension_size);
+						protocol.handshake.body.serverHello.extensions_union.extensions
+							.insert(protocol.handshake.body.serverHello.extensions_union.extensions.end(),
+							extension.begin(),
+							extension.end());
+
+						it += extension_size;
 					}
 				}
 				break;
@@ -665,6 +697,23 @@ namespace netlab {
 				}
 				break;
 			case SERVER_KEY_EXCHANGE:
+
+				break;
+			case CERTIFICATE_REQUEST:
+
+				break;
+			case SERVER_HELLO_DONE:
+				
+				break;
+			case CERTIFICATE_VERIFY:
+
+				break;
+			case CLIENT_KEY_EXCHANGE:
+				
+				break;
+			case FINISHED:
+
+				break;
 
 			default:
 				break;
