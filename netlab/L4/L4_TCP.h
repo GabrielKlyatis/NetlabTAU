@@ -449,6 +449,7 @@ struct L4_TCP::tcpiphdr
 	inline	void ti_next(struct L4_TCP::tcpiphdr *ih_next) { ti_i.ih_next = ih_next; }
 
 	inline	struct L4_TCP::tcpiphdr* ti_prev() { return ti_i.ih_prev; }
+
 	inline	void ti_prev(struct L4_TCP::tcpiphdr *ih_prev) { ti_i.ih_prev = ih_prev; }
 	
 	inline	u_char& ti_x1() { return ti_i.ih_x1; }

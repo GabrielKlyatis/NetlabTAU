@@ -496,8 +496,8 @@ void tls_playground()
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 	inet_os dflt = inet_os();
-	NIC nic_client(inet_client,	"192.168.1.225", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"");
-	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
+	NIC nic_client(inet_client,	"192.168.1.225", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"arp or ip src 192.168.1.1");
+	NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
 	L2_impl datalink_client(inet_client);
 	L2_ARP_impl arp_client(inet_client, 10, 10000);
 	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
@@ -512,7 +512,7 @@ void tls_playground()
 	clientService.sin_family = AF_INET;
 	clientService.sin_addr.s_addr = inet_addr("192.168.1.1");
 	clientService.sin_port = htons(443);
-	
+	//1603010067010000630303c580c4a20b669355c7e1712761254c1586ab63aa491b75082696f936ed8d82a700003c130213031301c02cc030009fcca9cca8ccaac02bc02f009ec024c028006bc023c0270067c00ac0140039c009c013003300ad00abccaeccadccac009d0100
 	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
 
 	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
