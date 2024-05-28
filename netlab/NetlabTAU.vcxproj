@@ -235,6 +235,7 @@
     <ClCompile Include="L4\tcp_reno.cpp" />
     <ClCompile Include="L4\tcp_tahoe.cpp" />
     <ClCompile Include="L5\L5_Sol.cpp" />
+    <ClCompile Include="L5\TLS_Impl_test.cpp" />
     <ClCompile Include="L5\tls_socket.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="main2.cpp" />

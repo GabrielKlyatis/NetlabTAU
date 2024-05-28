@@ -301,6 +301,10 @@ namespace netlab {
 	struct Extension {
 		ExtensionType extension_type;;
 		std::vector<uint8_t> extension_data;
+
+		Extension(std::string::const_iterator start, std::string::const_iterator end) {
+			extension_data.assign(start, end);
+		}
 	};
 
 	struct HelloRequest { };

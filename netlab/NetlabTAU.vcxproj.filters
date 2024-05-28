@@ -90,6 +90,9 @@
     <ClCompile Include="L5\tls_socket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="L5\TLS_Impl_test.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="L1\NIC.h">
