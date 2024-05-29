@@ -31,62 +31,6 @@ extern "C" {
 using namespace netlab;
 
 
-// TLS 1.2 PRF function
-std::vector<unsigned char> tls12_prf(const std::vector<unsigned char>& key,
-    const std::string& label,
-    const std::vector<unsigned char>& seed,
-    size_t out_len) {
-    const EVP_MD* md = EVP_sha256(); // PRF in TLS 1.2 uses SHA-256
-    std::vector<unsigned char> result(out_len);
-
-    HMAC(md, key.data(), key.size(), (unsigned char *)label.c_str(), label.size(),
-        result.data(), reinterpret_cast<unsigned int*>(&out_len));
-
-    HMAC(md, key.data(), key.size(), result.data(), out_len,
-        result.data() + out_len, reinterpret_cast<unsigned int*>(&out_len));
-
-    for (size_t i = 0; i < out_len; ++i)
-        result[i] ^= result[i + out_len];
-
-    result.resize(out_len);
-    return result;
-}
-
-// Function to derive keys (client and server encryption keys and IVs)
-std::vector<std::vector<unsigned char>> derive_keys_and_ivs(const std::vector<unsigned char>& master_secret,
-    const std::vector<unsigned char>& client_random,
-    const std::vector<unsigned char>& server_random) {
-    const std::string label = "key expansion";
-    std::vector<unsigned char> seed;
-    seed.reserve(client_random.size() + server_random.size());
-    seed.insert(seed.end(), client_random.begin(), client_random.end());
-    seed.insert(seed.end(), server_random.begin(), server_random.end());
-
-    // Use PRF to derive concatenated keys and IVs (16 bytes each)
-    std::vector<unsigned char> key_material = tls12_prf(master_secret, label, seed, 16 * 4); // Total length: 16 bytes * 4 = 64 bytes
-
-    std::vector<std::vector<unsigned char>> keys_and_ivs(4);
-    keys_and_ivs[0] = std::vector<unsigned char>(key_material.begin(), key_material.begin() + 16);  // Client encryption key
-    keys_and_ivs[1] = std::vector<unsigned char>(key_material.begin() + 16, key_material.begin() + 32); // Server encryption key
-    keys_and_ivs[2] = std::vector<unsigned char>(key_material.begin() + 32, key_material.begin() + 48); // Client IV
-    keys_and_ivs[3] = std::vector<unsigned char>(key_material.begin() + 48, key_material.begin() + 64); // Server IV
-
-    return keys_and_ivs;
-}
-
-// Function to calculate the master secret using pre-master secret and random values
-std::vector<unsigned char> calculate_master_secret(const std::vector<unsigned char>& pre_master_secret,
-    const std::vector<unsigned char>& client_random,
-    const std::vector<unsigned char>& server_random) {
-    const std::string label = "master secret";
-    std::vector<unsigned char> seed;
-    seed.reserve(client_random.size() + server_random.size());
-    seed.insert(seed.end(), client_random.begin(), client_random.end());
-    seed.insert(seed.end(), server_random.begin(), server_random.end());
-
-    return tls12_prf(pre_master_secret, label, seed, 48); // Master secret is 48 bytes (TLS 1.2)
-}
-
 std::vector<unsigned char> encryptAES_CBC(const std::vector<unsigned char>& key,
     const std::vector<unsigned char>& iv,
     const std::vector<unsigned char>& plaintext) {
@@ -547,9 +491,27 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     auto pre = std::vector<uint8_t>(premaster_secret, premaster_secret + 48);
     auto client_rand = std::vector<uint8_t>(client_msg.random.random_bytes, client_msg.random.random_bytes + 32);
     auto server_rand = std::vector<uint8_t>(server_hello.random.random_bytes, server_hello.random.random_bytes + 32);
+    auto rands = std::vector<uint8_t>(client_msg.random.random_bytes, client_msg.random.random_bytes + 32);
+    rands.insert(rands.end(), server_hello.random.random_bytes, server_hello.random.random_bytes + 32);
 
     unsigned char master_secret[48];
-    calculate_master_secret(pre, client_rand, server_rand, master_secret);
+
+    // create master sercret 
+     EVP_PKEY_CTX *pctx;
+     unsigned char out[10];
+     size_t outlen = sizeof(master_secret);
+
+     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_TLS1_PRF, NULL);
+     if (EVP_PKEY_derive_init(pctx) <= 0) return;
+         /* Error */
+     if (EVP_PKEY_CTX_set_tls1_prf_md(pctx, EVP_sha256()) <= 0) return;
+         /* Error */
+     if (EVP_PKEY_CTX_set1_tls1_prf_secret(pctx, premaster_secret, 48) <= 0) return;
+         /* Error */
+     if (EVP_PKEY_CTX_add1_tls1_prf_seed(pctx, rands.data(), rands.size()) <= 0) return;
+         /* Error */
+     if (EVP_PKEY_derive(pctx, master_secret, &outlen) <= 0)
+         /* Error */
 
 
 
@@ -599,7 +561,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
 
     unsigned char verify_data[12];
     auto master_vec = std::vector<unsigned char>(master_secret, master_secret + 48);
-    verify_client_finished(master_vec, plaintext, verify_data);
+  //  verify_client_finished(master_vec, plaintext, verify_data);
 
 
 
@@ -610,14 +572,14 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     std::vector<unsigned char> verify_data1{ 0x14 , 0x00, 0x00, 0x0c };
     verify_data1.insert(verify_data1.end(), verify_data, verify_data + 12);
 
-    std::vector<unsigned char> ciphertext = encryptAES_CBC(client_write_key1, client_write_iv1, plaintext);
+  //  std::vector<unsigned char> ciphertext = encryptAES_CBC(client_write_key1, client_write_iv1, plaintext);
 
     // Derive key block
     std::vector<unsigned char> seed;
     seed.insert(seed.end(), client_rand.begin(), client_rand.end());
     seed.insert(seed.end(), server_rand.begin(), server_rand.end());
     unsigned char key_block[72];
-    PRF(master_vec, "key expansion", seed, key_block, 72); // 72 bytes as calculated above
+ 
 
     // Extract keys and IVs from the key block
     std::vector<unsigned char> client_write_key(key_block, key_block + 32);
