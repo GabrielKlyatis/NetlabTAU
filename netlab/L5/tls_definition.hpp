@@ -174,7 +174,7 @@ namespace netlab {
 
 /************************** Security Parameters *************************/
 
-	enum CompressionMethod {
+	enum CompressionMethod : uint8_t{
 
 		NULL_COMPRESSION = 0,
 		COMPRESSION_METHOD_MAX_VALUE = 255
@@ -296,6 +296,9 @@ namespace netlab {
 
 		uint32_t gmt_unix_time; /* Timestamp in seconds since 1st January 1970. */
 		std::array<uint8_t, 28> random_bytes;
+
+		Random() : gmt_unix_time(0), random_bytes() { }
+		~Random() { }
 	};
 
 	struct Extension {
@@ -312,6 +315,9 @@ namespace netlab {
 	union ExtensionUnion{
 		struct { } no_extensions; /* empty */
 		std::vector<Extension> extensions; /* Represents Extension extensions<0..2^16-1>; */
+
+		ExtensionUnion() : no_extensions() {}
+		~ExtensionUnion() { extensions.clear(); }
 	};
 
 	struct ClientHello {
@@ -322,6 +328,9 @@ namespace netlab {
 		std::vector<CompressionMethod> compression_methods;
 		bool extensions_present;
 		ExtensionUnion extensions_union;
+
+		ClientHello() { }
+		~ClientHello() { }
 	};
 
 	struct ServerHello {
@@ -332,6 +341,9 @@ namespace netlab {
 		std::vector<CompressionMethod> compression_methods;
 		bool extensions_present;
 		ExtensionUnion extensions_union;
+
+		ServerHello() { }
+		~ServerHello() { }
 	};
 
 	struct SignatureAndHashAlgorithm {
@@ -341,17 +353,23 @@ namespace netlab {
 
 	struct Certificate {
 		std::vector<std::vector<uint8_t>> certificate_list; /* Represents ASN.1Cert certificate_list<0..2 ^ 24 - 1>. */
+
+		Certificate() : certificate_list() { }
+		~Certificate() { }
 	};
 
 	struct ServerDHParams {
 		std::vector<uint8_t> dh_p;
 		std::vector<uint8_t> dh_g;
 		std::vector<uint8_t> dh_Ys;
+
+		ServerDHParams() : dh_p(), dh_g(), dh_Ys() { }
+		~ServerDHParams() { }
 	};
 
 	struct ServerKeyExchange {
 		KeyExchangeAlgorithm key_exchange_algorithm;
-		union {
+		union ServerExchangeKeys{
 			struct {
 				ServerDHParams params;
 			} dh_anon; /* KeyExchangeAlgorithm = DH_ANON (6)*/
@@ -366,12 +384,22 @@ namespace netlab {
 			} dhe_rsa;
 
 			struct { } rsa_dh_dss_dh_rsa_dhe_dss; /* KeyExchangeAlgorithm = RSA (1), DH_DSS (2), DH_RSA (3), DHE_DSS (4) */
+
+			ServerExchangeKeys() {}
+			~ServerExchangeKeys() {}
+
 		} server_exchange_keys;
+
+		ServerKeyExchange() : server_exchange_keys(){ }
+		~ServerKeyExchange() { }
 	};
 
 	struct CertificateRequest {
 		std::vector<ClientCertificateType> certificate_types; // Represents ClientCertificateType certificate_types<1..2^8-1>;
 		std::vector<DistinguishedName> certificate_authorities; // Represents DistinguishedName certificate_authorities<0..2^16-1>;
+
+		CertificateRequest() : certificate_types(), certificate_authorities() { }
+		~CertificateRequest() { }
 	};
 
 	struct ServerHelloDone { };
@@ -379,19 +407,31 @@ namespace netlab {
 	struct PreMasterSecret {
 		ProtocolVersion client_version;
 		std::array<uint8_t, 46> random;
+
+		PreMasterSecret() : client_version(), random() { }
+		~PreMasterSecret() { }
 	};
 
 	struct EncryptedPreMasterSecret {
 		//public-key-encrypted PreMasterSecret pre_master_secret;
 		PreMasterSecret pre_master_secret;
+
+		EncryptedPreMasterSecret() : pre_master_secret() { }
+		~EncryptedPreMasterSecret() { }
 	};
 
 	struct ClientDiffieHellmanPublic {
 		PublicValueEncoding public_value_encoding;
-		union {
+		union DhPublic{
 			struct {} implicit; /* implicit encoding */
 			std::vector<uint8_t> dh_Yc; /* explicit encoding */
+
+			DhPublic() : implicit() {}
+			~DhPublic() {}
 		} dh_public;
+
+		ClientDiffieHellmanPublic() { } 
+		~ClientDiffieHellmanPublic() { }
 	};
 
 	struct ClientKeyExchange {
@@ -400,17 +440,29 @@ namespace netlab {
 			EncryptedPreMasterSecret encryptedPreMasterSecret; /* KeyExchangeAlgorithm = RSA (1) */
 			ClientDiffieHellmanPublic clientDiffieHellmanPublic; /* KeyExchangeAlgorithm = DH_ANON (6) */
 			struct {} dhe_dss_dhe_rsa_dh_dss_dh_rsa; /* KeyExchangeAlgorithm = DHE_DSS (4), DHE_RSA (5), DH_DSS (2), DH_RSA (3) */
+
+			ClientExchangeKeys() { }
+			~ClientExchangeKeys() { }
 		} client_exchange_keys;
+
+		ClientKeyExchange() { }
+		~ClientKeyExchange() { }
 	};
 
 	struct CertificateVerify {
 		struct {
 			std::vector<uint8_t> handshake_messages; /* Represents handshake_messages[handshake_messages_length]. */
 		} digitally_signed;
+
+		CertificateVerify() { }
+		~CertificateVerify() { }
 	};
 
 	struct Finished {
 		std::vector<uint8_t> verify_data;
+
+		Finished() { }
+		~Finished() { }
 	};
 
 	union Body { 				   
@@ -425,8 +477,24 @@ namespace netlab {
 		ClientKeyExchange clientKeyExchange;
 		Finished finished;
 
-		Body() { }; // Default constructor
-		~Body() { }; // Destructor
+		Body() { 
+			new (&clientHello) ClientHello();
+			/*new (&serverHello) ServerHello();
+			new (&certificate) Certificate();
+			new (&serverKeyExchange) ServerKeyExchange();
+			new (&certificateRequest) CertificateRequest(); 
+			new (&clientKeyExchange) ClientKeyExchange();
+			new (&finished) Finished();*/
+		} 
+		~Body() {
+			clientHello.~ClientHello();
+			/*serverHello.~ServerHello();
+			certificate.~Certificate();
+			serverKeyExchange.~ServerKeyExchange();
+			certificateRequest.~CertificateRequest();
+			clientKeyExchange.~ClientKeyExchange();
+			finished.~Finished();*/
+		} 
 	};
 
 	struct Handshake {

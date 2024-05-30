@@ -1,7 +1,6 @@
 #pragma once
 
 #include "tls_definition.hpp"
-#include "tls_socket.h"
 #include "L5.h"
 
 #include <iostream>
@@ -13,6 +12,12 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+
+void append_size_to_string(std::string& str, std::size_t value) {
+	for (size_t i = 0; i < sizeof(std::size_t); ++i) {
+		str.push_back(static_cast<char>((value >> (i * 8)) & 0xFF));
+	}
+}
 
 namespace netlab {
 
@@ -37,9 +42,45 @@ namespace netlab {
 		}
 
 		/* Destructor */
-		~TLSRecordLayer() {
-			// Clean up
+		~TLSRecordLayer() { }
 
+		/* Method used for serializing the record layer data into a string type for sending. */
+		std::string serialize_record_layer_data() {
+			std::string serialized_string;
+
+			/* Insert the members into the serialized_string. */
+			serialized_string.push_back(this->protocol_version.major);
+			serialized_string.push_back(this->protocol_version.minor);
+			serialized_string.push_back(this->content_type);
+			for (int i = 1; i >= 0; --i) {
+				serialized_string.push_back(static_cast<char>((this->length >> (i * 8)) & 0xFF));
+			}
+			append_size_to_string(serialized_string, this->fragment.size());
+			serialized_string.insert(serialized_string.end(),
+								this->fragment.begin(),
+								this->fragment.end());
+
+			return serialized_string;
+		}
+
+		/* Method used for deserializing the record layer data from a string type (receiving). */
+		void deserialize_record_layer_data(std::string::const_iterator& it, const std::string& serialized_string) {
+
+			/* Deserialize the members from the serialized_string. */
+			this->protocol_version.major = *it;
+			it++;
+			this->protocol_version.minor = *it;
+			it++;
+			this->content_type = static_cast<ContentType>(*it);
+			it += sizeof(ContentType);
+			this->length = (*it << 8);
+			it++;
+			this->length |= *it;
+			it++;
+			uint32_t fragment_length = *it;
+			it++;
+			this->fragment = { it, it + fragment_length };
+			it += fragment_length;
 		}
 
 		/* Function to send a TLS record */
@@ -111,69 +152,107 @@ namespace netlab {
 		std::vector<SignatureAndHashAlgorithm> supported_signature_hash_algorithms; /* Represents SignatureAndHashAlgorithm supported_signature_algorithms<2..2 ^ 16 - 1>. */
 
 		/* Constructor */
-		TLSHandshakeProtocol() {
+		TLSHandshakeProtocol(HandshakeType msg_type) {
 
 			this->TLS_record_layer = TLSRecordLayer();
 
-			this->handshake.msg_type = HANDSHAKE_TYPE_MAX_VALUE;
+			this->handshake.msg_type = msg_type;
 			this->handshake.length = 0;
 
-			/* Initialize clientHello */
-			this->handshake.body.clientHello.client_version = this->TLS_record_layer.protocol_version;
-			this->handshake.body.clientHello.random.gmt_unix_time = 0;
-			this->handshake.body.clientHello.random.random_bytes = { };
-			this->handshake.body.clientHello.session_id = { };
-			this->handshake.body.clientHello.cipher_suites = {
-				TLS_NULL_WITH_NULL_NULL,
-				TLS_RSA_WITH_AES_128_CBC_SHA,
-			};
-			this->handshake.body.clientHello.compression_methods = { NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE };
-			this->handshake.body.clientHello.extensions_present = false;
-			this->handshake.body.clientHello.extensions_union.no_extensions = {};
+			switch (msg_type) {
+				case CLIENT_HELLO:
+					/* Initialize clientHello */
+					this->handshake.body.clientHello.client_version = this->TLS_record_layer.protocol_version;
+					this->handshake.body.clientHello.random.gmt_unix_time = 0;
+					this->handshake.body.clientHello.random.random_bytes = { };
+					this->handshake.body.clientHello.session_id = { };
+					this->handshake.body.clientHello.cipher_suites.resize(1);
+					this->handshake.body.clientHello.cipher_suites.push_back(TLS_RSA_WITH_AES_128_CBC_SHA);
+					this->handshake.body.clientHello.compression_methods = { NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE };
+					this->handshake.body.clientHello.extensions_present = false;
+					this->handshake.body.clientHello.extensions_union.no_extensions = {};
+					break;
 
-			/* Initialize serverHello */
-			this->handshake.body.serverHello.server_version = this->TLS_record_layer.protocol_version;
-			this->handshake.body.serverHello.random.gmt_unix_time = 0;
-			this->handshake.body.serverHello.random.random_bytes = { };
-			this->handshake.body.serverHello.session_id = { };
-			this->handshake.body.serverHello.cipher_suite = TLS_NULL_WITH_NULL_NULL;
-			this->handshake.body.serverHello.compression_methods = { NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE };
-			this->handshake.body.serverHello.extensions_present = false;
-			this->handshake.body.serverHello.extensions_union.no_extensions = {};
+				case SERVER_HELLO:
+					/* Initialize serverHello */
+					this->handshake.body.serverHello.server_version = this->TLS_record_layer.protocol_version;
+					this->handshake.body.serverHello.random.gmt_unix_time = 0;
+					this->handshake.body.serverHello.random.random_bytes = { };
+					this->handshake.body.serverHello.session_id = { };
+					this->handshake.body.serverHello.cipher_suite = TLS_NULL_WITH_NULL_NULL;
+					this->handshake.body.serverHello.compression_methods = { NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE };
+					this->handshake.body.serverHello.extensions_present = false;
+					this->handshake.body.serverHello.extensions_union.no_extensions = {};
+					break;
 
-			/* Initialize Certificate */
-			this->handshake.body.certificate.certificate_list = { };
+				case CERTIFICATE:
+					/* Initialize Certificate */
+					this->handshake.body.certificate.certificate_list = { };
+					break;
 
-			/* Initialize ServerKeyExchange */
-			this->handshake.body.serverKeyExchange.key_exchange_algorithm = KEY_EXCHANGE_ALGORITHM_MAX_VALUE;
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p = { };
-			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys = { };
+				case SERVER_KEY_EXCHANGE:
+					/* Initialize ServerKeyExchange */
+					this->handshake.body.serverKeyExchange.key_exchange_algorithm = KEY_EXCHANGE_ALGORITHM_MAX_VALUE;
+					switch (this->handshake.body.serverKeyExchange.key_exchange_algorithm) {
+						case DH_ANON:
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g = { };
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p = { };
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys = { };
+							break;
+						case DHE_RSA:
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g = { };
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p = { };
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys = { };
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random = { };
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random = { };
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g = { };
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p = { };
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys = { };
+							break;
+						default:
+							break;
+					}
+					break;
 
-			/* Initialize CertificateRequest */
-			this->handshake.body.certificateRequest.certificate_types = { };
-			this->handshake.body.certificateRequest.certificate_authorities = { };
+				case CERTIFICATE_REQUEST:
+					/* Initialize CertificateRequest */
+					this->handshake.body.certificateRequest.certificate_types = { };
+					this->handshake.body.certificateRequest.certificate_authorities = { };
+					break;
 
-			/* Initialize certificateVerify */
-			this->handshake.body.certificateVerify.digitally_signed.handshake_messages = { };
-			
-			/* Initialize ClientKeyExchange */
-			this->handshake.body.clientKeyExchange.key_exchange_algorithm = KEY_EXCHANGE_ALGORITHM_MAX_VALUE;
-			this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version = this->TLS_record_layer.protocol_version;
-			this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random = { };
-			this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding = IMPLICIT;
-			this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.implicit = { };
+				case SERVER_HELLO_DONE:
+					break;
 
-			/* Initialize Finished */
-			this->handshake.body.finished.verify_data = { };
+				case CERTIFICATE_VERIFY:
+					/* Initialize certificateVerify */
+					this->handshake.body.certificateVerify.digitally_signed.handshake_messages = { };
+					break;
+
+				case CLIENT_KEY_EXCHANGE:
+					/* Initialize ClientKeyExchange */
+					this->handshake.body.clientKeyExchange.key_exchange_algorithm = KEY_EXCHANGE_ALGORITHM_RSA;
+					switch (this->handshake.body.clientKeyExchange.key_exchange_algorithm) {
+					case KEY_EXCHANGE_ALGORITHM_RSA:
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version = this->TLS_record_layer.protocol_version;
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random = { };
+						break;
+					case DH_ANON:
+						this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding = IMPLICIT;
+						this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.implicit = { };
+						break;
+					default:
+						break;
+					}
+					break;
+
+				case FINISHED:
+					/* Initialize Finished */
+					this->handshake.body.finished.verify_data = { };
+					break;
+
+				default:
+					break;
+			}	
 
 			/* Initialize supported_signature_hash_algorithms */
 			this->supported_signature_hash_algorithms = { };
@@ -255,12 +334,6 @@ namespace netlab {
 			// Verify the integrity of the handshake process
 		}
 
-		void append_size_to_string(std::string& str, std::size_t value) {
-			for (size_t i = 0; i < sizeof(std::size_t); ++i) {
-				str.push_back(static_cast<char>((value >> (i * 8)) & 0xFF));
-			}
-		}
-
 		/* Serializes the handshake data into a string type for sending. */
 		std::string serialize_handshake_protocol_data(HandshakeType msg_type) {
 
@@ -274,17 +347,8 @@ namespace netlab {
 
 			std::string serialized_string;
 
-			/* Insert TLS_record_layer's members into the serialized_string. */
-			serialized_string.push_back(this->TLS_record_layer.protocol_version.major); 
-			serialized_string.push_back(this->TLS_record_layer.protocol_version.minor);
-			serialized_string.push_back(this->TLS_record_layer.content_type);
-			for (int i = 1; i >= 0; --i) {
-				serialized_string.push_back(static_cast<char>((this->TLS_record_layer.length >> (i * 8)) & 0xFF));
-			}
-			append_size_to_string(serialized_string, this->TLS_record_layer.fragment.size());
-			serialized_string.insert(serialized_string.end(), 
-				this->TLS_record_layer.fragment.begin(), 
-				this->TLS_record_layer.fragment.end());
+			/* Append the serialized record layer string */
+			serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
 
 			/* Serialize the handshake type and its length */
 			serialized_string.push_back(this->handshake.msg_type);
@@ -296,14 +360,6 @@ namespace netlab {
 			switch (msg_type) {
 			case CLIENT_HELLO:
 
-				/* The initialization of specific data would probably be in the main code (tls_playground) */
-				this->handshake.msg_type = CLIENT_HELLO;
-				this->handshake.body.clientHello.random.gmt_unix_time = time(0);
-				this->handshake.body.clientHello.random.random_bytes = generate_random_bytes<28>();
-				this->handshake.body.clientHello.session_id = generate_random_bytes<32>();
-				this->handshake.body.clientHello.cipher_suites.push_back(TLS_RSA_WITH_AES_128_CBC_SHA);
-				/*********************************************************************************************/
-
 				// ProtocolVersion
 				serialized_string.push_back(this->handshake.body.clientHello.client_version.major);
 				serialized_string.push_back(this->handshake.body.clientHello.client_version.minor);
@@ -312,215 +368,220 @@ namespace netlab {
 					serialized_string.push_back(static_cast<char>((this->handshake.body.clientHello.random.gmt_unix_time >> (i * 8)) & 0xFF));
 				}
 				// Random.random_bytes
-				append_size_to_string(serialized_string, this->handshake.body.clientHello.random.random_bytes.size());
+				serialized_string.push_back(this->handshake.body.clientHello.random.random_bytes.size());
 				serialized_string.insert(serialized_string.end(),
 					this->handshake.body.clientHello.random.random_bytes.begin(),
 					this->handshake.body.clientHello.random.random_bytes.end());
 				// SessionID
-				append_size_to_string(serialized_string,this->handshake.body.clientHello.session_id.size());
+				serialized_string.push_back(this->handshake.body.clientHello.session_id.size());
 				serialized_string.insert(serialized_string.end(),
 					this->handshake.body.clientHello.session_id.begin(),
 					this->handshake.body.clientHello.session_id.end());
 				// CipherSuites
-				append_size_to_string(serialized_string, this->handshake.body.clientHello.cipher_suites.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.clientHello.cipher_suites.begin(),
-					this->handshake.body.clientHello.cipher_suites.end());
+				serialized_string.push_back(this->handshake.body.clientHello.cipher_suites.size());
+				for (const auto& cipher_suite : this->handshake.body.clientHello.cipher_suites) {
+					serialized_string.push_back(static_cast<char>(cipher_suite[0]));
+					serialized_string.push_back(static_cast<char>(cipher_suite[1]));
+				}
 				// CompressionMethods
-				append_size_to_string(serialized_string, this->handshake.body.clientHello.compression_methods.size());
+				serialized_string.push_back(this->handshake.body.clientHello.compression_methods.size());
 				serialized_string.insert(serialized_string.end(),
 					this->handshake.body.clientHello.compression_methods.begin(),
 					this->handshake.body.clientHello.compression_methods.end());
 				// Extensions
 				serialized_string.push_back(this->handshake.body.clientHello.extensions_present);
 				if (this->handshake.body.clientHello.extensions_present) {
-					append_size_to_string(serialized_string, this->handshake.body.clientHello.extensions_union.extensions.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.clientHello.extensions_union.extensions.begin(),
-						this->handshake.body.clientHello.extensions_union.extensions.end());
-				}
-				break;
-			case SERVER_HELLO:
-				// ProtocolVersion
-				serialized_string.push_back(this->handshake.body.serverHello.server_version.major);
-				serialized_string.push_back(this->handshake.body.serverHello.server_version.minor);
-				// Random.gmt_unix_time
-				for (int i = 3; i >= 0; --i) {
-					serialized_string.push_back(static_cast<char>((this->handshake.body.serverHello.random.gmt_unix_time >> (i * 8)) & 0xFF));
-				}
-				// Random.random_bytes
-				append_size_to_string(serialized_string, this->handshake.body.serverHello.random.random_bytes.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.serverHello.random.random_bytes.begin(),
-					this->handshake.body.serverHello.random.random_bytes.end());
-				// SessionID
-				append_size_to_string(serialized_string, this->handshake.body.serverHello.session_id.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.serverHello.session_id.begin(),
-					this->handshake.body.serverHello.session_id.end());
-				// CipherSuite
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.serverHello.cipher_suite.begin(),
-					this->handshake.body.serverHello.cipher_suite.end());
-				// CompressionMethod
-				append_size_to_string(serialized_string, this->handshake.body.serverHello.compression_methods.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.serverHello.compression_methods.begin(),
-					this->handshake.body.serverHello.compression_methods.end());
-				// Extensions
-				serialized_string.push_back(this->handshake.body.serverHello.extensions_present);
-				if (this->handshake.body.serverHello.extensions_present) {
-					append_size_to_string(serialized_string, this->handshake.body.serverHello.extensions_union.extensions.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverHello.extensions_union.extensions.begin(),
-						this->handshake.body.serverHello.extensions_union.extensions.end());
-				}
-				break;
-			case CERTIFICATE:
-				// CertificateList
-				append_size_to_string(serialized_string, this->handshake.body.certificate.certificate_list.size());
-				for (const auto& certificate : this->handshake.body.certificate.certificate_list) {
-					uint16_t certificate_size = static_cast<uint16_t>(certificate.size());
-					serialized_string.push_back((certificate_size >> 8) & 0xFF);  // High byte
-					serialized_string.push_back(certificate_size & 0xFF);  // Low byte
-					serialized_string.insert(serialized_string.end(), certificate.begin(), certificate.end());
-				}
-				break;
-			case SERVER_KEY_EXCHANGE:
-				// KeyExchangeAlgorithm
-				serialized_string.push_back(this->handshake.body.serverKeyExchange.key_exchange_algorithm);
-				switch (serverKeyExchangeAlgorithm) {
-				case DH_ANON:
-					// DH parameters
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.end());
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.end());
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.end());
-					break;
-				case DHE_RSA:
-					// DH parameters
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.end());
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p.end());
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys.end());
-					// SignedParams.client_random.gmt_unix_time
-					for (int i = 3; i >= 0; --i) {
-						serialized_string.push_back(static_cast<char>((this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.gmt_unix_time >> (i * 8)) & 0xFF));
-					}
-					// SignedParams.client_random.random_bytes
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.random_bytes.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.random_bytes.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.random_bytes.end());
-					// SignedParams.server_random.gmt_unix_time
-					for (int i = 3; i >= 0; --i) {
-						serialized_string.push_back(static_cast<char>((this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.gmt_unix_time >> (i * 8)) & 0xFF));
-					}
-					// SignedParams.server_random.random_bytes
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes.end());
-
-					/* Need to check why is this needed inside signed_params. */
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g.end());
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p.end());
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys.begin(),
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys.end());
-				}		/********************************************************************************************/
-
-				break;
-			case CERTIFICATE_REQUEST:
-				// CertificateTypes
-				append_size_to_string(serialized_string, this->handshake.body.certificateRequest.certificate_types.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.certificateRequest.certificate_types.begin(),
-					this->handshake.body.certificateRequest.certificate_types.end());
-				// CertificateAuthorities
-				append_size_to_string(serialized_string, this->handshake.body.certificateRequest.certificate_authorities.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.certificateRequest.certificate_authorities.begin(),
-					this->handshake.body.certificateRequest.certificate_authorities.end());
-				break;
-			case SERVER_HELLO_DONE:
-				break;
-			case CERTIFICATE_VERIFY:
-				// DigitallySigned.handshake_messages
-				append_size_to_string(serialized_string, this->handshake.body.certificateVerify.digitally_signed.handshake_messages.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.certificateVerify.digitally_signed.handshake_messages.begin(),
-					this->handshake.body.certificateVerify.digitally_signed.handshake_messages.end());
-				break;
-			case CLIENT_KEY_EXCHANGE:
-				// KeyExchangeAlgorithm
-				serialized_string.push_back(this->handshake.body.clientKeyExchange.key_exchange_algorithm);
-				switch (clientKeyExchangeAlgorithm) {
-				case KEY_EXCHANGE_ALGORITHM_RSA:
-					// EncryptedPreMasterSecret.client_version
-					serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major);
-					serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor);
-					// EncryptedPreMasterSecret.pre_master_secret.random
-					append_size_to_string(serialized_string, this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.size());
-					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.begin(),
-						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.end());
-					break;
-				case DH_ANON:
-					// PublicValueEncoding
-					serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding);
-					PublicValueEncoding publicValueEncoding = this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding;
-					switch (publicValueEncoding) {
-					case EXPLICIT:
-						// DHPublic.dh_Yc
-						append_size_to_string(serialized_string, this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.size());
+					serialized_string.push_back(this->handshake.body.clientHello.extensions_union.extensions.size());
+					for (const auto& extension : this->handshake.body.clientHello.extensions_union.extensions) {
+						serialized_string.push_back(static_cast<char>(extension.extension_type));
 						serialized_string.insert(serialized_string.end(),
-							this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.begin(),
-							this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.end());
-						break;
-					case IMPLICIT:
-						break;
+							extension.extension_data.begin(),
+							extension.extension_data.end());
 					}
-					break;
 				}
 				break;
-			case FINISHED:
-				// VerifyData
-				append_size_to_string(serialized_string, this->handshake.body.finished.verify_data.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.finished.verify_data.begin(),
-					this->handshake.body.finished.verify_data.end());
-				break;
+			//case SERVER_HELLO:
+			//	// ProtocolVersion
+			//	serialized_string.push_back(this->handshake.body.serverHello.server_version.major);
+			//	serialized_string.push_back(this->handshake.body.serverHello.server_version.minor);
+			//	// Random.gmt_unix_time
+			//	for (int i = 3; i >= 0; --i) {
+			//		serialized_string.push_back(static_cast<char>((this->handshake.body.serverHello.random.gmt_unix_time >> (i * 8)) & 0xFF));
+			//	}
+			//	// Random.random_bytes
+			//	append_size_to_string(serialized_string, this->handshake.body.serverHello.random.random_bytes.size());
+			//	serialized_string.insert(serialized_string.end(),
+			//		this->handshake.body.serverHello.random.random_bytes.begin(),
+			//		this->handshake.body.serverHello.random.random_bytes.end());
+			//	// SessionID
+			//	append_size_to_string(serialized_string, this->handshake.body.serverHello.session_id.size());
+			//	serialized_string.insert(serialized_string.end(),
+			//		this->handshake.body.serverHello.session_id.begin(),
+			//		this->handshake.body.serverHello.session_id.end());
+			//	// CipherSuite
+			//	serialized_string.insert(serialized_string.end(),
+			//		this->handshake.body.serverHello.cipher_suite.begin(),
+			//		this->handshake.body.serverHello.cipher_suite.end());
+			//	// CompressionMethod
+			//	append_size_to_string(serialized_string, this->handshake.body.serverHello.compression_methods.size());
+			//	serialized_string.insert(serialized_string.end(),
+			//		this->handshake.body.serverHello.compression_methods.begin(),
+			//		this->handshake.body.serverHello.compression_methods.end());
+			//	// Extensions
+			//	serialized_string.push_back(this->handshake.body.serverHello.extensions_present);
+			//	if (this->handshake.body.serverHello.extensions_present) {
+			//		append_size_to_string(serialized_string, this->handshake.body.serverHello.extensions_union.extensions.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverHello.extensions_union.extensions.begin(),
+			//			this->handshake.body.serverHello.extensions_union.extensions.end());
+			//	}
+			//	break;
+			//case CERTIFICATE:
+			//	// CertificateList
+			//	append_size_to_string(serialized_string, this->handshake.body.certificate.certificate_list.size());
+			//	for (const auto& certificate : this->handshake.body.certificate.certificate_list) {
+			//		uint16_t certificate_size = static_cast<uint16_t>(certificate.size());
+			//		serialized_string.push_back((certificate_size >> 8) & 0xFF);  // High byte
+			//		serialized_string.push_back(certificate_size & 0xFF);  // Low byte
+			//		serialized_string.insert(serialized_string.end(), certificate.begin(), certificate.end());
+			//	}
+			//	break;
+			//case SERVER_KEY_EXCHANGE:
+			//	// KeyExchangeAlgorithm
+			//	serialized_string.push_back(this->handshake.body.serverKeyExchange.key_exchange_algorithm);
+			//	switch (serverKeyExchangeAlgorithm) {
+			//	case DH_ANON:
+			//		// DH parameters
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.end());
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.end());
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.end());
+			//		break;
+			//	case DHE_RSA:
+			//		// DH parameters
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.end());
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p.end());
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys.end());
+			//		// SignedParams.client_random.gmt_unix_time
+			//		for (int i = 3; i >= 0; --i) {
+			//			serialized_string.push_back(static_cast<char>((this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.gmt_unix_time >> (i * 8)) & 0xFF));
+			//		}
+			//		// SignedParams.client_random.random_bytes
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.random_bytes.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.random_bytes.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.random_bytes.end());
+			//		// SignedParams.server_random.gmt_unix_time
+			//		for (int i = 3; i >= 0; --i) {
+			//			serialized_string.push_back(static_cast<char>((this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.gmt_unix_time >> (i * 8)) & 0xFF));
+			//		}
+			//		// SignedParams.server_random.random_bytes
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes.end());
+
+			//		/* Need to check why is this needed inside signed_params. */
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g.end());
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p.end());
+			//		append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys.begin(),
+			//			this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys.end());
+			//	}		/********************************************************************************************/
+
+			//	break;
+			//case CERTIFICATE_REQUEST:
+			//	// CertificateTypes
+			//	append_size_to_string(serialized_string, this->handshake.body.certificateRequest.certificate_types.size());
+			//	serialized_string.insert(serialized_string.end(),
+			//		this->handshake.body.certificateRequest.certificate_types.begin(),
+			//		this->handshake.body.certificateRequest.certificate_types.end());
+			//	// CertificateAuthorities
+			//	append_size_to_string(serialized_string, this->handshake.body.certificateRequest.certificate_authorities.size());
+			//	serialized_string.insert(serialized_string.end(),
+			//		this->handshake.body.certificateRequest.certificate_authorities.begin(),
+			//		this->handshake.body.certificateRequest.certificate_authorities.end());
+			//	break;
+			//case SERVER_HELLO_DONE:
+			//	break;
+			//case CERTIFICATE_VERIFY:
+			//	// DigitallySigned.handshake_messages
+			//	append_size_to_string(serialized_string, this->handshake.body.certificateVerify.digitally_signed.handshake_messages.size());
+			//	serialized_string.insert(serialized_string.end(),
+			//		this->handshake.body.certificateVerify.digitally_signed.handshake_messages.begin(),
+			//		this->handshake.body.certificateVerify.digitally_signed.handshake_messages.end());
+			//	break;
+			//case CLIENT_KEY_EXCHANGE:
+			//	// KeyExchangeAlgorithm
+			//	serialized_string.push_back(this->handshake.body.clientKeyExchange.key_exchange_algorithm);
+			//	switch (clientKeyExchangeAlgorithm) {
+			//	case KEY_EXCHANGE_ALGORITHM_RSA:
+			//		// EncryptedPreMasterSecret.client_version
+			//		serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major);
+			//		serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor);
+			//		// EncryptedPreMasterSecret.pre_master_secret.random
+			//		append_size_to_string(serialized_string, this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.size());
+			//		serialized_string.insert(serialized_string.end(),
+			//			this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.begin(),
+			//			this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.end());
+			//		break;
+			//	case DH_ANON:
+			//		// PublicValueEncoding
+			//		serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding);
+			//		PublicValueEncoding publicValueEncoding = this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding;
+			//		switch (publicValueEncoding) {
+			//		case EXPLICIT:
+			//			// DHPublic.dh_Yc
+			//			append_size_to_string(serialized_string, this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.size());
+			//			serialized_string.insert(serialized_string.end(),
+			//				this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.begin(),
+			//				this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.end());
+			//			break;
+			//		case IMPLICIT:
+			//			break;
+			//		}
+			//		break;
+			//	}
+			//	break;
+			//case FINISHED:
+			//	// VerifyData
+			//	append_size_to_string(serialized_string, this->handshake.body.finished.verify_data.size());
+			//	serialized_string.insert(serialized_string.end(),
+			//		this->handshake.body.finished.verify_data.begin(),
+			//		this->handshake.body.finished.verify_data.end());
+			//	break;
 			default:
 				break;
 			}
-			append_size_to_string(serialized_string, this->supported_signature_hash_algorithms.size());
-			serialized_string.insert(serialized_string.end(),
-				this->supported_signature_hash_algorithms.begin(), 
-				this->supported_signature_hash_algorithms.end());
+			serialized_string.push_back(this->supported_signature_hash_algorithms.size());
+			for (const auto& algo : this->supported_signature_hash_algorithms) {
+				serialized_string.push_back(static_cast<char>(algo.signature));
+				serialized_string.push_back(static_cast<char>(algo.hash));
+			}
 
 			return serialized_string;
 		}
@@ -540,26 +601,13 @@ namespace netlab {
 			uint32_t digitally_signed_length = 0;
 			uint32_t verify_data_length = 0;
 			uint32_t random_bytes_length = 0;
-			uint32_t fragment_length = 0;
+
+			std::vector<CipherSuite> cipher_suites;
 
 			auto it = serialized_string.begin();
 
 			/* Deserialize TLS_record_layer's members. */
-			this->TLS_record_layer.protocol_version.major = *it;
-			it++;
-			this->TLS_record_layer.protocol_version.minor = *it;
-			it++;
-			this->TLS_record_layer.content_type = static_cast<ContentType>(*it);
-			it += sizeof(ContentType);
-			this->TLS_record_layer.length = (*it << 8);
-			it++;
-			this->TLS_record_layer.length |= *it;
-			it++;
-			fragment_length = *it;
-			it++;
-			this->TLS_record_layer.fragment = { it, it + fragment_length };
-			it += fragment_length;
-
+			this->TLS_record_layer.deserialize_record_layer_data(it, serialized_string);
 
 			/* Deserialize the handshake type and its length. */
 			this->handshake.msg_type = static_cast<HandshakeType>(*it);
@@ -586,19 +634,13 @@ namespace netlab {
 				}
 				cipher_suites_length = *it;
 				it++;
-
+				
 				for (int i = 0; i < cipher_suites_length; i++) {
-					// Read the CipherSuite
-					std::vector<CipherSuite> cipher_suites;
-					for (auto i = it; i != it + sizeof(CipherSuite) * cipher_suites_length; i += sizeof(CipherSuite)) {
-						CipherSuite cipher_suite = { *i, *(i + 1) };
-						cipher_suites.push_back(cipher_suite);
-					}
-					this->handshake.body.clientHello.cipher_suites
-						.insert(this->handshake.body.clientHello.cipher_suites.end(),
-						cipher_suites.begin(),
-						cipher_suites.end());
+					CipherSuite cipher_suite = { *it, *(it + 1) };
+					cipher_suites.push_back(cipher_suite);
+					it += sizeof(CipherSuite);
 				}
+				this->handshake.body.clientHello.cipher_suites = cipher_suites;
 
 				compression_methods_length = *it;
 				it++;

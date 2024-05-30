@@ -1,24 +1,31 @@
-#include "tls_definition.hpp"
-#include "tls_implementation.hpp"
+#include "pch.h"
+#include "../../netlab/L5/tls_definition.hpp"
+#include "../../netlab/L5/tls_implementation.hpp"
 
 using namespace netlab;
 
-void main() {
+class TLS_Tests : public testing::Test {
+public:
+	//ChangeCipherSpec changeCipherSpec;
+	//TLSAlertProtocol alert;
+	
+};
 
-	ChangeCipherSpec changeCipherSpec;
-	TLSAlertProtocol alert;
-	TLSHandshakeProtocol handshakeProtocol;
+TEST_F(TLS_Tests, Serialization_Deserialization_Test) {
+
+	TLSHandshakeProtocol handshakeProtocol(CLIENT_HELLO);
+
+	handshakeProtocol.handshake.body.clientHello.random.gmt_unix_time = time(0);
+	handshakeProtocol.handshake.body.clientHello.random.random_bytes = handshakeProtocol.generate_random_bytes<28>();
+	handshakeProtocol.handshake.body.clientHello.session_id = handshakeProtocol.generate_random_bytes<32>();
 
 	std::string serialized_string = handshakeProtocol.serialize_handshake_protocol_data(CLIENT_HELLO);
 
 	handshakeProtocol.deserialize_handshake_protocol_data(serialized_string, CLIENT_HELLO);
 
 	std::string serialized_string_2 = handshakeProtocol.serialize_handshake_protocol_data(CLIENT_HELLO);
-	
-	if (serialized_string == serialized_string_2) {
-		std::cout << "Serialization and Deserialization of Handshake Protocol is successful" << std::endl;
-	}
-	else {
-		std::cout << "Serialization and Deserialization of Handshake Protocol is not successful" << std::endl;
-	}
+
+	ASSERT_EQ(serialized_string, serialized_string_2);
+
+	handshakeProtocol.~TLSHandshakeProtocol();
 }
