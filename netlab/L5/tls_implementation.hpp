@@ -83,29 +83,6 @@ namespace netlab {
 			it += fragment_length;
 		}
 
-			return serialized_string;
-		}
-
-		/* Method used for deserializing the record layer data from a string type (receiving). */
-		void deserialize_record_layer_data(std::string::const_iterator& it, const std::string& serialized_string) {
-
-			/* Deserialize the members from the serialized_string. */
-			this->protocol_version.major = *it;
-			it++;
-			this->protocol_version.minor = *it;
-			it++;
-			this->content_type = static_cast<ContentType>(*it);
-			it += sizeof(ContentType);
-			this->length = (*it << 8);
-			it++;
-			this->length |= *it;
-			it++;
-			uint32_t fragment_length = *it;
-			it++;
-			this->fragment = { it, it + fragment_length };
-			it += fragment_length;
-		}
-
 		/* Function to send a TLS record */
 		void send_record(TLSSocket &socket) {
 			// Send the record to the socket
