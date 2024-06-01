@@ -13,14 +13,11 @@ public:
 
 TEST_F(TLS_Tests, Serialization_Deserialization_Test) {
 
-	HandshakeType msg_type = SERVER_HELLO;
+	HandshakeType msg_type = CERTIFICATE_REQUEST;
 
-	TLSHandshakeProtocol handshakeProtocol(msg_type);
+	TLSHandshakeProtocol handshakeProtocol;
 
-	uint32_t current_time = static_cast<uint32_t>(time(0));
-	handshakeProtocol.handshake.body.serverHello.random.gmt_unix_time = current_time;
-	handshakeProtocol.handshake.body.serverHello.random.random_bytes = handshakeProtocol.generate_random_bytes<28>();
-	handshakeProtocol.handshake.body.serverHello.session_id = handshakeProtocol.generate_random_bytes<32>();
+	handshakeProtocol.set_handshake(msg_type);
 
 	std::string serialized_string = handshakeProtocol.serialize_handshake_protocol_data(msg_type);
 

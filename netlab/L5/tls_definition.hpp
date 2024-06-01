@@ -31,6 +31,62 @@ namespace netlab {
 	typedef std::vector<uint8_t> DistinguishedName; /* Represents DistinguishedName<1..2^16-1>; */
 
 /************************************************************************/
+/*                         The Cipher Suite                             */
+/************************************************************************/
+
+	/* The following CipherSuite definitions require that the server provide
+		an RSA certificate that can be used for key exchange.  The server may
+		request any signature-capable certificate in the certificate request
+		message.*/
+
+	CipherSuite TLS_NULL_WITH_NULL_NULL = { 0x00,0x00 };
+	CipherSuite TLS_RSA_WITH_NULL_MD5 = { 0x00,0x01 };
+	CipherSuite TLS_RSA_WITH_NULL_SHA = { 0x00,0x02 };
+	CipherSuite TLS_RSA_WITH_NULL_SHA256 = { 0x00,0x3B };
+	CipherSuite TLS_RSA_WITH_RC4_128_MD5 = { 0x00,0x04 };
+	CipherSuite TLS_RSA_WITH_RC4_128_SHA = { 0x00,0x05 };
+	CipherSuite TLS_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x0A };
+	CipherSuite TLS_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x2F };
+	CipherSuite TLS_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x35 };
+	CipherSuite TLS_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x3C };
+	CipherSuite TLS_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x3D };
+
+	/* The following cipher suite definitions are used for server-
+	   authenticated (and optionally client-authenticated) Diffie-Hellman. */
+
+	CipherSuite TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x0D };
+	CipherSuite TLS_DH_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x10 };
+	CipherSuite TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x13 };
+	CipherSuite TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x16 };
+	CipherSuite TLS_DH_DSS_WITH_AES_128_CBC_SHA = { 0x00,0x30 };
+	CipherSuite TLS_DH_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x31 };
+	CipherSuite TLS_DHE_DSS_WITH_AES_128_CBC_SHA = { 0x00,0x32 };
+	CipherSuite TLS_DHE_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x33 };
+	CipherSuite TLS_DH_DSS_WITH_AES_256_CBC_SHA = { 0x00,0x36 };
+	CipherSuite TLS_DH_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x37 };
+	CipherSuite TLS_DHE_DSS_WITH_AES_256_CBC_SHA = { 0x00,0x38 };
+	CipherSuite TLS_DHE_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x39 };
+	CipherSuite TLS_DH_DSS_WITH_AES_128_CBC_SHA256 = { 0x00,0x3E };
+	CipherSuite TLS_DH_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x3F };
+	CipherSuite TLS_DHE_DSS_WITH_AES_128_CBC_SHA256 = { 0x00,0x40 };
+	CipherSuite TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x67 };
+	CipherSuite TLS_DH_DSS_WITH_AES_256_CBC_SHA256 = { 0x00,0x68 };
+	CipherSuite TLS_DH_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x69 };
+	CipherSuite TLS_DHE_DSS_WITH_AES_256_CBC_SHA256 = { 0x00,0x6A };
+	CipherSuite TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x6B };
+
+	/* The following cipher suites are used for completely anonymous
+	   Diffie-Hellman communications in which neither party is
+	   authenticated. */
+
+	CipherSuite TLS_DH_anon_WITH_RC4_128_MD5 = { 0x00,0x18 };
+	CipherSuite TLS_DH_anon_WITH_3DES_EDE_CBC_SHA = { 0x00,0x1B };
+	CipherSuite TLS_DH_anon_WITH_AES_128_CBC_SHA = { 0x00,0x34 };
+	CipherSuite TLS_DH_anon_WITH_AES_256_CBC_SHA = { 0x00,0x3A };
+	CipherSuite TLS_DH_anon_WITH_AES_128_CBC_SHA256 = { 0x00,0x6C };
+	CipherSuite TLS_DH_anon_WITH_AES_256_CBC_SHA256 = { 0x00,0x6D };
+
+/************************************************************************/
 /*								  enums                                 */
 /************************************************************************/
 
@@ -156,7 +212,7 @@ namespace netlab {
 		KEY_EXCHANGE_ALGORITHM_MAX_VALUE = 255,
 	};
 
-	enum ClientCertificateType {
+	enum ClientCertificateType : uint8_t {
 		RSA_SIGN = 1,
 		DSS_SIGN = 2,
 		FIXED_DH = 3,
@@ -329,8 +385,26 @@ namespace netlab {
 		bool extensions_present;
 		ExtensionUnion extensions_union;
 
-		ClientHello() { }
+		ClientHello() {
+			/* Initialize clientHello */
+			client_version.major = 3;
+			client_version.minor = 3;
+			random.gmt_unix_time = 0;
+			random.random_bytes = { };
+			session_id = { };
+			cipher_suites.resize(1);
+			cipher_suites.push_back(TLS_RSA_WITH_AES_128_CBC_SHA);
+			compression_methods = { NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE };
+			extensions_present = false;
+			extensions_union.no_extensions = {};
+		}
 		~ClientHello() { }
+
+		void setClientHello(uint32_t gmt_unix_time, std::array<uint8_t, 28> random_bytes, std::array<uint8_t, 32> session_id) {
+			random.gmt_unix_time = gmt_unix_time;
+			random.random_bytes = random_bytes;
+			session_id = session_id;
+		}
 	};
 
 	struct ServerHello {
@@ -342,8 +416,26 @@ namespace netlab {
 		bool extensions_present;
 		ExtensionUnion extensions_union;
 
-		ServerHello() { }
+		ServerHello() {
+			/* Initialize serverHello */
+			server_version.major = 3;
+			server_version.minor = 3;
+			random.gmt_unix_time = 0;
+			random.random_bytes = { };
+			session_id = { };
+			cipher_suite = TLS_NULL_WITH_NULL_NULL;
+			compression_methods = { NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE };
+			extensions_present = false;
+			extensions_union.no_extensions = {};
+		}
 		~ServerHello() { }
+
+		void setServerHello(uint32_t gmt_unix_time, std::array<uint8_t, 28> random_bytes, std::array<uint8_t, 32> session_id) {
+			random.gmt_unix_time = gmt_unix_time;
+			random.random_bytes = random_bytes;
+			session_id = session_id;
+			cipher_suite = TLS_RSA_WITH_AES_128_CBC_SHA;
+		}
 	};
 
 	struct SignatureAndHashAlgorithm {
@@ -370,27 +462,39 @@ namespace netlab {
 	struct ServerKeyExchange {
 		KeyExchangeAlgorithm key_exchange_algorithm;
 		union ServerExchangeKeys{
-			struct {
+			struct dhANON {
 				ServerDHParams params;
+
+				dhANON() : params() { }
+				~dhANON() { }
+
 			} dh_anon; /* KeyExchangeAlgorithm = DH_ANON (6)*/
 
-			struct { /* KeyExchangeAlgorithm = DHE_RSA (5) */
+			struct dheRSA{ /* KeyExchangeAlgorithm = DHE_RSA (5) */
 				ServerDHParams params;
-				struct {
+				struct SignedParams{
 					Random client_random;
 					Random server_random;
 					ServerDHParams params;
+
+					SignedParams() : client_random(), server_random(), params() { }
+					~SignedParams() { }
+
 				} signed_params;
+
+				dheRSA() : params(), signed_params() { }
+				~dheRSA() { }
+
 			} dhe_rsa;
 
 			struct { } rsa_dh_dss_dh_rsa_dhe_dss; /* KeyExchangeAlgorithm = RSA (1), DH_DSS (2), DH_RSA (3), DHE_DSS (4) */
 
-			ServerExchangeKeys() {}
-			~ServerExchangeKeys() {}
+			ServerExchangeKeys() { }
+			~ServerExchangeKeys() { }
 
 		} server_exchange_keys;
 
-		ServerKeyExchange() : server_exchange_keys(){ }
+		ServerKeyExchange() : key_exchange_algorithm(DHE_RSA), server_exchange_keys(){ }
 		~ServerKeyExchange() { }
 	};
 
@@ -563,7 +667,6 @@ namespace netlab {
 		}
 
 		void updateBody() {
-			//body.destroy(msg_type); // Destroy the old body
 			body.create(msg_type); // Create a new body based on the current msg_type
 		}
 	};
@@ -601,61 +704,5 @@ namespace netlab {
 		std::array<uint8_t, 32> client_random;
 		std::array<uint8_t, 32> server_random;
 	};
-		
-/************************************************************************/
-/*                         The Cipher Suite                             */
-/************************************************************************/
-
-	/* The following CipherSuite definitions require that the server provide
-	   an RSA certificate that can be used for key exchange.  The server may
-	   request any signature-capable certificate in the certificate request
-	   message.*/
-
-	CipherSuite TLS_NULL_WITH_NULL_NULL = { 0x00,0x00 };
-	CipherSuite TLS_RSA_WITH_NULL_MD5 = { 0x00,0x01 };
-	CipherSuite TLS_RSA_WITH_NULL_SHA = { 0x00,0x02 };
-	CipherSuite TLS_RSA_WITH_NULL_SHA256 = { 0x00,0x3B };
-	CipherSuite TLS_RSA_WITH_RC4_128_MD5 = { 0x00,0x04 };
-	CipherSuite TLS_RSA_WITH_RC4_128_SHA = { 0x00,0x05 };
-	CipherSuite TLS_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x0A };
-	CipherSuite TLS_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x2F };
-	CipherSuite TLS_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x35 };
-	CipherSuite TLS_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x3C };
-	CipherSuite TLS_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x3D };
-
-	/* The following cipher suite definitions are used for server-
-	   authenticated (and optionally client-authenticated) Diffie-Hellman. */
-
-	CipherSuite TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x0D };
-	CipherSuite TLS_DH_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x10 };
-	CipherSuite TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x13 };
-	CipherSuite TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x16 };
-	CipherSuite TLS_DH_DSS_WITH_AES_128_CBC_SHA = { 0x00,0x30 };
-	CipherSuite TLS_DH_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x31 };
-	CipherSuite TLS_DHE_DSS_WITH_AES_128_CBC_SHA = { 0x00,0x32 };
-	CipherSuite TLS_DHE_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x33 };
-	CipherSuite TLS_DH_DSS_WITH_AES_256_CBC_SHA = { 0x00,0x36 };
-	CipherSuite TLS_DH_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x37 };
-	CipherSuite TLS_DHE_DSS_WITH_AES_256_CBC_SHA = { 0x00,0x38 };
-	CipherSuite TLS_DHE_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x39 };
-	CipherSuite TLS_DH_DSS_WITH_AES_128_CBC_SHA256 = { 0x00,0x3E };
-	CipherSuite TLS_DH_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x3F };
-	CipherSuite TLS_DHE_DSS_WITH_AES_128_CBC_SHA256 = { 0x00,0x40 };
-	CipherSuite TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x67 };
-	CipherSuite TLS_DH_DSS_WITH_AES_256_CBC_SHA256 = { 0x00,0x68 };
-	CipherSuite TLS_DH_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x69 };
-	CipherSuite TLS_DHE_DSS_WITH_AES_256_CBC_SHA256 = { 0x00,0x6A };
-	CipherSuite TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x6B };
-
-	/* The following cipher suites are used for completely anonymous
-	   Diffie-Hellman communications in which neither party is
-	   authenticated. */
-
-	CipherSuite TLS_DH_anon_WITH_RC4_128_MD5 = { 0x00,0x18 };
-	CipherSuite TLS_DH_anon_WITH_3DES_EDE_CBC_SHA = { 0x00,0x1B };
-	CipherSuite TLS_DH_anon_WITH_AES_128_CBC_SHA = { 0x00,0x34 };
-	CipherSuite TLS_DH_anon_WITH_AES_256_CBC_SHA = { 0x00,0x3A };
-	CipherSuite TLS_DH_anon_WITH_AES_128_CBC_SHA256 = { 0x00,0x6C };
-	CipherSuite TLS_DH_anon_WITH_AES_256_CBC_SHA256 = { 0x00,0x6D };
 
 } // namespace netlab
