@@ -22,11 +22,13 @@
 #include <openssl/aes.h>
 #include <stdio.h>
 #include <stdint.h>
-extern "C" {
-#include <openssl/applink.c>
-}
+
 
 #pragma warning(disable : 4996)
+
+#define VERIFY_DATA_LEN 12
+#define AES_BLOCK_SIZE 16
+#define HMAC_SHA1_LEN 20
 
 using namespace netlab;
 
@@ -446,13 +448,6 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     fclose(file);
 
 
-
-
-
-
-
-
-
     // create the client key exchange msg
     tls_header client_key_exchange_header;
 
@@ -497,39 +492,61 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     unsigned char master_secret[48];
 
     // create master sercret 
-     EVP_PKEY_CTX *pctx;
-     unsigned char out[10];
-     size_t outlen = sizeof(master_secret);
+    EVP_PKEY_CTX *pctx;
+    unsigned char out[10];
+    size_t outlen = sizeof(master_secret);
+    std::string pre_master_lebel = "master secret";
+    std::vector<uint8_t> pre_master_seed;
+    pre_master_seed.insert(pre_master_seed.end(), pre_master_lebel.begin(), pre_master_lebel.end());
+    pre_master_seed.insert(pre_master_seed.end(), rands.begin(), rands.end());
 
-     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_TLS1_PRF, NULL);
-     if (EVP_PKEY_derive_init(pctx) <= 0) return;
-         /* Error */
-     if (EVP_PKEY_CTX_set_tls1_prf_md(pctx, EVP_sha256()) <= 0) return;
-         /* Error */
-     if (EVP_PKEY_CTX_set1_tls1_prf_secret(pctx, premaster_secret, 48) <= 0) return;
-         /* Error */
-     if (EVP_PKEY_CTX_add1_tls1_prf_seed(pctx, rands.data(), rands.size()) <= 0) return;
-         /* Error */
-     if (EVP_PKEY_derive(pctx, master_secret, &outlen) <= 0)
-         /* Error */
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_TLS1_PRF, NULL);
+    if (EVP_PKEY_derive_init(pctx) <= 0) return;
+    if (EVP_PKEY_CTX_set_tls1_prf_md(pctx, EVP_sha1()) <= 0) return;
+    if (EVP_PKEY_CTX_set1_tls1_prf_secret(pctx, premaster_secret, 48) <= 0) return;
+    if (EVP_PKEY_CTX_add1_tls1_prf_seed(pctx, pre_master_seed.data(), pre_master_seed.size()) <= 0) return;
+    if (EVP_PKEY_derive(pctx, master_secret, &outlen) <= 0) return;
+    EVP_PKEY_CTX_free(pctx);
 
+    EVP_PKEY_CTX* pctx1;
+    unsigned char key_block[104]; // Key block size for TLS_RSA_WITH_AES_128_CBC_SHA
+    size_t key_block_len = sizeof(key_block);
+    std::string key_lebel = "key expansion";
+    std::vector<uint8_t> key_seed;
+    key_seed.insert(key_seed.end(), key_lebel.begin(), key_lebel.end());
+    key_seed.insert(key_seed.end(), rands.begin(), rands.end());
 
+    // derive session keys
+    pctx1 = EVP_PKEY_CTX_new_id(EVP_PKEY_TLS1_PRF, NULL);
+    if (EVP_PKEY_derive_init(pctx1) <= 0) return;
+    if (EVP_PKEY_CTX_set_tls1_prf_md(pctx1, EVP_sha1()) <= 0) return;
+    if (EVP_PKEY_CTX_set1_tls1_prf_secret(pctx1, master_secret, 48) <= 0) return;
+    if (EVP_PKEY_CTX_add1_tls1_prf_seed(pctx1, key_seed.data(), key_seed.size()) <= 0) return;
+    if (EVP_PKEY_derive(pctx1, key_block, &key_block_len) <= 0) return;
+    EVP_PKEY_CTX_free(pctx1);
+    
+    // Extract keys and IVs from key_block
+    unsigned char client_write_MAC[20];   // MAC key size (SHA-1)
+    unsigned char server_write_MAC[20];   // MAC key size (SHA-1)
+    unsigned char client_write_key[16];   // Encryption key size (AES-128)
+    unsigned char server_write_key[16];   // Encryption key size (AES-128)
+    unsigned char client_write_IV[16];    // IV size
+    unsigned char server_write_IV[16];    // IV size
 
-    std::vector<uint8_t> client_write_key1;
-    std::vector<uint8_t> server_write_key1;
-    std::vector<uint8_t> client_write_iv1;
-    std::vector<uint8_t> server_write_iv1;
-
-
-    // Derive session keys
-    //derive_session_keys(master_secret, client_rand, server_rand, client_write_key1, server_write_key1, client_write_iv1, server_write_iv1);
+    unsigned char* ptr = key_block;
+    memcpy(client_write_MAC, ptr, 20);    ptr += 20;
+    memcpy(server_write_MAC, ptr, 20);    ptr += 20;
+    memcpy(client_write_key, ptr, 16);    ptr += 16;
+    memcpy(server_write_key, ptr, 16);    ptr += 16;
+    memcpy(client_write_IV, ptr, 16);     ptr += 16;
+    memcpy(server_write_IV, ptr, 16);     ptr += 16;
+    
 
     // Encrypt some data
     std::vector<uint8_t> plaintext;
 
     // concate all hanshake massages
-    
-
+ 
     // add client hello
     auto client_hello  = client_msg.parse();
     auto client_hello_msg = std::vector<uint8_t>(client_hello.begin(), client_hello.end());
@@ -550,105 +567,159 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     // add client key exchange
     plaintext.insert(plaintext.end(), msg_to_send2.begin(), msg_to_send2.end());
 
+    // derrive verify data
+    OpenSSL_add_all_algorithms();
+    ERR_load_crypto_strings();
+    EVP_PKEY_CTX* pctx2;
+    
+    // hash the concatenated handshake messages
+    uint8_t seed[20];
+    size_t seed_len =20;
+    SHA1(plaintext.data(), plaintext.size(), seed);
 
-    // ________________________________
-     // Compute SHA384 hash of the handshake messages
-    std::vector<unsigned char> hash(EVP_MAX_MD_SIZE);
-    unsigned int hash_len;
-   // EVP_Digest(plaintext.data(), plaintext.size(), hash.data(), &hash_len, EVP_sha384(), nullptr);
-   // hash.resize(hash_len);
+    // prepare seed, concatenate with client finished string
+    std::string client_finished = "client finished";
+    std::vector<uint8_t> finish_seed;
+    finish_seed.insert(finish_seed.end(), client_finished.begin(), client_finished.end());
+    finish_seed.insert(finish_seed.end(), seed, seed + seed_len);   
 
+    uint8_t verify_data[12];
 
-    unsigned char verify_data[12];
-    auto master_vec = std::vector<unsigned char>(master_secret, master_secret + 48);
-  //  verify_client_finished(master_vec, plaintext, verify_data);
+    // Initialize context
+    pctx2 = EVP_PKEY_CTX_new_id(EVP_PKEY_TLS1_PRF, NULL);
+    if (!pctx2) {
+        fprintf(stderr, "Error initializing context\n");
+        return;
+    }
 
+    if (EVP_PKEY_derive_init(pctx2) <= 0) {
+        fprintf(stderr, "Error initializing derive\n");
+        EVP_PKEY_CTX_free(pctx2);
+        return;
+    }
+    if (EVP_PKEY_CTX_set_tls1_prf_md(pctx2, EVP_sha1()) <= 0) return;
+    // Set the master secret
+    if (EVP_PKEY_CTX_set1_tls1_prf_secret(pctx2, master_secret, 48) <= 0) {
+        fprintf(stderr, "Error setting PRF secret\n");
+        EVP_PKEY_CTX_free(pctx2);
+        return;
+    }
 
+    // Add the seed
+    if (EVP_PKEY_CTX_add1_tls1_prf_seed(pctx2, finish_seed.data(), finish_seed.size()) <= 0) {
+        fprintf(stderr, "Error adding PRF seed\n");
+        EVP_PKEY_CTX_free(pctx2);
+        return;
+    }
 
-    // PRF to generate verify data for the Finished message
-    //std::vector<unsigned char> verify_data = PRF(master_secret, "client finished", hash, 12);
+    // Derive the verify_data
+    size_t verify_data_len = sizeof(verify_data);
+    if (EVP_PKEY_derive(pctx2, verify_data, &verify_data_len) <= 0) {
+        fprintf(stderr, "Error deriving verify_data: %s\n", ERR_error_string(ERR_get_error(), NULL));
+        EVP_PKEY_CTX_free(pctx2);
+        return;
+    }
 
-
-    std::vector<unsigned char> verify_data1{ 0x14 , 0x00, 0x00, 0x0c };
-    verify_data1.insert(verify_data1.end(), verify_data, verify_data + 12);
-
-  //  std::vector<unsigned char> ciphertext = encryptAES_CBC(client_write_key1, client_write_iv1, plaintext);
-
-    // Derive key block
-    std::vector<unsigned char> seed;
-    seed.insert(seed.end(), client_rand.begin(), client_rand.end());
-    seed.insert(seed.end(), server_rand.begin(), server_rand.end());
-    unsigned char key_block[72];
- 
-
-    // Extract keys and IVs from the key block
-    std::vector<unsigned char> client_write_key(key_block, key_block + 32);
-    std::vector<unsigned char> server_write_key(key_block + 32, key_block + 64);
-    std::vector<unsigned char> client_write_iv(key_block + 64, key_block + 68);
-    std::vector<unsigned char> server_write_iv(key_block+ 68, key_block + 72);
-
-    // Generate explicit nonce (8 bytes)
-    std::vector<unsigned char> explicit_nonce(8);
-    RAND_bytes(explicit_nonce.data(), explicit_nonce.size());
-
-    // Concatenate the client_write_iv (4 bytes) and explicit_nonce (8 bytes) to form the full IV
-    std::vector<unsigned char> full_iv(client_write_iv);
-    full_iv.insert(full_iv.end(), explicit_nonce.begin(), explicit_nonce.end());
-
-    // Encrypt the verify data using client_write_key and client_write_iv
-    std::vector<unsigned char> tag;
-  //  std::vector<unsigned char> ciphertext = encrypt_aes_gcm(verify_data1, client_write_key, full_iv, tag);
-
-    // Output the encrypted handshake message (IV + ciphertext + tag)
-    std::vector<unsigned char> encrypted_handshake_message;
-    encrypted_handshake_message.insert(encrypted_handshake_message.end(), explicit_nonce.begin(), explicit_nonce.end());
-    //encrypted_handshake_message.insert(encrypted_handshake_message.end(), ciphertext.begin(), ciphertext.end());
-    encrypted_handshake_message.insert(encrypted_handshake_message.end(), tag.begin(), tag.end());
-
-
-
-
-   /* std::vector<uint8_t> hashedMessages(SHA384_DIGEST_LENGTH);
-    SHA384(plaintext.data(), plaintext.size(), hashedMessages.data());
-    std::vector<uint8_t> verifyData = construct_verify_data(master_secret, hashedMessages);
-
-
-    verifyData.push_back(0x14);
-    verifyData.push_back(0x00);
-    verifyData.push_back(0x00);
-    verifyData.push_back(0x0c);
-
-    verifyData.push_back(0x00);
-    verifyData.push_back(0x00);
-    verifyData.push_back(0x00);
-    verifyData.push_back(0x00);
+    // Cleanup
+    EVP_PKEY_CTX_free(pctx2);
+    
+    // compose message to encrypt
+    uint8_t final_data[16];
+    uint8_t ciphertext[64];
+    final_data[0] = 0x14;
+    final_data[1] = 0x00;
+    final_data[2] = 0x00;
+    final_data[3] = 0x0c;
+    memcpy(final_data + 4, verify_data, 12);
 
 
 
-    verifyData.push_back(0x00);
-    verifyData.push_back(0x00);
-    verifyData.push_back(0x00);
-    verifyData.push_back(0x00);*/
 
 
-   // auto bca = encryptMessage(verifyData, client_write_key, client_write_iv);
+    // compute hmac
+    unsigned char hmac[HMAC_SHA1_LEN];
+    unsigned int len1 = HMAC_SHA1_LEN;
+    HMAC(EVP_sha1(), client_write_MAC, 16, final_data, 16, hmac, &len1);
+
+
+    // pad the data
+    unsigned char padded_message[64];
+    memcpy(padded_message, final_data, sizeof(final_data));
+    memcpy(padded_message + sizeof(final_data), hmac, HMAC_SHA1_LEN);
+    size_t padded_message_len = sizeof(final_data) + HMAC_SHA1_LEN;
+
+    size_t padding_len = AES_BLOCK_SIZE - (padded_message_len % AES_BLOCK_SIZE);
+    for (size_t i = 0; i < padding_len; ++i) {
+        padded_message[padded_message_len + i] = padding_len;
+    }
+    padded_message_len += padding_len;
+
+    // encrypt the data
+    EVP_CIPHER_CTX* ctx;
+    int len;
+    int ciphertext_len_temp;
+    int* ciphertext_len;
+
+    // Create and initialize the context
+    ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        fprintf(stderr, "Error initializing cipher context\n");
+        return;
+    }
+
+    // Initialize the encryption operation with AES-128-CBC
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, client_write_key, client_write_IV) != 1) {
+        fprintf(stderr, "Error initializing encryption operation\n");
+        EVP_CIPHER_CTX_free(ctx);
+        return;
+    }
+
+    // Provide the plaintext to be encrypted, and obtain the encrypted output
+    if (EVP_EncryptUpdate(ctx, ciphertext, &len, padded_message, 64) != 1) {
+        fprintf(stderr, "Error during encryption\n");
+        EVP_CIPHER_CTX_free(ctx);
+        return;
+    }
+    ciphertext_len_temp = len;
+
+    // Finalize the encryption
+    if (EVP_EncryptFinal_ex(ctx, ciphertext + len, &len) != 1) {
+        fprintf(stderr, "Error during final encryption step\n");
+        EVP_CIPHER_CTX_free(ctx);
+        return;
+    }
+    ciphertext_len_temp += len;
+
+    // Set the final ciphertext length
+//    *ciphertext_len = ciphertext_len_temp;
+
+    // Clean up
+    EVP_CIPHER_CTX_free(ctx);
+
+
 
     // create encrypted handshake msg
     tls_header encrypted_handshake_header;
     encrypted_handshake_header.type = TLS_CONNECTION_TYPE_HANDSHAKE;
     encrypted_handshake_header.version = htons(TLS_VERSION_TLSv1_2);
-    encrypted_handshake_header.length = htons(encrypted_handshake_message.size());
+    encrypted_handshake_header.length = htons(64);
 
     std::string encrypted_handshake_msg;
     encrypted_handshake_msg.append((char*)&encrypted_handshake_header, sizeof(encrypted_handshake_header));
-    encrypted_handshake_msg.append((char*)encrypted_handshake_message.data(), encrypted_handshake_message.size());
+ //   encrypted_handshake_msg.append((char*)encrypted_handshake_message.data(), encrypted_handshake_message.size());
     // add to buffer
- //   encrypted_handshake_msg.insert(encrypted_handshake_msg.end(), verifyData.begin(), verifyData.end());
+    encrypted_handshake_msg.insert(encrypted_handshake_msg.end(), ciphertext , ciphertext + 64);
     key_exchange_buffer.append(encrypted_handshake_msg);
 
 
     // send client key exchange msg 
     p_socket->send(key_exchange_buffer, key_exchange_buffer.size(), 0, 0);
+
+
+
+
+
+
 
     std::cout << "finish send client key exchange" << std::endl;
 
