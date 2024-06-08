@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tls_socket.h"
+#include "tls_utils.hpp"
 #include "L5.h"
 
 #include <iostream>
@@ -21,6 +22,12 @@ namespace netlab {
 #define TLS_VERSION_TLSv1_1 = 0x0302
 #define TLS_VERSION_TLSv1_2 = 0x0303
 #define TLS_VERSION_TLSv1_3 = 0x0304
+
+
+#define RANDOM_BYTES_SIZE 28
+#define SESSION_ID_SIZE 32
+#define PRE_MASTER_SECRET_RND_SIZE 46
+#define MASTER_SECRET_SIZE 48
 
 /************************************************************************/
 /*                               typedef                                */
@@ -194,7 +201,7 @@ namespace netlab {
 		SIGNATURE_ALGORITHM_MAX_VALUE = 255,
 	};
 
-	enum KeyExchangeAlgorithm {
+	enum KeyExchangeAlgorithm : uint8_t {
 		KEY_EXCHANGE_ALGORITHM_RSA = 1,
 		DH_DSS = 2,
 		DH_RSA = 3,
@@ -351,7 +358,7 @@ namespace netlab {
 	struct Random {
 
 		uint32_t gmt_unix_time; /* Timestamp in seconds since 1st January 1970. */
-		std::array<uint8_t, 28> random_bytes;
+		std::array<uint8_t, RANDOM_BYTES_SIZE> random_bytes;
 
 		Random() : gmt_unix_time(0), random_bytes() { }
 		~Random() { }
@@ -400,10 +407,11 @@ namespace netlab {
 		}
 		~ClientHello() { }
 
-		void setClientHello(uint32_t gmt_unix_time, std::array<uint8_t, 28> random_bytes, std::array<uint8_t, 32> session_id) {
-			random.gmt_unix_time = gmt_unix_time;
-			random.random_bytes = random_bytes;
-			session_id = session_id;
+		void setClientHello() {
+
+			random.gmt_unix_time = static_cast<uint32_t>(time(0));
+			random.random_bytes = generate_random_bytes<RANDOM_BYTES_SIZE>();
+			session_id = generate_random_bytes<SESSION_ID_SIZE>();
 		}
 	};
 
@@ -430,10 +438,10 @@ namespace netlab {
 		}
 		~ServerHello() { }
 
-		void setServerHello(uint32_t gmt_unix_time, std::array<uint8_t, 28> random_bytes, std::array<uint8_t, 32> session_id) {
-			random.gmt_unix_time = gmt_unix_time;
-			random.random_bytes = random_bytes;
-			session_id = session_id;
+		void setServerHello() {
+			random.gmt_unix_time = static_cast<uint32_t>(time(0));
+			random.random_bytes = generate_random_bytes<RANDOM_BYTES_SIZE>();
+			session_id = generate_random_bytes<SESSION_ID_SIZE>();
 			cipher_suite = TLS_RSA_WITH_AES_128_CBC_SHA;
 		}
 	};
@@ -494,6 +502,19 @@ namespace netlab {
 
 		} server_exchange_keys;
 
+		void createServerKeyExchange() {
+			switch (key_exchange_algorithm) {
+			case DHE_RSA:
+				new (&server_exchange_keys.dhe_rsa) ServerExchangeKeys::dheRSA();
+				break;
+			case DH_ANON:
+				new (&server_exchange_keys.dh_anon) ServerExchangeKeys::dhANON();
+				break;
+			default:
+				break;
+			}
+		}
+
 		ServerKeyExchange() : key_exchange_algorithm(DHE_RSA), server_exchange_keys(){ }
 		~ServerKeyExchange() { }
 	};
@@ -510,7 +531,7 @@ namespace netlab {
 
 	struct PreMasterSecret {
 		ProtocolVersion client_version;
-		std::array<uint8_t, 46> random;
+		std::array<uint8_t, PRE_MASTER_SECRET_RND_SIZE> random;
 
 		PreMasterSecret() : client_version(), random() { }
 		~PreMasterSecret() { }
@@ -581,7 +602,7 @@ namespace netlab {
 		ClientKeyExchange clientKeyExchange;
 		Finished finished;
 
-		void create(HandshakeType msg_type) {
+		void createBody(HandshakeType msg_type) {
 
 			switch (msg_type) {
 			case HELLO_REQUEST:
@@ -660,14 +681,15 @@ namespace netlab {
 		Body body;                 /* message contents */
 
 		Handshake() : msg_type(HELLO_REQUEST), length(0) {
-			body.create(HELLO_REQUEST);// By default, initial state
+			body.createBody(HELLO_REQUEST);// By default, initial state
 		} 
 		~Handshake() {
 			body.destroy(msg_type); // Pass msg_type to Body destructor
 		}
 
-		void updateBody() {
-			body.create(msg_type); // Create a new body based on the current msg_type
+		void updateBody(HandshakeType passed_msg_type) {
+			msg_type = passed_msg_type;
+			body.createBody(msg_type); // Create a new body based on the current msg_type
 		}
 	};
 
@@ -684,25 +706,25 @@ namespace netlab {
 		  client write IV
 		  server write IV
 
-		  SecurityParameters:											*/
+	SecurityParameters:													*/
 
 	struct SecurityParameters {
 
-		ConnectionEnd			entity;
-		PRFAlgorithm			prf_algorithm;
-		BulkCipherAlgorithm		bulk_cipher_algorithm;
-		CipherType				cipher_type;
-		uint8_t					enc_key_length;
-		uint8_t					block_length;
-		uint8_t					fixed_iv_length;
-		uint8_t					record_iv_length;
-		MACAlgorithm			mac_algorithm;
-		uint8_t					mac_length;
-		uint8_t					mac_key_length;
-		CompressionMethod		compression_algorithm;
-		std::array<uint8_t, 48> master_secret;
-		std::array<uint8_t, 32> client_random;
-		std::array<uint8_t, 32> server_random;
+		ConnectionEnd								entity;
+		PRFAlgorithm								prf_algorithm;
+		BulkCipherAlgorithm							bulk_cipher_algorithm;
+		CipherType									cipher_type;
+		uint8_t										enc_key_length;
+		uint8_t										block_length;
+		uint8_t										fixed_iv_length;
+		uint8_t										record_iv_length;
+		MACAlgorithm								mac_algorithm;
+		uint8_t										mac_length;
+		uint8_t										mac_key_length;
+		CompressionMethod							compression_algorithm;
+		std::array<uint8_t, MASTER_SECRET_SIZE>		master_secret;
+		Random										client_random;
+		Random										server_random;
 	};
 
 } // namespace netlab

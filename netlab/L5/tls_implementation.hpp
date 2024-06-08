@@ -13,12 +13,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-void append_size_to_string(std::string& str, std::size_t value) {
-	for (size_t i = 0; i < sizeof(std::size_t); ++i) {
-		str.push_back(static_cast<char>((value >> (i * 8)) & 0xFF));
-	}
-}
-
 namespace netlab {
 
 /************************************************************************/
@@ -150,7 +144,7 @@ namespace netlab {
 		TLSRecordLayer TLS_record_layer;
 		Handshake handshake;
 		std::vector<SignatureAndHashAlgorithm> supported_signature_hash_algorithms; /* Represents SignatureAndHashAlgorithm supported_signature_algorithms<2..2 ^ 16 - 1>. */
-
+		
 		/* Constructor */
 		TLSHandshakeProtocol() {
 
@@ -237,70 +231,6 @@ namespace netlab {
 		/* Verifies the integrity of the handshake process. */
 		void verify_handshake_integrity(TLSSocket &socket) {
 			// Verify the integrity of the handshake process
-		}
-
-		void set_handshake(HandshakeType msg_type) {
-
-			this->handshake.msg_type = msg_type;
-			this->handshake.length = 0;
-			this->handshake.updateBody();
-
-			switch (msg_type) {
-			case CLIENT_HELLO:
-				this->handshake.body.clientHello.setClientHello(static_cast<uint32_t>(time(0)), this->generate_random_bytes<28>(),
-					this->generate_random_bytes<32>());
-				break;
-
-			case SERVER_HELLO:
-				this->handshake.body.serverHello.setServerHello(static_cast<uint32_t>(time(0)), this->generate_random_bytes<28>(),
-					this->generate_random_bytes<32>());
-				break;
-
-			case CERTIFICATE:
-				break;
-
-			case SERVER_KEY_EXCHANGE:
-				break;
-
-			case CERTIFICATE_REQUEST:
-				/* Initialize CertificateRequest */
-				this->handshake.body.certificateRequest.certificate_types = { };
-				this->handshake.body.certificateRequest.certificate_authorities = { };
-				break;
-
-			case SERVER_HELLO_DONE:
-				break;
-
-			case CERTIFICATE_VERIFY:
-				/* Initialize certificateVerify */
-				this->handshake.body.certificateVerify.digitally_signed.handshake_messages = { };
-				break;
-
-			case CLIENT_KEY_EXCHANGE:
-				/* Initialize ClientKeyExchange */
-				this->handshake.body.clientKeyExchange.key_exchange_algorithm = KEY_EXCHANGE_ALGORITHM_RSA;
-				switch (this->handshake.body.clientKeyExchange.key_exchange_algorithm) {
-				case KEY_EXCHANGE_ALGORITHM_RSA:
-					this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version = this->TLS_record_layer.protocol_version;
-					this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random = { };
-					break;
-				case DH_ANON:
-					this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding = IMPLICIT;
-					this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.implicit = { };
-					break;
-				default:
-					break;
-				}
-				break;
-
-			case FINISHED:
-				/* Initialize Finished */
-				this->handshake.body.finished.verify_data = { };
-				break;
-
-			default:
-				break;
-			}
 		}
 
 		/* Serializes the handshake data into a string type for sending. */
@@ -423,12 +353,12 @@ namespace netlab {
 				switch (serverKeyExchangeAlgorithm) {
 				case DH_ANON:
 					// DH parameters
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.size());
-					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g) {
-						serialized_string.push_back(byte);
-					}
 					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.size());
 					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p) {
+						serialized_string.push_back(byte);
+					}
+					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.size());
+					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g) {
 						serialized_string.push_back(byte);
 					}
 					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.size());
@@ -438,12 +368,12 @@ namespace netlab {
 					break;
 				case DHE_RSA:
 					// DH parameters
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.size());
-					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g) {
-						serialized_string.push_back(byte);
-					}
 					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p.size());
 					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p) {
+						serialized_string.push_back(byte);
+					}
+					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.size());
+					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g) {
 						serialized_string.push_back(byte);
 					}
 					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys.size());
@@ -451,7 +381,7 @@ namespace netlab {
 						serialized_string.push_back(byte);
 					}
 					// SignedParams.client_random.gmt_unix_time
-					for (int i = 3; i >= 0; --i) {
+					for (int i = 0; i < sizeof(uint32_t); ++i) {
 						serialized_string.push_back(static_cast<char>((this->handshake.body.serverKeyExchange.server_exchange_keys
 							.dhe_rsa.signed_params.client_random.gmt_unix_time >> (i * 8)) & 0xFF));
 					}
@@ -461,8 +391,9 @@ namespace netlab {
 						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.random_bytes.begin(),
 						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.random_bytes.end());
 					// SignedParams.server_random.gmt_unix_time
-					for (int i = 3; i >= 0; --i) {
-						serialized_string.push_back(static_cast<char>((this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.gmt_unix_time >> (i * 8)) & 0xFF));
+					for (int i = 0; i < sizeof(uint32_t); ++i) {
+						serialized_string.push_back(static_cast<char>((this->handshake.body.serverKeyExchange.server_exchange_keys
+							.dhe_rsa.signed_params.server_random.gmt_unix_time >> (i * 8)) & 0xFF));
 					}
 					// SignedParams.server_random.random_bytes
 					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes.size());
@@ -470,14 +401,14 @@ namespace netlab {
 						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes.begin(),
 						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes.end());
 					// SignedParams.params
-					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g.size());
-					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g) {
-						serialized_string.push_back(byte);
-					}
 					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p.size());
 					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p) {
 						serialized_string.push_back(byte);
 					}
+					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g.size());
+					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g) {
+						serialized_string.push_back(byte);
+					}					
 					append_size_to_string(serialized_string, this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys.size());
 					for (const auto& byte : this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys) {
 						serialized_string.push_back(byte);
@@ -574,6 +505,7 @@ namespace netlab {
 			uint32_t digitally_signed_length = 0;
 			uint32_t verify_data_length = 0;
 			uint32_t random_bytes_length = 0;
+			uint32_t vector_size = 0;
 
 			std::vector<CipherSuite> cipher_suites;
 
@@ -680,8 +612,7 @@ namespace netlab {
 				}
 				break;
 			case CERTIFICATE:
-				certificate_list_length = *it;
-				it++;
+				certificate_list_length = read_uint32_from_iterator(it);
 				for (int i = 0; i < certificate_list_length; i++) {
 					// Read the size of the next Certificate
 					size_t certificate_size = *reinterpret_cast<const size_t*>(&*it);
@@ -694,7 +625,90 @@ namespace netlab {
 				}
 				break;
 			case SERVER_KEY_EXCHANGE:
+				// Deserialize SERVER_KEY_EXCHANGE struct
+				this->handshake.body.serverKeyExchange.key_exchange_algorithm = static_cast<KeyExchangeAlgorithm>(*it);
+				it++;
+				switch(this->handshake.body.serverKeyExchange.key_exchange_algorithm) {
+					case DH_ANON:
+						// DH parameters
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.resize(*it);
+						it++;
+						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.size(); i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g[i] = *it;
+						}
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.resize(*it);
+						it++;
+						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.size(); i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p[i] = *it;
+						}
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.resize(*it);
+						it++;
+						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.size(); i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys[i] = *it;
+						}
+						break;
+					case DHE_RSA:
+						// DH parameters
+						vector_size = read_uint32_from_iterator(it);
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p.resize(vector_size);
+						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p.size(); i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_p[i] = *it;
+						}
+						vector_size = read_uint32_from_iterator(it);
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.resize(vector_size);
+						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g.size(); i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_g[i] = *it;
+						}
+						vector_size = read_uint32_from_iterator(it);
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys.resize(vector_size);
+						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys.size(); i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.params.dh_Ys[i] = *it;
+						}
 
+						// SignedParams.client_random.gmt_unix_time
+						for (size_t i = 0; i < sizeof(uint32_t); ++i) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.gmt_unix_time
+								|= (static_cast<uint32_t>(static_cast<uint8_t>(*it++)) >> (i * 8));
+						}
+						// SignedParams.client_random.random_bytes
+						random_bytes_length = read_uint32_from_iterator(it);
+						for (int i = 0; i < random_bytes_length; ++i, ++it) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.client_random.random_bytes[i]
+								= static_cast<uint8_t>(*it);
+						}
+
+						// SignedParams.server_random.gmt_unix_time
+						for (size_t i = 0; i < sizeof(uint32_t); ++i) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.gmt_unix_time
+								|= (static_cast<uint32_t>(static_cast<uint8_t>(*it++)) >> (i * 8));
+						}
+						// SignedParams.server_random.random_bytes
+						random_bytes_length = read_uint32_from_iterator(it);
+						for (int i = 0; i < random_bytes_length; ++i, ++it) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.server_random.random_bytes[i]
+								= static_cast<uint8_t>(*it);
+						}
+
+						// SignedParams.params
+						vector_size = read_uint32_from_iterator(it);
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p.resize(vector_size);
+						for (int i = 0; i < vector_size; i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_p[i] = *it;
+						}
+						vector_size = read_uint32_from_iterator(it);
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g.resize(vector_size);
+						for (int i = 0; i < vector_size; i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_g[i] = *it;
+						}
+						vector_size = read_uint32_from_iterator(it);
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys.resize(vector_size);
+						for (int i = 0; i < vector_size; i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dhe_rsa.signed_params.params.dh_Ys[i] = *it;
+						}
+						break;
+					default:
+						break;
+				}
 				break;
 			case CERTIFICATE_REQUEST:
 
@@ -716,15 +730,5 @@ namespace netlab {
 				break;
 			}
 		}
-
-		/* Generates a random byte array. */
-		template <std::size_t N>
-		std::array<uint8_t, N> generate_random_bytes() {
-			std::array<uint8_t, N> random_bytes;
-			for (std::size_t i = 0; i < N; i++) {
-				random_bytes[i] = rand() % 256;
-			}
-			return random_bytes;
-		}
 	};
-}
+} // namespace netlab 

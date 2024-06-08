@@ -52,6 +52,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <AdditionalHeaderUnitDependencies>C:\Users\gabri\OneDrive\Desktop\NetlabTAUProject\netlab_testing;%(AdditionalHeaderUnitDependencies)</AdditionalHeaderUnitDependencies>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
