@@ -276,7 +276,7 @@
     <ClInclude Include="L5\TLS.h" />
     <ClInclude Include="L5\TLS.hpp" />
     <ClInclude Include="L5\tls_definition.hpp" />
-    <ClInclude Include="L5\tls_implementation.hpp" />
+    <ClInclude Include="L5\tls_protocol_layer.hpp" />
     <ClInclude Include="L5\tls_socket.h" />
     <ClInclude Include="L5\tls_utils.hpp" />
     <ClInclude Include="Types.h" />

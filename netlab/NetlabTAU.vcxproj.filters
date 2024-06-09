@@ -182,7 +182,7 @@
     <ClInclude Include="L5\tls_definition.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="L5\tls_implementation.hpp">
+    <ClInclude Include="L5\tls_protocol_layer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="L5\tls_utils.hpp">
