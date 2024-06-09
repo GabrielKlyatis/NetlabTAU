@@ -241,6 +241,7 @@ namespace netlab {
 			this->TLS_record_layer.length = this->handshake.length;
 			KeyExchangeAlgorithm clientKeyExchangeAlgorithm = this->handshake.body.clientKeyExchange.key_exchange_algorithm;
 			KeyExchangeAlgorithm serverKeyExchangeAlgorithm = this->handshake.body.serverKeyExchange.key_exchange_algorithm;
+			PublicValueEncoding publicValueEncoding = this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding;
 
 			/*********************************************************************************************/
 
@@ -341,9 +342,9 @@ namespace netlab {
 				append_size_to_string(serialized_string, this->handshake.body.certificate.certificate_list.size());
 				for (std::size_t i = 0; i < this->handshake.body.certificate.certificate_list.size(); ++i) {
 					const auto& certificate = this->handshake.body.certificate.certificate_list[i];
-					uint16_t certificate_size = static_cast<uint16_t>(certificate.size());
-					serialized_string.push_back((certificate_size >> 8) & 0xFF);  // High byte
-					serialized_string.push_back(certificate_size & 0xFF);  // Low byte
+					for (int j = 0; j < sizeof(uint32_t); ++j) {
+						serialized_string.push_back(static_cast<char>((certificate.size() >> (j * 8)) & 0xFF));
+					}
 					serialized_string.insert(serialized_string.end(), certificate.begin(), certificate.end());
 				}
 				break;
@@ -424,60 +425,59 @@ namespace netlab {
 				// CertificateAuthorities
 				append_size_to_string(serialized_string, this->handshake.body.certificateRequest.certificate_authorities.size());
 				for (const auto& authority : this->handshake.body.certificateRequest.certificate_authorities) {
-					serialized_string.push_back(static_cast<uint8_t>(authority.size()));
-					for (const auto& byte_from_name : authority) {
-						serialized_string.push_back(byte_from_name);
+					for (int j = 0; j < sizeof(uint32_t); ++j) {
+						serialized_string.push_back(static_cast<char>((authority.size() >> (j * 8)) & 0xFF));
 					}
+					serialized_string.insert(serialized_string.end(), authority.begin(), authority.end());
 				}
 				break;
 			case SERVER_HELLO_DONE:
 				break;
-			//case CERTIFICATE_VERIFY:
-			//	// DigitallySigned.handshake_messages
-			//	append_size_to_string(serialized_string, this->handshake.body.certificateVerify.digitally_signed.handshake_messages.size());
-			//	serialized_string.insert(serialized_string.end(),
-			//		this->handshake.body.certificateVerify.digitally_signed.handshake_messages.begin(),
-			//		this->handshake.body.certificateVerify.digitally_signed.handshake_messages.end());
-			//	break;
-			//case CLIENT_KEY_EXCHANGE:
-			//	// KeyExchangeAlgorithm
-			//	serialized_string.push_back(this->handshake.body.clientKeyExchange.key_exchange_algorithm);
-			//	switch (clientKeyExchangeAlgorithm) {
-			//	case KEY_EXCHANGE_ALGORITHM_RSA:
-			//		// EncryptedPreMasterSecret.client_version
-			//		serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major);
-			//		serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor);
-			//		// EncryptedPreMasterSecret.pre_master_secret.random
-			//		append_size_to_string(serialized_string, this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.size());
-			//		serialized_string.insert(serialized_string.end(),
-			//			this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.begin(),
-			//			this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.end());
-			//		break;
-			//	case DH_ANON:
-			//		// PublicValueEncoding
-			//		serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding);
-			//		PublicValueEncoding publicValueEncoding = this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding;
-			//		switch (publicValueEncoding) {
-			//		case EXPLICIT:
-			//			// DHPublic.dh_Yc
-			//			append_size_to_string(serialized_string, this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.size());
-			//			serialized_string.insert(serialized_string.end(),
-			//				this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.begin(),
-			//				this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.end());
-			//			break;
-			//		case IMPLICIT:
-			//			break;
-			//		}
-			//		break;
-			//	}
-			//	break;
-			//case FINISHED:
-			//	// VerifyData
-			//	append_size_to_string(serialized_string, this->handshake.body.finished.verify_data.size());
-			//	serialized_string.insert(serialized_string.end(),
-			//		this->handshake.body.finished.verify_data.begin(),
-			//		this->handshake.body.finished.verify_data.end());
-			//	break;
+			case CERTIFICATE_VERIFY:
+				// DigitallySigned.handshake_messages
+				append_size_to_string(serialized_string, this->handshake.body.certificateVerify.digitally_signed.handshake_messages.size());
+				serialized_string.insert(serialized_string.end(),
+					this->handshake.body.certificateVerify.digitally_signed.handshake_messages.begin(),
+					this->handshake.body.certificateVerify.digitally_signed.handshake_messages.end());
+				break;
+			case CLIENT_KEY_EXCHANGE:
+				// KeyExchangeAlgorithm
+				serialized_string.push_back(this->handshake.body.clientKeyExchange.key_exchange_algorithm);
+				switch (clientKeyExchangeAlgorithm) {
+				case DH_RSA:
+					// EncryptedPreMasterSecret.client_version
+					serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major);
+					serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor);
+					// EncryptedPreMasterSecret.pre_master_secret.random
+					append_size_to_string(serialized_string, this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.size());
+					serialized_string.insert(serialized_string.end(),
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.begin(),
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.end());
+					break;
+				case DH_ANON:
+					// PublicValueEncoding
+					serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding);
+					switch (publicValueEncoding) {
+					case EXPLICIT:
+						// DHPublic.dh_Yc
+						append_size_to_string(serialized_string, this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.size());
+						serialized_string.insert(serialized_string.end(),
+							this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.begin(),
+							this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.end());
+						break;
+					case IMPLICIT:
+						break;
+					}
+					break;
+				}
+				break;
+			case FINISHED:
+				// VerifyData
+				append_size_to_string(serialized_string, this->handshake.body.finished.verify_data.size());
+				serialized_string.insert(serialized_string.end(),
+					this->handshake.body.finished.verify_data.begin(),
+					this->handshake.body.finished.verify_data.end());
+				break;
 			default:
 				break;
 			}
@@ -500,9 +500,10 @@ namespace netlab {
 			uint32_t compression_methods_length = 0;
 			uint32_t extensions_length = 0;
 			uint32_t certificate_list_length = 0;
+			uint32_t certificate_size = 0;
 			uint32_t certificate_types_length = 0;
 			uint32_t certificate_authorities_length = 0;
-			uint32_t digitally_signed_length = 0;
+			uint32_t handshake_messages_length = 0;
 			uint32_t verify_data_length = 0;
 			uint32_t random_bytes_length = 0;
 			uint32_t vector_size = 0;
@@ -522,6 +523,7 @@ namespace netlab {
 			/* Deserialize the handshake body. */
 			switch (msg_type) {
 			case CLIENT_HELLO:
+				// Deserialize clientHello struct
 				this->handshake.body.clientHello.client_version.major = *it;
 				it++;
 				this->handshake.body.clientHello.client_version.minor = *it;
@@ -568,6 +570,7 @@ namespace netlab {
 				}
 				break;
 			case SERVER_HELLO:
+				// Deserialize serverHello struct
 				this->handshake.body.serverHello.server_version.major = *it;
 				it++;
 				this->handshake.body.serverHello.server_version.minor = *it;
@@ -612,37 +615,37 @@ namespace netlab {
 				}
 				break;
 			case CERTIFICATE:
+				// Deserialize certificate struct
 				certificate_list_length = read_uint32_from_iterator(it);
 				for (int i = 0; i < certificate_list_length; i++) {
 					// Read the size of the next Certificate
-					size_t certificate_size = *reinterpret_cast<const size_t*>(&*it);
-					it += sizeof(size_t);
+					certificate_size = read_uint32_from_iterator(it);
 
 					// Read the Certificate
 					std::vector<uint8_t> certificate(it, it + certificate_size);
-					this->handshake.body.certificate.certificate_list.push_back(certificate);
+					this->handshake.body.certificate.certificate_list[i] = certificate;
 					it += certificate_size;
 				}
 				break;
 			case SERVER_KEY_EXCHANGE:
-				// Deserialize SERVER_KEY_EXCHANGE struct
+				// Deserialize serverKeyExchange struct
 				this->handshake.body.serverKeyExchange.key_exchange_algorithm = static_cast<KeyExchangeAlgorithm>(*it);
 				it++;
 				switch(this->handshake.body.serverKeyExchange.key_exchange_algorithm) {
 					case DH_ANON:
 						// DH parameters
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.resize(*it);
-						it++;
-						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.size(); i++, it++) {
-							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g[i] = *it;
-						}
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.resize(*it);
-						it++;
+						vector_size = read_uint32_from_iterator(it);
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.resize(vector_size);
 						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p.size(); i++, it++) {
 							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_p[i] = *it;
 						}
-						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.resize(*it);
-						it++;
+						vector_size = read_uint32_from_iterator(it);
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.resize(vector_size);
+						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g.size(); i++, it++) {
+							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_g[i] = *it;
+						}
+						vector_size = read_uint32_from_iterator(it);
+						this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.resize(vector_size);
 						for (int i = 0; i < this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys.size(); i++, it++) {
 							this->handshake.body.serverKeyExchange.server_exchange_keys.dh_anon.params.dh_Ys[i] = *it;
 						}
@@ -711,19 +714,69 @@ namespace netlab {
 				}
 				break;
 			case CERTIFICATE_REQUEST:
-
+				// Deserialize certificateRequest struct
+				certificate_types_length = read_uint32_from_iterator(it);
+				for (int i = 0; i < certificate_types_length; i++, it++) {
+					this->handshake.body.certificateRequest.certificate_types[i] = static_cast<ClientCertificateType>(*it);
+				}
+				certificate_authorities_length = read_uint32_from_iterator(it);
+				for (int i = 0; i < certificate_authorities_length; i++) {
+					vector_size = read_uint32_from_iterator(it);
+					std::vector<uint8_t> authority(it, it + vector_size);
+					this->handshake.body.certificateRequest.certificate_authorities[i] = authority;
+					it += vector_size;
+				}
 				break;
 			case SERVER_HELLO_DONE:
-				
 				break;
 			case CERTIFICATE_VERIFY:
-
+				// Deserialize certificateVerify struct
+				handshake_messages_length = read_uint32_from_iterator(it);
+				for (int i = 0; i < handshake_messages_length; i++, it++) {
+					this->handshake.body.certificateVerify.digitally_signed.handshake_messages[i] = *it;
+				}
 				break;
 			case CLIENT_KEY_EXCHANGE:
-				
+				// Deserialize clientKeyExchange struct
+				this->handshake.body.clientKeyExchange.key_exchange_algorithm = static_cast<KeyExchangeAlgorithm>(*it);
+				it++;
+				switch (this->handshake.body.clientKeyExchange.key_exchange_algorithm) {
+				case DH_RSA:
+					// EncryptedPreMasterSecret.client_version
+					this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major = *it;
+					it++;
+					this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor = *it;
+					it++;
+					// EncryptedPreMasterSecret.pre_master_secret.random
+					random_bytes_length = read_uint32_from_iterator(it);
+					for (int i = 0; i < random_bytes_length; i++, it++) {
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random[i] = *it;
+					}
+					break;
+					case DH_ANON:
+						// PublicValueEncoding
+						this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding = static_cast<PublicValueEncoding>(*it);
+						it++;
+						switch (this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding) {
+						case EXPLICIT:
+							// DHPublic.dh_Yc
+							vector_size = read_uint32_from_iterator(it);
+							for (int i = 0; i < vector_size; i++, it++) {
+								this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc[i] = *it;
+							}
+							break;
+						case IMPLICIT:
+							break;
+						}
+						break;
+				}
 				break;
 			case FINISHED:
-
+				// Deserialize finished struct
+				verify_data_length = read_uint32_from_iterator(it);
+				for (int i = 0; i < verify_data_length; i++, it++) {
+					this->handshake.body.finished.verify_data[i] = *it;
+				}
 				break;
 
 			default:

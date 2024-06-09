@@ -557,6 +557,18 @@ namespace netlab {
 
 		ClientDiffieHellmanPublic() { } 
 		~ClientDiffieHellmanPublic() { }
+
+		void createClientDiffieHellmanPublic() {
+			switch (public_value_encoding) {
+			case IMPLICIT:
+				break;
+			case EXPLICIT:
+				new (&dh_public.dh_Yc) std::vector<uint8_t>();
+				break;
+			default:
+				break;
+			}
+		}
 	};
 
 	struct ClientKeyExchange {
@@ -572,6 +584,19 @@ namespace netlab {
 
 		ClientKeyExchange() { }
 		~ClientKeyExchange() { }
+
+		void createClientKeyExchange() {
+			switch (key_exchange_algorithm) {
+			case DH_RSA:
+				new (&client_exchange_keys.encryptedPreMasterSecret) EncryptedPreMasterSecret();
+				break;
+			case DH_ANON:
+				new (&client_exchange_keys.clientDiffieHellmanPublic) ClientDiffieHellmanPublic();
+				break;
+			default:
+				break;
+			}
+		}
 	};
 
 	struct CertificateVerify {
