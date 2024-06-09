@@ -28,15 +28,12 @@ namespace netlab {
 		std::vector<uint8_t> fragment;
 
 		/* Constructor */
-		TLSRecordLayer() {
-			this->protocol_version = { 3, 3 };
-			this->content_type = TLS_CONTENT_TYPE_MAX_VALUE;
-			this->length = 0;
-			this->fragment = { };
-		}
-
-		/* Destructor */
-		~TLSRecordLayer() { }
+		TLSRecordLayer()
+			: protocol_version{ 3, 3 },
+			content_type(TLS_CONTENT_TYPE_MAX_VALUE),
+			length(0),
+			fragment{}
+		{ }
 
 		/* Method used for serializing the record layer data into a string type for sending. */
 		std::string serialize_record_layer_data() {
@@ -76,16 +73,6 @@ namespace netlab {
 			this->fragment = { it, it + fragment_length };
 			it += fragment_length;
 		}
-
-		/* Function to send a TLS record */
-		void send_record(TLSSocket &socket) {
-			// Send the record to the socket
-		}
-
-		/* Function to receive a TLS record */
-		void receive_record(TLSSocket &socket) {
-			// Receive the record from the socket
-		}
 	};
 
 /************************************************************************/
@@ -98,14 +85,7 @@ namespace netlab {
 		Type type;
 
 		/* Constructor */
-		ChangeCipherSpec() {
-			this->type = CHANGE_CIPHER_SPEC_MAX_VALUE;
-		}
-
-		/* Destructor */
-		~ChangeCipherSpec() {
-			// Clean up
-		}
+		ChangeCipherSpec() : type(CHANGE_CIPHER_SPEC_MAX_VALUE) { }
 
 	};
 
@@ -118,20 +98,7 @@ namespace netlab {
 		Alert alert;
 
 		/* Constructor */
-		TLSAlertProtocol() {
-			this->alert.level = ALERT_LEVEL_MAX_VALUE;
-			this->alert.description = ALERT_DESCRIPTION_MAX_VALUE;
-		}
-
-		/* Destructor */
-		~TLSAlertProtocol() {
-			// Clean up
-		}
-
-		/* Function to send a TLS alert */
-		void send_alert(TLSSocket &socket) {
-			// Send the alert to the socket
-		}
+		TLSAlertProtocol() : alert{ ALERT_LEVEL_MAX_VALUE, ALERT_DESCRIPTION_MAX_VALUE } { }
 	};
 
 /************************************************************************/
@@ -146,93 +113,12 @@ namespace netlab {
 		std::vector<SignatureAndHashAlgorithm> supported_signature_hash_algorithms; /* Represents SignatureAndHashAlgorithm supported_signature_algorithms<2..2 ^ 16 - 1>. */
 		
 		/* Constructor */
-		TLSHandshakeProtocol() {
-
-			this->TLS_record_layer = TLSRecordLayer();
-			
-			this->handshake.msg_type = HELLO_REQUEST;
-			this->handshake.length = 0;
-			
-			/* Initialize supported_signature_hash_algorithms */
-			this->supported_signature_hash_algorithms = { };
-		}
-
-		/* Destructor */
-		~TLSHandshakeProtocol() {
-			// Clean up 
-		}
-		protected:
-		/************************** Handshake Management *****************************/
-
-		/* Creates a handshake message to be sent. */
-		void create_handshake_message(TLSSocket &socket) {
-			// Create the handshake message to be sent
-		}
-
-		/* Processes an incoming handshake message. */
-		void process_handshake_message(TLSSocket &socket) {
-			// Process the incoming handshake message
-		}
-
-		/* Function to send a TLS handshake message */
-		void send_handshake(TLSSocket &socket) {
-			// Send the handshake message to the socket
-		}
-
-		/* Function to receive a TLS handshake message */
-		void receive_handshake(TLSSocket &socket) {
-			// Receive the handshake message from the socket
-		}
-
-		/************************** Handshake Types *****************************/
+		TLSHandshakeProtocol()
+			: TLS_record_layer(),
+			handshake{ HELLO_REQUEST, 0 },
+			supported_signature_hash_algorithms{}
+		{ }
 		
-		/* Receives a ServerHello message. */
-		void receive_server_hello(const std::vector<uint8_t>& message) {
-			// Receive the serverHello message
-		}
-		/* Sends a Certificate message. */
-		void send_certificate(TLSSocket &socket) {
-			// Send the Certificate message
-		}
-		/* Receives a Certificate message. */
-		void receive_certificate(const std::vector<uint8_t>& message) {
-			// Receive the Certificate message
-		}
-		/* Sends a ClientKeyExchange message. */
-		void send_client_key_exchange(TLSSocket &socket) {
-			// Send the ClientKeyExchange message
-		}
-		/* Receives a ServerKeyExchange message. */
-		void receive_server_key_exchange(const std::vector<uint8_t>& message) {
-			// Receive the ServerKeyExchange message
-		}
-		/* Sends a Finished message. */
-		void send_finished(TLSSocket &socket) {
-			// Send the Finished message
-		}
-		/* Receives a Finished message. */
-		void receive_finished(const std::vector<uint8_t>& message) {
-			// Receive the Finished message
-		}
-		
-		public:
-		/*************************** Utils *******************************/
-
-		/* Validates a received certificate. */
-		void validate_certificate(TLSSocket &socket) {
-			// Validate the received certificate
-		}
-
-		/* Generates cryptographic keys for the session. */
-		void generate_session_keys(TLSSocket &socket) {
-			// Generate the cryptographic keys for the session
-		}
-
-		/* Verifies the integrity of the handshake process. */
-		void verify_handshake_integrity(TLSSocket &socket) {
-			// Verify the integrity of the handshake process
-		}
-
 		/* Serializes the handshake data into a string type for sending. */
 		std::string serialize_handshake_protocol_data(HandshakeType msg_type) {
 

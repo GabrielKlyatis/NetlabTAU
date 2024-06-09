@@ -361,7 +361,6 @@ namespace netlab {
 		std::array<uint8_t, RANDOM_BYTES_SIZE> random_bytes;
 
 		Random() : gmt_unix_time(0), random_bytes() { }
-		~Random() { }
 	};
 
 	struct Extension {
@@ -405,7 +404,6 @@ namespace netlab {
 			extensions_present = false;
 			extensions_union.no_extensions = {};
 		}
-		~ClientHello() { }
 
 		void setClientHello() {
 
@@ -436,7 +434,6 @@ namespace netlab {
 			extensions_present = false;
 			extensions_union.no_extensions = {};
 		}
-		~ServerHello() { }
 
 		void setServerHello() {
 			random.gmt_unix_time = static_cast<uint32_t>(time(0));
@@ -455,7 +452,6 @@ namespace netlab {
 		std::vector<std::vector<uint8_t>> certificate_list; /* Represents ASN.1Cert certificate_list<0..2 ^ 24 - 1>. */
 
 		Certificate() : certificate_list() { }
-		~Certificate() { }
 	};
 
 	struct ServerDHParams {
@@ -464,7 +460,6 @@ namespace netlab {
 		std::vector<uint8_t> dh_Ys;
 
 		ServerDHParams() : dh_p(), dh_g(), dh_Ys() { }
-		~ServerDHParams() { }
 	};
 
 	struct ServerKeyExchange {
@@ -474,7 +469,6 @@ namespace netlab {
 				ServerDHParams params;
 
 				dhANON() : params() { }
-				~dhANON() { }
 
 			} dh_anon; /* KeyExchangeAlgorithm = DH_ANON (6)*/
 
@@ -486,12 +480,10 @@ namespace netlab {
 					ServerDHParams params;
 
 					SignedParams() : client_random(), server_random(), params() { }
-					~SignedParams() { }
 
 				} signed_params;
 
 				dheRSA() : params(), signed_params() { }
-				~dheRSA() { }
 
 			} dhe_rsa;
 
@@ -516,7 +508,6 @@ namespace netlab {
 		}
 
 		ServerKeyExchange() : key_exchange_algorithm(DHE_RSA), server_exchange_keys(){ }
-		~ServerKeyExchange() { }
 	};
 
 	struct CertificateRequest {
@@ -524,7 +515,6 @@ namespace netlab {
 		std::vector<DistinguishedName> certificate_authorities; // Represents DistinguishedName certificate_authorities<0..2^16-1>;
 
 		CertificateRequest() : certificate_types(), certificate_authorities() { }
-		~CertificateRequest() { }
 	};
 
 	struct ServerHelloDone { };
@@ -534,7 +524,6 @@ namespace netlab {
 		std::array<uint8_t, PRE_MASTER_SECRET_RND_SIZE> random;
 
 		PreMasterSecret() : client_version(), random() { }
-		~PreMasterSecret() { }
 	};
 
 	struct EncryptedPreMasterSecret {
@@ -542,7 +531,6 @@ namespace netlab {
 		PreMasterSecret pre_master_secret;
 
 		EncryptedPreMasterSecret() : pre_master_secret() { }
-		~EncryptedPreMasterSecret() { }
 	};
 
 	struct ClientDiffieHellmanPublic {
@@ -556,7 +544,6 @@ namespace netlab {
 		} dh_public;
 
 		ClientDiffieHellmanPublic() { } 
-		~ClientDiffieHellmanPublic() { }
 
 		void createClientDiffieHellmanPublic() {
 			switch (public_value_encoding) {
@@ -583,7 +570,6 @@ namespace netlab {
 		} client_exchange_keys;
 
 		ClientKeyExchange() { }
-		~ClientKeyExchange() { }
 
 		void createClientKeyExchange() {
 			switch (key_exchange_algorithm) {
@@ -605,14 +591,12 @@ namespace netlab {
 		} digitally_signed;
 
 		CertificateVerify() { }
-		~CertificateVerify() { }
 	};
 
 	struct Finished {
 		std::vector<uint8_t> verify_data;
 
 		Finished() { }
-		~Finished() { }
 	};
 
 	union Body { 				   
@@ -705,9 +689,11 @@ namespace netlab {
 		uint32_t length;           /* bytes in message */ /***** Maybe needs to be uint16_t*/
 		Body body;                 /* message contents */
 
-		Handshake() : msg_type(HELLO_REQUEST), length(0) {
-			body.createBody(HELLO_REQUEST);// By default, initial state
-		} 
+		Handshake(HandshakeType msg_type, uint32_t length)
+			: msg_type(msg_type), length(length) {
+			body.createBody(msg_type);
+		}
+
 		~Handshake() {
 			body.destroy(msg_type); // Pass msg_type to Body destructor
 		}
