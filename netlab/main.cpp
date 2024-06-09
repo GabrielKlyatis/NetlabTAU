@@ -540,13 +540,6 @@ std::vector<unsigned char> hexStringToBytes(const std::string& hex) {
 
 	return bytes;
 }
-void printAsciiString(const std::vector<uint8_t>& data) {
-	// Iterate through each byte in the vector and cast it to char
-	for (uint8_t byte : data) {
-		std::cout << static_cast<char>(byte);
-	}
-	std::cout << std::endl;
-}
 
 int aaaa()
 {
@@ -693,20 +686,16 @@ int aaaa()
 
 	// Encrypt the padded message
 	EVP_CIPHER_CTX* ctx3 = EVP_CIPHER_CTX_new();
+	int s= EVP_CIPHER_CTX_reset(ctx3);
 	if (!ctx3) return 1;
-
+	
 	int lenn;
 	int ciphertext_len_temp = 0;
 	std::vector<uint8_t> ciphertext(100);  // Ensure the buffer is large enough
 
-	std::cout << "final_msg" << std::endl;
-	printAsciiString(final_msg);
-	std::cout << "client_write_key" << std::endl;
-	printAsciiString(std::vector<uint8_t>(client_write_key, client_write_key + 16));
-	std::cout << "client_write_IV" << std::endl;
-	printAsciiString(std::vector<uint8_t>(client_write_IV, client_write_IV + 16));
+	uint8_t iv[16] = {0x78, 0x48, 0x6a, 0x7b, 0xe7, 0x24, 0xbc, 0xcc, 0x29, 0x8b, 0x4c, 0x80, 0xe1, 0xcf, 0xeb, 0x4d};
 
-	if (EVP_EncryptInit_ex(ctx3, EVP_aes_128_gcm(), NULL, client_write_key, NULL) != 1) {
+	if (EVP_EncryptInit_ex(ctx3, EVP_aes_128_cbc(), NULL, client_write_key, iv) != 1) {
 		ERR_print_errors_fp(stderr);
 		return 1;
 	}
@@ -715,7 +704,6 @@ int aaaa()
 		ERR_print_errors_fp(stderr);
 		return 1;
 	}
-
 
 	ciphertext_len_temp = lenn;
 
@@ -751,7 +739,7 @@ int aaaa()
 
 
 	// Disable TLS extensions
-	SSL_CTX_set_options(ctx, SSL_OP_NO_TICKET | SSL_OP_NO_EXTENDED_MASTER_SECRET | SSL_OP_NO_ENCRYPT_THEN_MAC );
+	SSL_CTX_set_options(ctx, SSL_OP_NO_TICKET | SSL_OP_NO_EXTENDED_MASTER_SECRET | SSL_OP_NO_ENCRYPT_THEN_MAC | SSL_OP_DISABLE_TLSEXT_CA_NAMES);
 
 	// Load trust store (optional)
 	if (!SSL_CTX_load_verify_locations(ctx, nullptr, "/etc/ssl/certs")) {
@@ -776,7 +764,7 @@ int aaaa()
 	SSL_set_options(ssl, SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 
 	// Set cipher suite
-	if (SSL_set_cipher_list(ssl, "TLS_RSA_WITH_AES_128_CBC_SHA") != 1) {
+	if (SSL_set_cipher_list(ssl, "TLS_RSA_WITH_AES_256_CBC_SHA256") != 1) {
 		std::cerr << "Error setting cipher suite" << std::endl;
 		ERR_print_errors_fp(stderr);
 		SSL_free(ssl);
@@ -858,6 +846,7 @@ int aaaa()
 	}
 
 	// Clean up
+	SSL_shutdown(ssl);
 	SSL_free(ssl);
 	SSL_CTX_free(ctx);
 	closesocket(sockfd);
@@ -874,13 +863,13 @@ int aaaa()
 void tls_playground()
 {
 
-	aaaa();
+//	aaaa();
 
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 	inet_os dflt = inet_os();
-	NIC nic_client(inet_client,	"192.168.1.225", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"arp or ip src 192.168.1.66");
-	NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
+	NIC nic_client(inet_client,	"192.168.1.225", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"arp or ip src 192.168.1.1");
+	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
 	L2_impl datalink_client(inet_client);
 	L2_ARP_impl arp_client(inet_client, 10, 10000);
 	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
@@ -893,7 +882,7 @@ void tls_playground()
 
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_addr("192.168.1.66");
+	clientService.sin_addr.s_addr = inet_addr("192.168.1.1");
 	clientService.sin_port = htons(443);
 	//1603010067010000630303c580c4a20b669355c7e1712761254c1586ab63aa491b75082696f936ed8d82a700003c130213031301c02cc030009fcca9cca8ccaac02bc02f009ec024c028006bc023c0270067c00ac0140039c009c013003300ad00abccaeccadccac009d0100
 	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);

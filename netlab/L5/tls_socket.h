@@ -4,6 +4,10 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <iostream>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <openssl/hmac.h>
+#pragma comment(lib, "Ws2_32.lib")
 
 namespace netlab {
 
@@ -22,6 +26,12 @@ public:
         delete p_socket;
     }
 
+    unsigned char client_write_MAC[20];   // MAC key size (SHA-1)
+    unsigned char server_write_MAC[20];   // MAC key size (SHA-1)
+    unsigned char client_write_key[16];   // Encryption key size (AES-128)
+    unsigned char server_write_key[16];   // Encryption key size (AES-128)
+    unsigned char client_write_IV[16];    // IV size
+    unsigned char server_write_IV[16];    // IV size
 
     enum tls_connection_type
     {
