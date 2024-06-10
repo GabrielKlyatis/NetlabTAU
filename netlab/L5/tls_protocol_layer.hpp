@@ -83,7 +83,6 @@ namespace netlab {
 	public:
 		TLSRecordLayer record_layer;
 		Type type;
-
 		/* Constructor */
 		ChangeCipherSpec() : type(CHANGE_CIPHER_SPEC_MAX_VALUE) { }
 
@@ -96,7 +95,6 @@ namespace netlab {
 	class TLSAlertProtocol {
 	public:
 		Alert alert;
-
 		/* Constructor */
 		TLSAlertProtocol() : alert{ ALERT_LEVEL_MAX_VALUE, ALERT_DESCRIPTION_MAX_VALUE } { }
 	};
@@ -664,7 +662,6 @@ namespace netlab {
 					this->handshake.body.finished.verify_data[i] = *it;
 				}
 				break;
-
 			default:
 				break;
 			}

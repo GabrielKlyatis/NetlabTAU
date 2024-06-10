@@ -23,7 +23,6 @@ namespace netlab {
 #define TLS_VERSION_TLSv1_2 = 0x0303
 #define TLS_VERSION_TLSv1_3 = 0x0304
 
-
 #define RANDOM_BYTES_SIZE 28
 #define SESSION_ID_SIZE 32
 #define PRE_MASTER_SECRET_RND_SIZE 46
@@ -342,6 +341,9 @@ namespace netlab {
 			GenericStreamCipher streamCipher;
 			GenericBlockCipher blockCipher;
 			GenericAEADCipher aeadCipher;
+
+			Fragment() : streamCipher(), blockCipher(), aeadCipher() { }
+			~Fragment() { }
 		} fragment;
 	};
 
@@ -356,11 +358,13 @@ namespace netlab {
 /************************ TLS Handshake Protocol ***********************/
 
 	struct Random {
-
 		uint32_t gmt_unix_time; /* Timestamp in seconds since 1st January 1970. */
 		std::array<uint8_t, RANDOM_BYTES_SIZE> random_bytes;
 
 		Random() : gmt_unix_time(0), random_bytes() { }
+
+		Random(uint32_t gmt_unix_time, std::array<uint8_t, RANDOM_BYTES_SIZE> random_bytes)
+			: gmt_unix_time(gmt_unix_time), random_bytes(random_bytes) { }
 	};
 
 	struct Extension {
@@ -391,19 +395,16 @@ namespace netlab {
 		bool extensions_present;
 		ExtensionUnion extensions_union;
 
-		ClientHello() {
-			/* Initialize clientHello */
-			client_version.major = 3;
-			client_version.minor = 3;
-			random.gmt_unix_time = 0;
-			random.random_bytes = { };
-			session_id = { };
-			cipher_suites.resize(1);
-			cipher_suites.push_back(TLS_RSA_WITH_AES_128_CBC_SHA);
-			compression_methods = { NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE };
-			extensions_present = false;
-			extensions_union.no_extensions = {};
-		}
+		/* Constructor */
+		ClientHello()
+			: client_version{ 3, 3 },
+			random{ 0, {} },
+			session_id{},
+			cipher_suites{ TLS_RSA_WITH_AES_128_CBC_SHA },
+			compression_methods{ NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE },
+			extensions_present(false),
+			extensions_union{}
+		{ }
 
 		void setClientHello() {
 
@@ -422,18 +423,16 @@ namespace netlab {
 		bool extensions_present;
 		ExtensionUnion extensions_union;
 
-		ServerHello() {
-			/* Initialize serverHello */
-			server_version.major = 3;
-			server_version.minor = 3;
-			random.gmt_unix_time = 0;
-			random.random_bytes = { };
-			session_id = { };
-			cipher_suite = TLS_NULL_WITH_NULL_NULL;
-			compression_methods = { NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE };
-			extensions_present = false;
-			extensions_union.no_extensions = {};
-		}
+		/* Constructor */
+		ServerHello()
+			: server_version{ 3, 3 },
+			random{ 0, {} },
+			session_id{},
+			cipher_suite(TLS_NULL_WITH_NULL_NULL),
+			compression_methods{ NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE },
+			extensions_present(false),
+			extensions_union{}
+		{ }
 
 		void setServerHello() {
 			random.gmt_unix_time = static_cast<uint32_t>(time(0));
@@ -543,8 +542,6 @@ namespace netlab {
 			~DhPublic() {}
 		} dh_public;
 
-		ClientDiffieHellmanPublic() { } 
-
 		void createClientDiffieHellmanPublic() {
 			switch (public_value_encoding) {
 			case IMPLICIT:
@@ -569,8 +566,6 @@ namespace netlab {
 			~ClientExchangeKeys() { }
 		} client_exchange_keys;
 
-		ClientKeyExchange() { }
-
 		void createClientKeyExchange() {
 			switch (key_exchange_algorithm) {
 			case DH_RSA:
@@ -589,14 +584,10 @@ namespace netlab {
 		struct {
 			std::vector<uint8_t> handshake_messages; /* Represents handshake_messages[handshake_messages_length]. */
 		} digitally_signed;
-
-		CertificateVerify() { }
 	};
 
 	struct Finished {
 		std::vector<uint8_t> verify_data;
-
-		Finished() { }
 	};
 
 	union Body { 				   
