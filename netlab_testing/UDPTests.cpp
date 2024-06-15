@@ -112,13 +112,13 @@ TEST_F(UDPTests, test_sender) {
 	// Insert corresponding addresses into arp cache
 	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
 	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-	arp_client.insertPermanent(inet_addr("10.100.102.3"), system_nic.mac());
-	arp_server.insertPermanent(inet_addr("10.100.102.3"), system_nic.mac());
+	arp_client.insertPermanent(inet_addr("10.100.102.13"), system_nic.mac());
+	arp_server.insertPermanent(inet_addr("10.100.102.13"), system_nic.mac());
 
 	// Set up the server address structure
 	struct sockaddr_in systen_server_service;
 	systen_server_service.sin_family = AF_INET;
-	systen_server_service.sin_addr.s_addr = inet_addr("10.100.102.3");
+	systen_server_service.sin_addr.s_addr = inet_addr("10.100.102.13");
 	systen_server_service.sin_port = htons(9999);       // Port number
 
 	// Set up the server address structure
@@ -136,7 +136,7 @@ TEST_F(UDPTests, test_sender) {
 	// Set up the client address structure
 	sockaddr_in system_client_service;
 	system_client_service.sin_family = AF_INET;
-	system_client_service.sin_addr.s_addr = inet_addr("10.100.102.3");
+	system_client_service.sin_addr.s_addr = inet_addr("10.100.102.13");
 	system_client_service.sin_port = htons(9999);
 
 	// Set up the client address structure
@@ -205,8 +205,8 @@ TEST_F(UDPTests, test_receiver) {
 	// Insert corresponding addresses into arp cache
 	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
 	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-	arp_client.insertPermanent(inet_addr("10.100.102.3"), system_nic.mac());
-	arp_server.insertPermanent(inet_addr("10.100.102.3"), system_nic.mac());
+	arp_client.insertPermanent(inet_addr("10.100.102.13"), system_nic.mac());
+	arp_server.insertPermanent(inet_addr("10.100.102.13"), system_nic.mac());
 
 	// Set up the client address structure (the sender in test_sender)
 
@@ -283,8 +283,8 @@ TEST_F(UDPTests, test_receiver_bigPacket) {
 	// Insert corresponding addresses into arp cache
 	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
 	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-	arp_client.insertPermanent(inet_addr("10.100.102.3"), system_nic.mac());
-	arp_server.insertPermanent(inet_addr("10.100.102.3"), system_nic.mac());
+	arp_client.insertPermanent(inet_addr("10.100.102.13"), system_nic.mac());
+	arp_server.insertPermanent(inet_addr("10.100.102.13"), system_nic.mac());
 
 	// Set up the client address structure (the sender in test_sender)
 
@@ -365,13 +365,13 @@ TEST_F(UDPTests, test_receiver_bigPacket) {
 //	// Insert corresponding addresses into arp cache
 //	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
 //	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-//	arp_client.insertPermanent(inet_addr("10.100.102.3"), system_nic.mac());
-//	arp_server.insertPermanent(inet_addr("10.100.102.3"), system_nic.mac());
+//	arp_client.insertPermanent(inet_addr("10.100.102.13"), system_nic.mac());
+//	arp_server.insertPermanent(inet_addr("10.100.102.13"), system_nic.mac());
 //
 //	// Set up the server address structure
 //	struct sockaddr_in systen_server_service;
 //	systen_server_service.sin_family = AF_INET;
-//	systen_server_service.sin_addr.s_addr = inet_addr("10.100.102.3");
+//	systen_server_service.sin_addr.s_addr = inet_addr("10.100.102.13");
 //	systen_server_service.sin_port = htons(9999);       // Port number
 //
 //	// Set up the server address structure
@@ -389,7 +389,7 @@ TEST_F(UDPTests, test_receiver_bigPacket) {
 //	// Set up the client address structure
 //	sockaddr_in system_client_service;
 //	system_client_service.sin_family = AF_INET;
-//	system_client_service.sin_addr.s_addr = inet_addr("10.100.102.3");
+//	system_client_service.sin_addr.s_addr = inet_addr("10.100.102.13");
 //	system_client_service.sin_port = htons(9999);
 //
 //	// Set up the client address structure
