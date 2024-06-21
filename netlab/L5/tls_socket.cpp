@@ -156,53 +156,6 @@ void tls_socket::listen(int backlog) {
 
 
 
-bool is_pem_format(const char* filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        return false;
-    }
-
-    std::string line;
-    while (std::getline(file, line)) {
-        if (line.find("-----BEGIN CERTIFICATE-----") != std::string::npos) {
-            return true;
-        }
-    }
-    return false;
-}
-
-X509* load_certificate(const char* filename) {
-    X509* cert = nullptr;
-
-    if (is_pem_format(filename)) {
-        FILE* file = fopen(filename, "r");
-        if (!file) {
-            std::cerr << "Failed to open certificate file: " << filename << std::endl;
-            return nullptr;
-        }
-        cert = PEM_read_X509(file, nullptr, nullptr, nullptr);
-        fclose(file);
-    }
-    else {
-        FILE* file = fopen(filename, "rb");
-        if (!file) {
-            std::cerr << "Failed to open certificate file: " << filename << std::endl;
-            return nullptr;
-        }
-        cert = d2i_X509_fp(file, nullptr);
-        fclose(file);
-    }
-
-    if (!cert) {
-        std::cerr << "Failed to read certificate: " << filename << std::endl;
-        ERR_print_errors_fp(stderr); // Print OpenSSL error details
-    }
-
-    return cert;
-}
-
-
-
 L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
 
 
@@ -255,11 +208,6 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     server_hello_buffer.append((char*)&server_hello_header, sizeof(tls_header));
     server_hello_buffer.append(server_hello_msg_raw);
 
-   // sock->send(server_hello_buffer, server_hello_buffer.size(), 0, 0);
-
-
-
-
 
     const char* cert_file = "C:/Program Files/OpenSSL-Win64/server.crt";
 
@@ -282,7 +230,7 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     len = i2d_X509(cert, &buf);  // converting to unsigned char*
 
     std::string cartificate(buf, buf + len);
-
+    fclose(fp);
     std::cout << cartificate << std::endl;
 
     
@@ -371,7 +319,7 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
         fprintf(stderr, "Error loading private key\n");
        // return EXIT_FAILURE;
     }
-    fclose(fp);
+    
     uint8_t decrypted_premaster_secret[48];
 
   
@@ -484,6 +432,8 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     encrypted_handshake_msg.append(encrypted_final_msg);
 
     sock->send(encrypted_handshake_msg, encrypted_handshake_msg.size(), 0, 0);
+
+
 
 
 

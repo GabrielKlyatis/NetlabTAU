@@ -272,6 +272,8 @@ protected:
 
     void extract_key(uint8_t * keyblock, size_t keyblock_len);
 
+    std::string get_raw_certificate(const char* cert_file) const ;
+
     std::vector < uint16_t> get_cipher_suites() const;
 
     RSA* p_rsa;
