@@ -96,6 +96,8 @@ public:
         uint8_t cert_length[3];     // Length of the certificate
         std::vector<uint8_t> cert;      // certificate vector
 
+        tls_certificate() {};
+
         tls_certificate(char* raw) 
         {
             msg_type = (hand_shake_type)raw[0];
@@ -143,7 +145,7 @@ public:
 
         }
 
-        std::string parse()
+        std::string parse(bool server = false)
         {
             std::string str;
 			str.append((char*)&msg_type, sizeof(hand_shake_type));
@@ -160,7 +162,8 @@ public:
 
             // add cipher suites
             uint16_t cipher_suites_len = htons(cipher_suites.size() * 2);
-            str.append((char*)&cipher_suites_len, 2);
+            if (!server)
+                str.append((char*)&cipher_suites_len, 2);
             if (cipher_suites_len > 0)
 			    str.append((char*)cipher_suites.data(), cipher_suites.size() * 2);
 
@@ -226,9 +229,9 @@ public:
 
 protected:
 
-    virtual std::string encrypt(std::string& msg) const = 0;
+    virtual std::string encrypt(std::string& msg, bool server = false)  = 0;
 
-    virtual std::string decrypt(std::string& msg) const = 0;
+    virtual std::string decrypt(std::string& msg, bool server = false)  = 0;
 
     L5_socket* p_socket;
 
@@ -261,9 +264,13 @@ public:
 
 protected:
 
-    std::string encrypt(std::string& msg) const override;
+    std::string encrypt(std::string& msg, bool server = false) override;
 
-    std::string decrypt(std::string& msg) const override;
+    std::string decrypt(std::string& msg, bool server = false) override;
+
+    void prf(std::vector<uint8_t> & seed, std::string label, std::vector<uint8_t> & secret, unsigned char* res, size_t res_len);
+
+    void extract_key(uint8_t * keyblock, size_t keyblock_len);
 
     std::vector < uint16_t> get_cipher_suites() const;
 
@@ -272,6 +279,9 @@ protected:
     int extract_public_key(const unsigned char* raw_cert, size_t raw_cert_len);
 
     std::vector<uint8_t> extract_master_secret(const std::vector<uint8_t>& preMasterSecret, const std::vector<uint8_t>& clientRandom,  const std::vector<uint8_t>& serverRandom);
+
+    uint64_t client_seq_num;
+    uint64_t server_seq_num;
 
 };
 

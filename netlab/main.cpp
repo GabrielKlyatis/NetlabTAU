@@ -868,7 +868,7 @@ void tls_playground()
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 	inet_os dflt = inet_os();
-	NIC nic_client(inet_client,	"192.168.1.225", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"arp or ip src 192.168.1.1");
+	NIC nic_client(inet_client,	"192.168.1.225", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"arp or ip src 192.168.1.66");
 	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
 	L2_impl datalink_client(inet_client);
 	L2_ARP_impl arp_client(inet_client, 10, 10000);
@@ -882,19 +882,47 @@ void tls_playground()
 
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_addr("192.168.1.1");
-	clientService.sin_port = htons(443);
+	clientService.sin_addr.s_addr = inet_addr("192.168.1.66");
+	clientService.sin_port = htons(4433);
 	//1603010067010000630303c580c4a20b669355c7e1712761254c1586ab63aa491b75082696f936ed8d82a700003c130213031301c02cc030009fcca9cca8ccaac02bc02f009ec024c028006bc023c0270067c00ac0140039c009c013003300ad00abccaeccadccac009d0100
-	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
 
-	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+	netlab::L5_socket* AcceptSocket;
 
-	std::string send_msg(100, 'T');
+	netlab::tls_socket* ListenSocket = (new netlab::tls_socket(inet_client));
+	sockaddr_in service2;
+	service2.sin_family = AF_INET;
+	service2.sin_addr.s_addr = inet_client.nic()->ip_addr().s_addr;
+	service2.sin_port = htons(8888);
+
+	ListenSocket->bind((SOCKADDR*)&service2, sizeof(service2));
+	ListenSocket->listen(5);
+
+	AcceptSocket = nullptr;
+
+	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
 
-	std::this_thread::sleep_for(std::chrono::seconds(1));
-	 
-	ConnectSocket->send(send_msg, 100,1 ,0);
+
+	std::cout << "SDFSADFASDf" << std::endl;
+
+
+
+	//netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
+
+	//ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+
+	//std::string send_msg(100, 'T');
+	//send_msg.push_back('\n');
+
+	// 
+	//ConnectSocket->send(send_msg, 100,1 ,0);
+
+	//std::this_thread::sleep_for(std::chrono::seconds(1));
+
+	//std::string rcv_msg;
+	//ConnectSocket->recv(rcv_msg, 100, 1, 0);
+
+	//cout << rcv_msg << endl;
 
 }
 
