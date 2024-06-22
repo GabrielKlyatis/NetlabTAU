@@ -237,6 +237,7 @@
     <ClCompile Include="L4\tcp_reno.cpp" />
     <ClCompile Include="L4\tcp_tahoe.cpp" />
     <ClCompile Include="L5\L5_Sol.cpp" />
+    <ClCompile Include="L5\tls_socket.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="main2.cpp" />
     <ClCompile Include="infra\NetworkInterface.cpp" />
@@ -248,7 +249,6 @@
     <ClCompile Include="infra\protosw.cpp" />
     <ClCompile Include="L0\L0_buffer.cpp" />
     <ClCompile Include="infra\utils.cpp" />
-    <ClCompile Include="L5\tls_socket.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="infra\AddressRange.h" />
@@ -275,7 +275,10 @@
     <ClInclude Include="infra\pcb.h" />
     <ClInclude Include="infra\Print.h" />
     <ClInclude Include="infra\protosw.hpp" />
+    <ClInclude Include="L5\tls_definition.hpp" />
+    <ClInclude Include="L5\tls_protocol_layer.hpp" />
     <ClInclude Include="L5\tls_socket.h" />
+    <ClInclude Include="L5\tls_utils.hpp" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="infra\utils.h" />
   </ItemGroup>

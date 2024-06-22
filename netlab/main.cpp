@@ -886,7 +886,7 @@ void tls_playground()
 	clientService.sin_port = htons(4433);
 	//1603010067010000630303c580c4a20b669355c7e1712761254c1586ab63aa491b75082696f936ed8d82a700003c130213031301c02cc030009fcca9cca8ccaac02bc02f009ec024c028006bc023c0270067c00ac0140039c009c013003300ad00abccaeccadccac009d0100
 
-	netlab::L5_socket* AcceptSocket;
+	/*netlab::L5_socket* AcceptSocket;
 
 	netlab::tls_socket* ListenSocket = (new netlab::tls_socket(inet_client));
 	sockaddr_in service2;
@@ -899,7 +899,7 @@ void tls_playground()
 
 	AcceptSocket = nullptr;
 
-	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
+	AcceptSocket = ListenSocket->accept(nullptr, nullptr);*/
 
 
 
@@ -907,22 +907,22 @@ void tls_playground()
 
 
 
-	//netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
+	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
 
-	//ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
 
-	//std::string send_msg(100, 'T');
-	//send_msg.push_back('\n');
+	std::string send_msg(100, 'T');
+	send_msg.push_back('\n');
 
-	// 
-	//ConnectSocket->send(send_msg, 100,1 ,0);
+	 
+	ConnectSocket->send(send_msg, 100,1 ,0);
 
-	//std::this_thread::sleep_for(std::chrono::seconds(1));
+	std::this_thread::sleep_for(std::chrono::seconds(1));
 
-	//std::string rcv_msg;
-	//ConnectSocket->recv(rcv_msg, 100, 1, 0);
+	std::string rcv_msg;
+	ConnectSocket->recv(rcv_msg, 100, 1, 0);
 
-	//cout << rcv_msg << endl;
+	cout << rcv_msg << endl;
 
 }
 

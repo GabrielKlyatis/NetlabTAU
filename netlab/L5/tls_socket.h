@@ -7,6 +7,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <openssl/hmac.h>
+#include "tls_protocol_layer.hpp"
 #pragma comment(lib, "Ws2_32.lib")
 
 namespace netlab {
@@ -42,16 +43,6 @@ public:
  
     };
 
-    enum tls_version
-    {
-        TLS_VERSION_SSLv3 = 0x0300,
-        TLS_VERSION_TLSv1_0 = 0x0301,
-        TLS_VERSION_TLSv1_1 = 0x0302,
-        TLS_VERSION_TLSv1_2 = 0x0303,
-        TLS_VERSION_TLSv1_3 = 0x0304,
-
-    };
-
     enum tls_state
     {
         NONE,                // No TLS state yet
@@ -63,17 +54,6 @@ public:
         FINISHED_ST             // Finished message
     };
 
-    enum hand_shake_type : uint8_t {
-        CLIENT_HELLO = 0x01,
-        SERVER_HELLO = 0x02,
-        CERTIFICATE = 0x0B,
-        SERVER_KEY_EXCHANGE = 0x0C,
-        CERTIFICATE_REQUEST = 0x0D,
-        SERVER_HELLO_DONE = 0x0E,
-        CERTIFICATE_VERIFY = 0x0F,
-        CLIENT_KEY_EXCHANGE = 0x10,
-        FINISHED = 0x14
-    };
 
 #pragma pack(push, 1) // Pack struct tightly without any padding
 
@@ -91,7 +71,7 @@ public:
 
     struct tls_certificate
     {
-        hand_shake_type msg_type; // Handshake message
+        HandshakeType msg_type; // Handshake message
         uint8_t length[3];          // Length of the handshake message
         uint8_t cert_length[3];     // Length of the certificate
         std::vector<uint8_t> cert;      // certificate vector
@@ -100,7 +80,7 @@ public:
 
         tls_certificate(char* raw) 
         {
-            msg_type = (hand_shake_type)raw[0];
+            msg_type = (HandshakeType)raw[0];
 			length[0] = raw[1];
 			length[1] = raw[2];
 			length[2] = raw[3];
@@ -114,7 +94,7 @@ public:
     };
 
     struct TLSHello {
-        hand_shake_type msg_type; // Handshake message
+        HandshakeType msg_type; // Handshake message
         uint8_t length[3];          // Length of the handshake message
         uint16_t tls_version; // highest version supported by the client
         TLSRandom random;       // 32 bytes of random data
@@ -128,7 +108,7 @@ public:
         {
             char a[500];
 
-            msg_type = (hand_shake_type)raw_header[0];
+            msg_type = (HandshakeType)raw_header[0];
 			length[0] = raw_header[1];
 			length[1] = raw_header[2];
 			length[2] = raw_header[3];
@@ -148,7 +128,7 @@ public:
         std::string parse(bool server = false)
         {
             std::string str;
-			str.append((char*)&msg_type, sizeof(hand_shake_type));
+			str.append((char*)&msg_type, sizeof(HandshakeType));
 			str.append((char*)&length, sizeof(length));
 			str.append((char*)&tls_version, sizeof(uint16_t));
 			str.append((char*)&random, sizeof(TLSRandom));
@@ -187,14 +167,14 @@ public:
 
     struct tls_key_exchanege_msg
     {
-        hand_shake_type msg_type; // Handshake message
+        HandshakeType msg_type; // Handshake message
         uint8_t length[3];          // Length of the handshake message
         std::string premaster; // key exchange data
 
         std::string parse()
         {
             std::string str;
-			str.append((char*)&msg_type, sizeof(hand_shake_type));
+			str.append((char*)&msg_type, sizeof(HandshakeType));
 			str.append((char*)&length, sizeof(length) );
             uint16_t len = htons(premaster.size());
             str.append((char*)&len, 2);
