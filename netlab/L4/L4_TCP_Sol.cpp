@@ -1798,6 +1798,8 @@ int L4_TCP_impl::again(L4_TCP::tcpcb &tp, const bool idle, socket& so)
 	*	No reason to send a segment, just return.
 	*/
 	return (0);
+
+
 }
 
 int L4_TCP_impl::send(L4_TCP::tcpcb &tp, const bool idle, socket &so, bool sendalot, int &off, int &flags, long &win, long &len)
