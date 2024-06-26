@@ -31,6 +31,7 @@ namespace netlab {
 #define RANDOM_BYTES_SIZE 28
 #define SESSION_ID_SIZE 32
 #define PRE_MASTER_SECRET_RND_SIZE 46
+#define PRE_MASTER_SECRET_ENCRYPTED_SIZE 256
 #define MASTER_SECRET_SIZE 48
 
 /************************************************************************/
@@ -51,6 +52,7 @@ namespace netlab {
 		message.*/
 
 	static CipherSuite TLS_NULL_WITH_NULL_NULL = { 0x00,0x00 };
+	static CipherSuite TLS_EMPTY_RENEGOTIATION_INFO_SCSV = { 0x00,0xFF };
 	static CipherSuite TLS_RSA_WITH_NULL_MD5 = { 0x00,0x01 };
 	static CipherSuite TLS_RSA_WITH_NULL_SHA = { 0x00,0x02 };
 	static CipherSuite TLS_RSA_WITH_NULL_SHA256 = { 0x00,0x3B };
@@ -64,7 +66,7 @@ namespace netlab {
 
 	/* The following cipher suite definitions are used for server-
 	   authenticated (and optionally client-authenticated) Diffie-Hellman. */
-
+	
 	static CipherSuite TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x0D };
 	static CipherSuite TLS_DH_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x10 };
 	static CipherSuite TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x13 };
@@ -103,7 +105,7 @@ namespace netlab {
 
 /**************************** TLS Record Layer **************************/
 
-	enum ContentType {
+	enum ContentType : uint8_t {
 
 		TLS_CONTENT_TYPE_CHANGE_CIPHER_SPEC = 0x14,
 		TLS_CONTENT_TYPE_ALERT = 0x15,
@@ -115,7 +117,7 @@ namespace netlab {
 
 /************************** Change Cipher Spect ************************/
 
-	enum Type {
+	enum Type : uint8_t {
 		CHANGE_CIPHER_SPEC = 1,
 		CHANGE_CIPHER_SPEC_MAX_VALUE = 255,
 	};
@@ -405,7 +407,7 @@ namespace netlab {
 			: client_version{ 3, 3 },
 			random{ 0, {} },
 			session_id{},
-			cipher_suites{ TLS_RSA_WITH_AES_128_CBC_SHA },
+			cipher_suites{ TLS_RSA_WITH_AES_128_CBC_SHA , TLS_EMPTY_RENEGOTIATION_INFO_SCSV },
 			compression_methods{ NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE },
 			extensions_present(false),
 			extensions_union{}
@@ -415,8 +417,36 @@ namespace netlab {
 
 			random.gmt_unix_time = static_cast<uint32_t>(time(0));
 			random.random_bytes = generate_random_bytes<RANDOM_BYTES_SIZE>();
-			session_id = generate_random_bytes<SESSION_ID_SIZE>();
+			//session_id = generate_random_bytes<SESSION_ID_SIZE>();
 		}
+
+		uint16_t getClientHelloSize() {
+			uint16_t clientHelloSize = 0;
+			clientHelloSize += sizeof(client_version);
+			clientHelloSize += sizeof(random.gmt_unix_time);
+			clientHelloSize += RANDOM_BYTES_SIZE;
+			clientHelloSize += 1; // 1 byte of SessionID length.
+			if (!(std::all_of(session_id.begin(), session_id.end(), [](uint8_t byte) { return byte == 0; }))) {
+				clientHelloSize += SESSION_ID_SIZE; // 32 bytes of SessionID.
+			}
+			clientHelloSize += sizeof(uint16_t); // 2 bytes of cipher_suites length.
+			clientHelloSize += cipher_suites.size() * sizeof(CipherSuite);
+			clientHelloSize += sizeof(uint8_t); // 1 byte of compression_methods length.
+			clientHelloSize += compression_methods.size() * sizeof(CompressionMethod);
+			if (extensions_present) {
+				clientHelloSize += sizeof(uint16_t); // 2 bytes of extensions length.
+				for (auto& extension : extensions_union.extensions) {
+					clientHelloSize += sizeof(extension.extension_type);
+					clientHelloSize += sizeof(uint16_t); // 2 bytes of extension_data length.
+					clientHelloSize += extension.extension_data.size();
+				}
+			}
+			else {
+				clientHelloSize += 1; // 2 bytes of extensions length.
+			}
+			return clientHelloSize;
+		}
+
 	};
 
 	struct ServerHello {
@@ -424,7 +454,7 @@ namespace netlab {
 		Random random;
 		SessionID session_id;
 		CipherSuite cipher_suite;
-		std::vector<CompressionMethod> compression_methods;
+		CompressionMethod compression_method;
 		bool extensions_present;
 		ExtensionUnion extensions_union;
 
@@ -433,8 +463,8 @@ namespace netlab {
 			: server_version{ 3, 3 },
 			random{ 0, {} },
 			session_id{},
-			cipher_suite(TLS_NULL_WITH_NULL_NULL),
-			compression_methods{ NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE },
+			cipher_suite(TLS_RSA_WITH_AES_128_CBC_SHA),
+			compression_method{ NULL_COMPRESSION },
 			extensions_present(false),
 			extensions_union{}
 		{ }
@@ -443,7 +473,31 @@ namespace netlab {
 			random.gmt_unix_time = static_cast<uint32_t>(time(0));
 			random.random_bytes = generate_random_bytes<RANDOM_BYTES_SIZE>();
 			session_id = generate_random_bytes<SESSION_ID_SIZE>();
-			cipher_suite = TLS_RSA_WITH_AES_128_CBC_SHA;
+		}
+
+		uint16_t getServerHelloSize() {
+			uint16_t serverHelloSize = 0;
+			serverHelloSize += sizeof(server_version);
+			serverHelloSize += sizeof(random.gmt_unix_time);
+			serverHelloSize += RANDOM_BYTES_SIZE;
+			serverHelloSize += 1; // 1 byte of SessionID length.
+			if (!(std::all_of(session_id.begin(), session_id.end(), [](uint8_t byte) { return byte == 0; }))) {
+				serverHelloSize += SESSION_ID_SIZE; // 32 bytes of SessionID.
+			}
+			serverHelloSize += sizeof(cipher_suite);
+			serverHelloSize += sizeof(compression_method);
+			if (extensions_present) {
+				serverHelloSize += sizeof(uint16_t); // 2 bytes of extensions length.
+				for (auto& extension : extensions_union.extensions) {
+					serverHelloSize += sizeof(extension.extension_type);
+					serverHelloSize += sizeof(uint16_t); // 2 bytes of extension_data length.
+					serverHelloSize += extension.extension_data.size();
+				}
+			}
+			else {
+				serverHelloSize += 1; // 2 bytes of extensions length.
+			}
+			return serverHelloSize;
 		}
 	};
 
@@ -527,14 +581,13 @@ namespace netlab {
 		ProtocolVersion client_version;
 		std::array<uint8_t, PRE_MASTER_SECRET_RND_SIZE> random;
 
-		PreMasterSecret() : client_version(), random() { }
+		PreMasterSecret() : client_version({ 3, 3 }), random(generate_random_bytes<PRE_MASTER_SECRET_RND_SIZE>()) { }
 	};
 
 	struct EncryptedPreMasterSecret {
-		//public-key-encrypted PreMasterSecret pre_master_secret;
 		PreMasterSecret pre_master_secret;
-
-		EncryptedPreMasterSecret() : pre_master_secret() { }
+		std::array<uint8_t, PRE_MASTER_SECRET_ENCRYPTED_SIZE> encrypted_pre_master_secret;
+		EncryptedPreMasterSecret() : encrypted_pre_master_secret() { }
 	};
 
 	struct ClientDiffieHellmanPublic {
@@ -563,7 +616,7 @@ namespace netlab {
 	struct ClientKeyExchange {
 		KeyExchangeAlgorithm key_exchange_algorithm;
 		union ClientExchangeKeys {
-			EncryptedPreMasterSecret encryptedPreMasterSecret; /* KeyExchangeAlgorithm = RSA (1) */
+			EncryptedPreMasterSecret encryptedPreMasterSecret; /* KeyExchangeAlgorithm = KEY_EXCHANGE_ALGORITHM_RSA (1) */
 			ClientDiffieHellmanPublic clientDiffieHellmanPublic; /* KeyExchangeAlgorithm = DH_ANON (6) */
 			struct {} dhe_dss_dhe_rsa_dh_dss_dh_rsa; /* KeyExchangeAlgorithm = DHE_DSS (4), DHE_RSA (5), DH_DSS (2), DH_RSA (3) */
 
@@ -573,7 +626,7 @@ namespace netlab {
 
 		void createClientKeyExchange() {
 			switch (key_exchange_algorithm) {
-			case DH_RSA:
+			case KEY_EXCHANGE_ALGORITHM_RSA:
 				new (&client_exchange_keys.encryptedPreMasterSecret) EncryptedPreMasterSecret();
 				break;
 			case DH_ANON:
@@ -582,6 +635,33 @@ namespace netlab {
 			default:
 				break;
 			}
+		}
+
+		ClientKeyExchange() : key_exchange_algorithm(KEY_EXCHANGE_ALGORITHM_RSA), client_exchange_keys() { }
+
+		void setClientKeyExchange() {
+			client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version = { 3, 3 };
+			client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random = generate_random_bytes<PRE_MASTER_SECRET_RND_SIZE>();
+		}
+
+		uint16_t getClientKeyExchangeSize() {
+			uint16_t clientKeyExchangeSize = 0;
+			switch (key_exchange_algorithm) {
+			case KEY_EXCHANGE_ALGORITHM_RSA:
+				clientKeyExchangeSize += 2; // 2 bytes of pre_master_secret length.
+				clientKeyExchangeSize += PRE_MASTER_SECRET_ENCRYPTED_SIZE;
+				break;
+			case DH_ANON:
+				clientKeyExchangeSize += sizeof(client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding);
+				if (client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding == EXPLICIT) {
+					clientKeyExchangeSize += sizeof(uint16_t); // 2 bytes of dh_Yc length.
+					clientKeyExchangeSize += client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.size();
+				}
+				break;
+			default:
+				break;
+			}
+			return clientKeyExchangeSize;
 		}
 	};
 
@@ -695,7 +775,7 @@ namespace netlab {
 		}
 
 		void updateBody(HandshakeType passed_msg_type) {
-			msg_type = passed_msg_type;
+			this->msg_type = passed_msg_type;
 			body.createBody(msg_type); // Create a new body based on the current msg_type
 		}
 	};

@@ -55,7 +55,6 @@ int tls_socket::extract_public_key(const unsigned char* raw_cert, size_t raw_cer
         BIO_free(bio);
         return 1;
     }
-
     // Get the public key from the certificate
     EVP_PKEY* pubkey = X509_get_pubkey(cert);
     if (!pubkey) {

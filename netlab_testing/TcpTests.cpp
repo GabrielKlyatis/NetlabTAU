@@ -188,7 +188,7 @@ protected:
 
 		sockaddr_in client_service;
 		client_service.sin_family = AF_INET;
-		client_service.sin_addr.s_addr = inet_addr("192.168.1.225");
+		client_service.sin_addr.s_addr = inet_addr("10.100.102.13");
 		client_service.sin_port = htons(8888);
 
 		WSADATA wsaData;

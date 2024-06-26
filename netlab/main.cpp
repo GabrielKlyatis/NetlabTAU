@@ -830,7 +830,7 @@ int aaaa()
 		print_hex(pre_master_secret, pre_master_len);
 	}
 
-	
+
 		
 	// Get master secret (only available after handshake)
 	SSL_SESSION* session = SSL_get_session(ssl);
@@ -859,16 +859,13 @@ int aaaa()
 	
 }
 
+using namespace netlab;
 
-void tls_playground()
-{
+void client_hello_serialization_test() {
 
-//	aaaa();
-
-	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 	inet_os dflt = inet_os();
-	NIC nic_client(inet_client,	"192.168.1.225", "60:6c:66:62:1c:4f",nullptr,nullptr,true,"arp or ip src 192.168.1.66");
+	NIC nic_client(inet_client, "10.100.102.13", "a8:6d:aa:68:39:a4", nullptr, nullptr, true, "arp or ip src 10.100.102.4");
 	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
 	L2_impl datalink_client(inet_client);
 	L2_ARP_impl arp_client(inet_client, 10, 10000);
@@ -882,8 +879,305 @@ void tls_playground()
 
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_addr("192.168.1.66");
-	clientService.sin_port = htons(4433);
+	clientService.sin_addr.s_addr = inet_addr("10.100.102.4");
+	clientService.sin_port = htons(443);
+
+
+	TLSHandshakeProtocol handshakeProtocol;
+
+	HandshakeType msg_type = CLIENT_HELLO;
+
+	handshakeProtocol.handshake.updateBody(msg_type);
+
+	handshakeProtocol.handshake.body.clientHello.setClientHello();
+
+	handshakeProtocol.TLS_record_layer.length += handshakeProtocol.handshake.body.clientHello.getClientHelloSize();
+
+	std::string serialized_string = handshakeProtocol.serialize_handshake_protocol_data(msg_type);
+
+	std::cout << "Serialization Test Begins:" << std::endl;
+
+	// Print the bytes
+	std::cout << "The string that is sent is : ";
+	for (size_t i = 0; i < serialized_string.size(); i++) {
+		std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(serialized_string[i]);
+	}
+	std::cout << std::endl;
+
+	netlab::L5_socket_impl* ConnectSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_client));
+
+	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+
+
+	ConnectSocket->send(serialized_string, serialized_string.size(), 0, 0);
+
+}
+
+void server_hello_serialization_test() {
+
+	inet_os inet_client = inet_os();
+	inet_os dflt = inet_os();
+	NIC nic_client(inet_client, "10.100.102.13", "a8:6d:aa:68:39:a4", nullptr, nullptr, true, "arp or ip src 10.100.102.4");
+	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
+	L2_impl datalink_client(inet_client);
+	L2_ARP_impl arp_client(inet_client, 10, 10000);
+	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
+	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
+	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
+	inet_client.domaininit();
+	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+	//arp_client.insertPermanent(dflt_gtw.ip_addr().s_addr, dflt_gtw.mac());
+	inet_client.connect();
+
+	sockaddr_in clientService;
+	clientService.sin_family = AF_INET;
+	clientService.sin_addr.s_addr = inet_addr("10.100.102.4");
+	clientService.sin_port = htons(443);
+
+	const char* cert_file = "C:/Projects/OpenSSL-Win32/certificate.crt";
+
+	FILE* fp = fopen(cert_file, "r");
+	if (!fp) {
+		fprintf(stderr, "unable to open: %s\n", cert_file);
+		// return EXIT_FAILURE;
+	}
+
+	X509* cert = PEM_read_X509(fp, NULL, NULL, NULL);
+	if (!cert) {
+		fprintf(stderr, "unable to parse certificate in: %s\n", cert_file);
+		fclose(fp);
+		//  return EXIT_FAILURE;  
+	}
+
+	unsigned char* buf;
+	buf = NULL;
+	uint32_t len = i2d_X509(cert, &buf);  // converting to unsigned char*
+
+	std::vector<uint8_t> cartificate(buf, buf + len);
+	fclose(fp);
+
+	TLSHandshakeProtocol handshakeProtocol;
+
+	HandshakeType msg_type = SERVER_HELLO;
+
+	handshakeProtocol.handshake.updateBody(msg_type);
+
+	handshakeProtocol.handshake.body.serverHello.setServerHello();
+
+	handshakeProtocol.TLS_record_layer.length += handshakeProtocol.handshake.body.serverHello.getServerHelloSize();
+
+	std::string serialized_string = handshakeProtocol.serialize_handshake_protocol_data(msg_type);
+	/************************************************************************/
+	msg_type = CERTIFICATE;;
+
+	handshakeProtocol.handshake.updateBody(msg_type);
+
+	handshakeProtocol.handshake.body.certificate.certificate_list.resize(1);
+    handshakeProtocol.handshake.body.certificate.certificate_list[0] = cartificate;
+
+	handshakeProtocol.TLS_record_layer.length += sizeof(handshakeProtocol.handshake.body.certificate);
+
+	serialized_string.append(handshakeProtocol.serialize_handshake_protocol_data(msg_type));
+	/************************************************************************/
+	msg_type = SERVER_HELLO_DONE;
+
+	handshakeProtocol.handshake.updateBody(msg_type);
+
+	serialized_string.append(handshakeProtocol.serialize_handshake_protocol_data(msg_type));
+	/************************************************************************/
+	msg_type = CLIENT_KEY_EXCHANGE;
+
+	handshakeProtocol.handshake.updateBody(msg_type);
+
+	handshakeProtocol.handshake.body.clientKeyExchange.setClientKeyExchange();
+
+	// Create a BIO object from the TLS data
+	// Initialize OpenSSL
+	SSL_library_init();
+	OPENSSL_init_ssl(0, NULL);
+	OPENSSL_init_crypto(0, NULL);
+
+	// Create a BIO object to read the certificate
+	BIO* bio = BIO_new_mem_buf(&cartificate[3], cartificate.size() - 3);
+	if (!bio) {
+		std::cerr << "Error creating BIO" << std::endl;
+	}
+
+	// Get the public key from the certificate
+	EVP_PKEY* public_key = X509_get_pubkey(cert);
+	if (!public_key) {
+		std::cerr << "Error extracting public key" << std::endl;
+		X509_free(cert);
+		BIO_free(bio);
+	}
+
+	// Extract the RSA public key
+	if (EVP_PKEY_id(public_key) != EVP_PKEY_RSA) {
+		std::cerr << "Public key is not an RSA key" << std::endl;
+		EVP_PKEY_free(public_key);
+		X509_free(cert);
+		BIO_free(bio);
+	}
+
+	RSA *p_rsa = EVP_PKEY_get1_RSA(public_key);
+
+	const BIGNUM* n, * e;
+	RSA_get0_key(p_rsa, &n, &e, NULL);
+
+	char* modulus_hex = BN_bn2hex(n);
+	char* exponent_hex = BN_bn2hex(e);
+
+	// Print modulus and exponent
+	//std::cout << "Modulus: " << modulus_hex << std::endl;
+   // std::cout << "Exponent: " << exponent_hex << std::endl;
+	EVP_PKEY_free(public_key);
+	X509_free(cert);
+	BIO_free(bio);
+
+	// generate a random premaster secret
+	uint8_t premaster_secret[48];
+	RAND_bytes(premaster_secret, 48);
+	// Insert last 46 bytes of premaster_secret to handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.data()
+	premaster_secret[0] = 0x03;
+	premaster_secret[1] = 0x03;
+	memcpy(handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.data(),
+				premaster_secret + 2, 46);
+
+	// encrypt the premaster secret using the public key
+	uint8_t encrypted_premaster_secret[256];
+	int rt = RSA_public_encrypt(48, premaster_secret, encrypted_premaster_secret, p_rsa, RSA_PKCS1_PADDING);
+
+	memcpy(handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.data(),
+				encrypted_premaster_secret, 256);
+
+	handshakeProtocol.TLS_record_layer.length += handshakeProtocol.handshake.body.clientKeyExchange.getClientKeyExchangeSize();
+
+	serialized_string.append(handshakeProtocol.serialize_handshake_protocol_data(msg_type));
+
+	ChangeCipherSpec changeCipherSpec;
+
+	changeCipherSpec.setChangeCipherSpec();
+
+	serialized_string.append(changeCipherSpec.serialize_change_cipher_spec_data());
+
+	std::cout << "Serialization Test Begins:" << std::endl;
+
+	// Print the bytes
+	std::cout << "The string that is sent is : ";
+	for (size_t i = 0; i < serialized_string.size(); i++) {
+		std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(serialized_string[i]);
+	}
+	std::cout << std::endl;
+
+	netlab::L5_socket_impl* ConnectSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_client));
+
+	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+
+	ConnectSocket->send(serialized_string, serialized_string.size(), 0, 0);
+}
+
+//void client_key_exchange_serialization_test() {
+//
+//	inet_os inet_client = inet_os();
+//	inet_os dflt = inet_os();
+//	NIC nic_client(inet_client, "10.100.102.13", "a8:6d:aa:68:39:a4", nullptr, nullptr, true, "arp or ip src 10.100.102.4");
+//	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
+//	L2_impl datalink_client(inet_client);
+//	L2_ARP_impl arp_client(inet_client, 10, 10000);
+//	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
+//	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
+//	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
+//	inet_client.domaininit();
+//	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+//	//arp_client.insertPermanent(dflt_gtw.ip_addr().s_addr, dflt_gtw.mac());
+//	inet_client.connect();
+//
+//	sockaddr_in clientService;
+//	clientService.sin_family = AF_INET;
+//	clientService.sin_addr.s_addr = inet_addr("10.100.102.4");
+//	clientService.sin_port = htons(443);
+//
+//	TLSHandshakeProtocol handshakeProtocol;
+//
+//	HandshakeType msg_type = CLIENT_KEY_EXCHANGE;
+//
+//	handshakeProtocol.handshake.updateBody(msg_type);
+//
+//	handshakeProtocol.handshake.body.clientKeyExchange.setClientKeyExchange();
+//
+//	tls_socket::extract_public_key(&cartificate.cert.data()[3], cartificate.cert.size() - 3);
+//
+//	// generate a random premaster secret
+//	uint8_t premaster_secret[48];
+//	RAND_bytes(premaster_secret, 48);
+//	premaster_secret[0] = 0x03;
+//	premaster_secret[1] = 0x03;
+//
+//
+//	// encrypt the premaster secret using the public key
+//	uint8_t encrypted_premaster_secret[256];
+//	int rt = RSA_public_encrypt(48, premaster_secret, encrypted_premaster_secret, p_rsa, RSA_PKCS1_PADDING);
+//	std::cout << "encrypted premaster secret" << std::endl;
+//
+//	memcpy(handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.data(),
+//		handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major + 
+//		handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor + 
+//		handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.data() + 2, 256);
+//
+//	// Replace all 0s at the end with 0x01:
+//
+//	for (size_t i = 0; i < handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size(); i++) {
+//		if (handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret[i] == 0) {
+//			handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret[i] = 0x01;
+//		}
+//	}
+//
+//	handshakeProtocol.TLS_record_layer.length += handshakeProtocol.handshake.body.clientKeyExchange.getClientKeyExchangeSize();
+//
+//	std::string serialized_string = handshakeProtocol.serialize_handshake_protocol_data(msg_type);
+//
+//	std::cout << "Serialization Test Begins:" << std::endl;
+//
+//	// Print the bytes
+//	std::cout << "The string that is sent is : ";
+//	for (size_t i = 0; i < serialized_string.size(); i++) {
+//		std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(serialized_string[i]);
+//	}
+//	std::cout << std::endl;
+//
+//	netlab::L5_socket_impl* ConnectSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_client));
+//
+//	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+//
+//	ConnectSocket->send(serialized_string, serialized_string.size(), 0, 0);
+//}
+
+void tls_playground()
+{
+	client_hello_serialization_test();
+	server_hello_serialization_test();
+	//client_key_exchange_serialization_test();
+	return;
+//	aaaa();
+	/* Client is declared similarly: */
+	inet_os inet_client = inet_os();
+	inet_os dflt = inet_os();
+	NIC nic_client(inet_client,	"10.100.102.13", "a8:6d:aa:68:39:a4",nullptr,nullptr,true,"arp or ip src 10.100.102.4");
+	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
+	L2_impl datalink_client(inet_client);
+	L2_ARP_impl arp_client(inet_client, 10, 10000);
+	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
+	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
+	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
+	inet_client.domaininit();
+	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+	//arp_client.insertPermanent(dflt_gtw.ip_addr().s_addr, dflt_gtw.mac());
+	inet_client.connect();
+
+	sockaddr_in clientService;
+	clientService.sin_family = AF_INET;
+	clientService.sin_addr.s_addr = inet_addr("10.100.102.4");
+	clientService.sin_port = htons(443);
 	//1603010067010000630303c580c4a20b669355c7e1712761254c1586ab63aa491b75082696f936ed8d82a700003c130213031301c02cc030009fcca9cca8ccaac02bc02f009ec024c028006bc023c0270067c00ac0140039c009c013003300ad00abccaeccadccac009d0100
 
 	/*netlab::L5_socket* AcceptSocket;
@@ -910,7 +1204,7 @@ void tls_playground()
 	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
 
 	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-
+	
 	std::string send_msg(100, 'T');
 	send_msg.push_back('\n');
 
@@ -925,7 +1219,6 @@ void tls_playground()
 	cout << rcv_msg << endl;
 
 }
-
 
 
 void test4(size_t size = 256) 

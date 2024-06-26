@@ -25,6 +25,33 @@ std::array<uint8_t, N> generate_random_bytes() {
 	return random_bytes;
 }
 
+static void serialize_2_bytes(std::string& str, uint16_t value) {
+	str.push_back(static_cast<char>((value >> 8) & 0xFF));
+	str.push_back(static_cast<char>(value & 0xFF));
+}
+
+static void serialize_3_bytes(std::string& str, uint32_t value) {
+	str.push_back(static_cast<char>((value >> 16) & 0xFF));
+	str.push_back(static_cast<char>((value >> 8) & 0xFF));
+	str.push_back(static_cast<char>(value & 0xFF));
+}
+
+static void serialize_4_bytes(std::string& str, uint32_t value) {
+	str.push_back(static_cast<char>((value >> 24) & 0xFF));
+	str.push_back(static_cast<char>((value >> 16) & 0xFF));
+	str.push_back(static_cast<char>((value >> 8) & 0xFF));
+	str.push_back(static_cast<char>(value & 0xFF));
+}
+
+static bool is_all_zeros(const std::array<uint8_t, 32>& arr) {
+	for (const auto& elem : arr) {
+		if (elem != 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
 static uint32_t read_uint32_from_iterator(std::string::const_iterator& it) {
 	uint32_t vector_size = 0;
 	for (int i = 0; i < sizeof(uint32_t); ++i) {
