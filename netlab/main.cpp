@@ -829,8 +829,6 @@ int aaaa()
 	else {
 		print_hex(pre_master_secret, pre_master_len);
 	}
-
-
 		
 	// Get master secret (only available after handshake)
 	SSL_SESSION* session = SSL_get_session(ssl);
@@ -882,16 +880,11 @@ void client_hello_serialization_test() {
 	clientService.sin_addr.s_addr = inet_addr("10.100.102.4");
 	clientService.sin_port = htons(443);
 
-
 	TLSHandshakeProtocol handshakeProtocol;
 
 	HandshakeType msg_type = CLIENT_HELLO;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
-
-	handshakeProtocol.handshake.body.clientHello.setClientHello();
-
-	handshakeProtocol.TLS_record_layer.length += handshakeProtocol.handshake.body.clientHello.getClientHelloSize();
+	handshakeProtocol.updateHandshakeProtocol(msg_type);
 
 	std::string serialized_string = handshakeProtocol.serialize_handshake_protocol_data(msg_type);
 
@@ -960,11 +953,7 @@ void server_hello_serialization_test() {
 
 	HandshakeType msg_type = SERVER_HELLO;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
-
-	handshakeProtocol.handshake.body.serverHello.setServerHello();
-
-	handshakeProtocol.TLS_record_layer.length += handshakeProtocol.handshake.body.serverHello.getServerHelloSize();
+	handshakeProtocol.updateHandshakeProtocol(msg_type);
 
 	std::string serialized_string = handshakeProtocol.serialize_handshake_protocol_data(msg_type);
 	/************************************************************************/
@@ -972,16 +961,15 @@ void server_hello_serialization_test() {
 
 	handshakeProtocol.handshake.updateBody(msg_type);
 
-	handshakeProtocol.handshake.body.certificate.certificate_list.resize(1);
-    handshakeProtocol.handshake.body.certificate.certificate_list[0] = cartificate;
+	handshakeProtocol.handshake.body.certificate.addCertificate(cartificate);
 
-	handshakeProtocol.TLS_record_layer.length += sizeof(handshakeProtocol.handshake.body.certificate);
+	handshakeProtocol.updateHandshakeProtocol(msg_type);
 
 	serialized_string.append(handshakeProtocol.serialize_handshake_protocol_data(msg_type));
 	/************************************************************************/
 	msg_type = SERVER_HELLO_DONE;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.updateHandshakeProtocol(msg_type);
 
 	serialized_string.append(handshakeProtocol.serialize_handshake_protocol_data(msg_type));
 	/************************************************************************/

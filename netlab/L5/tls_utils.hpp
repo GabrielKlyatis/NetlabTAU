@@ -43,8 +43,17 @@ static void serialize_4_bytes(std::string& str, uint32_t value) {
 	str.push_back(static_cast<char>(value & 0xFF));
 }
 
-static bool is_all_zeros(const std::array<uint8_t, 32>& arr) {
+static bool is_all_zeros_array(const std::array<uint8_t, 32>& arr) {
 	for (const auto& elem : arr) {
+		if (elem != 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool is_all_zeros_vector(const std::vector<uint8_t>& vec) {
+	for (const auto& elem : vec) {
 		if (elem != 0) {
 			return false;
 		}

@@ -6,14 +6,6 @@
 #include <iterator>
 #include <ctime>
 
-#define RECORD_LAYER_DEFAULT_LENGTH 5
-#define SERVER_DONE_RECORD_LAYER_LENGTH 4
-#define CHANGE_CIPHER_SPEC_RECORD_LAYER_LENGTH 1
-
-#define HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH 4
-#define CERTIFICATE_HANDSHAKE_OFFSET_LENGTH 3
-
-
 namespace netlab {
 
 /************************************************************************/
@@ -140,21 +132,42 @@ namespace netlab {
 			supported_signature_hash_algorithms{}
 		{ }
 		
-		void setHandshakeRecordLayer(HandshakeType msg_type) {
+		void updateHandshakeProtocol(HandshakeType msg_type) {
+			
+			this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_HANDSHAKE;
 			switch (msg_type) {
 				case CLIENT_HELLO:
+					handshake.updateBody(msg_type);
+					handshake.body.clientHello.setClientHello();
+					this->handshake.updateHandshakeLength(msg_type);
 					this->TLS_record_layer.protocol_version.major = 3;
 					this->TLS_record_layer.protocol_version.minor = 1;
-					this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_HANDSHAKE;
-					this->handshake.length = this->TLS_record_layer.length - HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
 					break;
 				case SERVER_HELLO:
-					this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_HANDSHAKE;
-					this->handshake.length = this->TLS_record_layer.length - HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+					handshake.updateBody(msg_type);
+					handshake.body.serverHello.setServerHello();
+					this->handshake.updateHandshakeLength(msg_type);
+					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
 					break;
 				case CERTIFICATE:
-					this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_HANDSHAKE;
-					this->handshake.length = this->TLS_record_layer.length - HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+					this->handshake.updateHandshakeLength(msg_type);
+					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+				case SERVER_KEY_EXCHANGE:
+					break;
+				case CERTIFICATE_REQUEST:
+					break;
+				case SERVER_HELLO_DONE:
+					handshake.updateBody(msg_type);
+					this->handshake.updateHandshakeLength(msg_type);
+					this->TLS_record_layer.length = SERVER_DONE_RECORD_LAYER_LENGTH;
+					break;
+				case CERTIFICATE_VERIFY:
+					break;
+				case CLIENT_KEY_EXCHANGE:
+					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+					break;
+				case FINISHED:
 					break;
 				default:
 					break;
@@ -171,36 +184,26 @@ namespace netlab {
 			/*********************************************************************************************/
 
 			std::string serialized_string;
-			uint16_t cipher_suites_size = 0;
-			uint32_t certificate_list_length = 0;
-			uint32_t encrypted_pre_master_secret_length = 0;
 
-			/* Serialize the handshake body */
+			// Serialize the handshake's body based on the message type.
 			switch (msg_type) {
 			case CLIENT_HELLO:
-
-				// Record Layer
-				setHandshakeRecordLayer(msg_type);
+				// Handshake's Record Layer
 				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
-
 				// HandshakeType and its length.
 				serialized_string.push_back(this->handshake.msg_type);
-				for (int i = 2; i >= 0; --i) {
-					serialized_string.push_back(static_cast<char>((this->handshake.length >> (i * 8)) & 0xFF));
-				}
+				serialize_3_bytes(serialized_string, this->handshake.length);
 				// ProtocolVersion
 				serialized_string.push_back(this->handshake.body.clientHello.client_version.major);
 				serialized_string.push_back(this->handshake.body.clientHello.client_version.minor);
 				// Random.gmt_unix_time
-				for (size_t i = 0; i < sizeof(uint32_t); ++i) {
-					serialized_string.push_back(static_cast<char>((this->handshake.body.clientHello.random.gmt_unix_time >> (i * 8)) & 0xFF));
-				}
+				serialize_4_bytes(serialized_string, this->handshake.body.clientHello.random.gmt_unix_time);
 				// Random.random_bytes
 				serialized_string.insert(serialized_string.end(),
 					this->handshake.body.clientHello.random.random_bytes.begin(),
 					this->handshake.body.clientHello.random.random_bytes.end());
 				// SessionID
-				if (is_all_zeros(this->handshake.body.clientHello.session_id)) {
+				if (is_all_zeros_array(this->handshake.body.clientHello.session_id)) {
 					serialized_string.push_back(0);
 				}
 				else {
@@ -210,13 +213,9 @@ namespace netlab {
 						this->handshake.body.clientHello.session_id.end());
 				}
 				// CipherSuites
-				cipher_suites_size = static_cast<uint16_t>(this->handshake.body.clientHello.cipher_suites.size() * sizeof(CipherSuite));
-				// Push the size as a uint16_t value
-				serialized_string.push_back(static_cast<uint8_t>((cipher_suites_size >> 8) & 0xFF));
-				serialized_string.push_back(static_cast<uint8_t>(cipher_suites_size & 0xFF));
-				for (const auto& cipher_suite : this->handshake.body.clientHello.cipher_suites) {
-					serialized_string.push_back(static_cast<char>(cipher_suite[0]));
-					serialized_string.push_back(static_cast<char>(cipher_suite[1]));
+				serialize_2_bytes(serialized_string, static_cast<uint16_t>(this->handshake.body.clientHello.cipher_suites.size() * sizeof(CipherSuite)));
+				for (CipherSuite cipher_suite : this->handshake.body.clientHello.cipher_suites) {
+					serialized_string.append(reinterpret_cast<const char*>(cipher_suite.data()), cipher_suite.size());
 				}
 				// CompressionMethods
 				serialized_string.push_back(this->handshake.body.clientHello.compression_methods.size());
@@ -234,14 +233,11 @@ namespace netlab {
 					}
 				}
 				else {
-					serialized_string.push_back(0); // Extensions length is 0.
-					serialized_string.push_back(0);
+					serialize_2_bytes(serialized_string, 0); // Extensions length is 0.
 				}
 				break;
 			case SERVER_HELLO:
-
-				// Record Layer
-				setHandshakeRecordLayer(msg_type);
+				// Handshake's Record Layer
 				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
 				// HandshakeType and its length.
 				serialized_string.push_back(this->handshake.msg_type);
@@ -256,7 +252,7 @@ namespace netlab {
 					this->handshake.body.serverHello.random.random_bytes.begin(),
 					this->handshake.body.serverHello.random.random_bytes.end());
 				// SessionID
-				if (is_all_zeros(this->handshake.body.serverHello.session_id)) {
+				if (is_all_zeros_array(this->handshake.body.serverHello.session_id)) {
 					serialized_string.push_back(0);
 				}
 				else {
@@ -266,8 +262,8 @@ namespace netlab {
 						this->handshake.body.serverHello.session_id.end());
 				}
 				// CipherSuites
-				serialized_string.push_back(this->handshake.body.serverHello.cipher_suite[0]);
-				serialized_string.push_back(this->handshake.body.serverHello.cipher_suite[1]);
+				serialized_string.append(reinterpret_cast<const char*>(this->handshake.body.serverHello.cipher_suite.data()),
+					this->handshake.body.serverHello.cipher_suite.size());
 				// CompressionMethods
 				serialized_string.push_back(this->handshake.body.serverHello.compression_method);
 				// Extensions
@@ -281,42 +277,21 @@ namespace netlab {
 					}
 				}
 				else {
-					serialized_string.push_back(0); // Extensions length is 0.
-                    serialized_string.push_back(0);
+					serialize_2_bytes(serialized_string, 0); // Extensions length is 0.
 				}
 				break;
 			case CERTIFICATE:
-
-				for (const auto& certificate : this->handshake.body.certificate.certificate_list) {
-					if (!std::all_of(certificate.begin(), certificate.end(), [](uint8_t byte) { return byte == 0; })) {
-						certificate_list_length += certificate.size();
-					}
-				}
-				certificate_list_length += CERTIFICATE_HANDSHAKE_OFFSET_LENGTH;
-
-				this->handshake.length = certificate_list_length + CERTIFICATE_HANDSHAKE_OFFSET_LENGTH;
-
-				// Record Layer
-				this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_HANDSHAKE;
-				this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+				// Handshake's Record Layer
 				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
-
 				// HandshakeType and its length.
 				serialized_string.push_back(this->handshake.msg_type);
-				for (int i = 2; i >= 0; --i) {
-					serialized_string.push_back(static_cast<char>((this->handshake.length >> (i * 8)) & 0xFF));
-				}
-				// CertificateList		
-				for (int i = 2; i >= 0; --i) {
-					serialized_string.push_back(static_cast<char>((certificate_list_length >> (i * 8)) & 0xFF));
-				}
+				serialize_3_bytes(serialized_string, this->handshake.length);
+				// Certificate List.		
+				serialize_3_bytes(serialized_string, this->handshake.length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH);
                 for (std::size_t i = 0; i < this->handshake.body.certificate.certificate_list.size(); ++i) {
                     std::vector<uint8_t> certificate = this->handshake.body.certificate.certificate_list[i];
-
-                    if (!std::all_of(certificate.begin(), certificate.end(), [](uint8_t byte) { return byte == 0; })) {
-						for (int j = 2; j >= 0; --j) {
-                            serialized_string.push_back(static_cast<char>((certificate.size() >> (j * 8)) & 0xFF));
-                        }
+                    if (!is_all_zeros_vector(certificate)) {
+						serialize_3_bytes(serialized_string, certificate.size());
                         serialized_string.insert(serialized_string.end(), certificate.begin(), certificate.end());
                     }
                 }
@@ -405,16 +380,11 @@ namespace netlab {
 				}
 				break;
 			case SERVER_HELLO_DONE:
-				// Record Layer
-				this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_HANDSHAKE;
-				this->TLS_record_layer.length = SERVER_DONE_RECORD_LAYER_LENGTH;
+				// Handshake's Record Layer
 				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
-
 				// HandshakeType and its length.
 				serialized_string.push_back(this->handshake.msg_type); // HandshakeType = SERVER_HELLO_DONE
-				for (int i = 0; i < 3; ++i) {
-					serialized_string.push_back(0); // Length is 0.
-				}
+				serialize_3_bytes(serialized_string, 0); // Length = 0
 				break;
 			case CERTIFICATE_VERIFY:
 				// DigitallySigned.handshake_messages
@@ -424,29 +394,19 @@ namespace netlab {
 					this->handshake.body.certificateVerify.digitally_signed.handshake_messages.end());
 				break;
 			case CLIENT_KEY_EXCHANGE:
-
-				// Get size of the EncryptedPreMasterSecret
-
-				this->handshake.length = this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size();
-				this->handshake.length += sizeof(uint16_t);
-
-				// Record Layer
-				this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_HANDSHAKE;
-				this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+				this->handshake.updateHandshakeLength(msg_type);
+				// Handshake's Record Layer
+				updateHandshakeProtocol(msg_type);
 				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
-
 				// HandshakeType and its length.
-				this->handshake.length = this->TLS_record_layer.length - HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
 				serialized_string.push_back(this->handshake.msg_type);
-				for (int i = 2; i >= 0; --i) {
-					serialized_string.push_back(static_cast<char>((this->handshake.length >> (i * 8)) & 0xFF));
-				}
+				serialize_3_bytes(serialized_string, this->handshake.length);
 				// KeyExchangeAlgorithm
 				switch (clientKeyExchangeAlgorithm) {
 				case KEY_EXCHANGE_ALGORITHM_RSA:
 					// EncryptedPreMasterSecret.encrypted_pre_master_secret
-					serialized_string.push_back(static_cast<char>((this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size() >> 8) & 0xFF));
-					serialized_string.push_back(static_cast<char>(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size() & 0xFF));
+					serialize_2_bytes(serialized_string, 
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size());
 					serialized_string.insert(serialized_string.end(),
 						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.begin(),
 						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.end());

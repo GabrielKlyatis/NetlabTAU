@@ -34,6 +34,13 @@ namespace netlab {
 #define PRE_MASTER_SECRET_ENCRYPTED_SIZE 256
 #define MASTER_SECRET_SIZE 48
 
+#define RECORD_LAYER_DEFAULT_LENGTH 5
+#define SERVER_DONE_RECORD_LAYER_LENGTH 4
+#define CHANGE_CIPHER_SPEC_RECORD_LAYER_LENGTH 1
+
+#define HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH 4
+#define CERTIFICATE_HANDSHAKE_OFFSET_LENGTH 3
+
 /************************************************************************/
 /*                               typedef                                */
 /************************************************************************/
@@ -442,7 +449,7 @@ namespace netlab {
 				}
 			}
 			else {
-				clientHelloSize += 1; // 2 bytes of extensions length.
+				clientHelloSize += 2; // 2 bytes of extensions length.
 			}
 			return clientHelloSize;
 		}
@@ -480,8 +487,8 @@ namespace netlab {
 			serverHelloSize += sizeof(server_version);
 			serverHelloSize += sizeof(random.gmt_unix_time);
 			serverHelloSize += RANDOM_BYTES_SIZE;
-			serverHelloSize += 1; // 1 byte of SessionID length.
-			if (!(std::all_of(session_id.begin(), session_id.end(), [](uint8_t byte) { return byte == 0; }))) {
+			serverHelloSize += sizeof(uint8_t); // 1 byte of SessionID length.
+			if (!is_all_zeros_array(session_id)) {
 				serverHelloSize += SESSION_ID_SIZE; // 32 bytes of SessionID.
 			}
 			serverHelloSize += sizeof(cipher_suite);
@@ -495,7 +502,7 @@ namespace netlab {
 				}
 			}
 			else {
-				serverHelloSize += 1; // 2 bytes of extensions length.
+				serverHelloSize += 2; // 2 bytes of extensions length.
 			}
 			return serverHelloSize;
 		}
@@ -508,8 +515,11 @@ namespace netlab {
 
 	struct Certificate {
 		std::vector<std::vector<uint8_t>> certificate_list; /* Represents ASN.1Cert certificate_list<0..2 ^ 24 - 1>. */
-
 		Certificate() : certificate_list() { }
+
+		void addCertificate(const std::vector<uint8_t>& certificate) {
+			certificate_list.push_back(certificate);
+		}
 	};
 
 	struct ServerDHParams {
@@ -777,6 +787,44 @@ namespace netlab {
 		void updateBody(HandshakeType passed_msg_type) {
 			this->msg_type = passed_msg_type;
 			body.createBody(msg_type); // Create a new body based on the current msg_type
+		}
+
+		void updateHandshakeLength(HandshakeType passed_msg_type) {
+
+			switch (passed_msg_type) {
+				// Update the length of the message
+			case HELLO_REQUEST:
+				this->length = 0;
+				break;
+			case CLIENT_HELLO:
+				this->length = body.clientHello.getClientHelloSize();
+				break;
+			case SERVER_HELLO:
+				this->length = body.serverHello.getServerHelloSize();
+				break;
+			case CERTIFICATE:
+				this->length = this->body.certificate.certificate_list.data()->size() + CERTIFICATE_HANDSHAKE_OFFSET_LENGTH * 2;
+				break;
+			case SERVER_KEY_EXCHANGE:
+				length = 0;
+				break;
+			case CERTIFICATE_REQUEST:
+				length = 0;
+				break;
+			case SERVER_HELLO_DONE:
+				this->length = 0;
+				break;
+			case CERTIFICATE_VERIFY:
+				length = 0;
+				break;
+			case CLIENT_KEY_EXCHANGE:
+				this->length = this->body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size();
+				this->length += sizeof(uint16_t);
+				break;
+			case FINISHED:
+				length = 0;
+				break;
+			}
 		}
 	};
 
