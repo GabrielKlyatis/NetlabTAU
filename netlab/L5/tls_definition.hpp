@@ -705,9 +705,11 @@ namespace netlab {
 				break;
 			case CLIENT_HELLO:
 				new (&clientHello) ClientHello();
+				clientHello.setClientHello();
 				break;
 			case SERVER_HELLO:
 				new (&serverHello) ServerHello();
+				serverHello.setServerHello();
 				break;
 			case CERTIFICATE:
 				new (&certificate) Certificate();
@@ -726,6 +728,7 @@ namespace netlab {
 				break;
 			case CLIENT_KEY_EXCHANGE:
 				new (&clientKeyExchange) ClientKeyExchange();
+				clientKeyExchange.setClientKeyExchange();
 				break;
 			case FINISHED:
 				new (&finished) Finished(); break;
@@ -784,7 +787,7 @@ namespace netlab {
 			body.destroy(msg_type); // Pass msg_type to Body destructor
 		}
 
-		void updateBody(HandshakeType passed_msg_type) {
+		void configureHandshakeBody(HandshakeType passed_msg_type) {
 			this->msg_type = passed_msg_type;
 			body.createBody(msg_type); // Create a new body based on the current msg_type
 		}
@@ -806,23 +809,19 @@ namespace netlab {
 				this->length = this->body.certificate.certificate_list.data()->size() + CERTIFICATE_HANDSHAKE_OFFSET_LENGTH * 2;
 				break;
 			case SERVER_KEY_EXCHANGE:
-				length = 0;
 				break;
 			case CERTIFICATE_REQUEST:
-				length = 0;
 				break;
 			case SERVER_HELLO_DONE:
 				this->length = 0;
 				break;
 			case CERTIFICATE_VERIFY:
-				length = 0;
 				break;
 			case CLIENT_KEY_EXCHANGE:
 				this->length = this->body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size();
 				this->length += sizeof(uint16_t);
 				break;
 			case FINISHED:
-				length = 0;
 				break;
 			}
 		}

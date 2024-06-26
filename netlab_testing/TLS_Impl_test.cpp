@@ -15,7 +15,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_CLIENT_HELLO) {
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
 	handshakeProtocol.handshake.body.clientHello.setClientHello();
 
@@ -36,7 +36,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_SERVER_HELLO) {
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
 	handshakeProtocol.handshake.body.serverHello.setServerHello();
 
@@ -57,7 +57,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_CERTIFICATE) {
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
 	handshakeProtocol.handshake.body.certificate.certificate_list.resize(10);
 
@@ -85,7 +85,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_SERVER_KEY_EXCHANGE_DH_ANON
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
 	handshakeProtocol.handshake.body.serverKeyExchange.key_exchange_algorithm = DH_ANON;
 	handshakeProtocol.handshake.body.serverKeyExchange.createServerKeyExchange();
@@ -113,7 +113,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_SERVER_KEY_EXCHANGE_DHE_RSA
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
 	handshakeProtocol.handshake.body.serverKeyExchange.key_exchange_algorithm = DHE_RSA;
 	handshakeProtocol.handshake.body.serverKeyExchange.createServerKeyExchange();
@@ -152,7 +152,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_CERTIFICATE_REQUEST) {
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
 	handshakeProtocol.handshake.body.certificateRequest.certificate_types.resize(4);
 	handshakeProtocol.handshake.body.certificateRequest.certificate_types = { RSA_SIGN, DSS_SIGN, FIXED_DH, DSS_FIXED_DH, RSA_EPHEMERAL_DH_RESERVED };
@@ -184,7 +184,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_CERTIFICATE_VERIFY) {
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 	
 	handshakeProtocol.handshake.body.certificateVerify.digitally_signed.handshake_messages.resize(4);
 
@@ -209,7 +209,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_CLIENT_KEY_EXCHANGE_DH_RSA)
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
 	handshakeProtocol.handshake.body.clientKeyExchange.key_exchange_algorithm = DH_RSA;
 	handshakeProtocol.handshake.body.clientKeyExchange.createClientKeyExchange();
@@ -234,7 +234,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_CLIENT_KEY_EXCHANGE_DH_ANON
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
 	handshakeProtocol.handshake.body.clientKeyExchange.key_exchange_algorithm = DH_ANON;
 	handshakeProtocol.handshake.body.clientKeyExchange.createClientKeyExchange();
@@ -260,7 +260,7 @@ TEST_F(TLS_Tests, Serialization_Deserialization_Test_FINISHED) {
 
 	TLSHandshakeProtocol handshakeProtocol;
 
-	handshakeProtocol.handshake.updateBody(msg_type);
+	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
 	handshakeProtocol.handshake.body.finished.verify_data.resize(4);
 

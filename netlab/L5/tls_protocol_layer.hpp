@@ -101,6 +101,16 @@ namespace netlab {
 
 			return serialized_string;
 		}
+
+		// ChangeCipherSpec Deserialization Method
+		void deserialize_change_cipher_spec_data(std::string serialized_string) {
+
+			std::string::const_iterator it = serialized_string.begin();
+			// Record Layer
+			this->TLS_record_layer.deserialize_record_layer_data(it, serialized_string);
+			// ChangeCipherSpec type.
+			this->type = static_cast<Type>(*it);
+		}
 	};
 
 /************************************************************************/
@@ -137,16 +147,12 @@ namespace netlab {
 			this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_HANDSHAKE;
 			switch (msg_type) {
 				case CLIENT_HELLO:
-					handshake.updateBody(msg_type);
-					handshake.body.clientHello.setClientHello();
 					this->handshake.updateHandshakeLength(msg_type);
 					this->TLS_record_layer.protocol_version.major = 3;
 					this->TLS_record_layer.protocol_version.minor = 1;
 					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
 					break;
 				case SERVER_HELLO:
-					handshake.updateBody(msg_type);
-					handshake.body.serverHello.setServerHello();
 					this->handshake.updateHandshakeLength(msg_type);
 					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
 					break;
@@ -158,13 +164,13 @@ namespace netlab {
 				case CERTIFICATE_REQUEST:
 					break;
 				case SERVER_HELLO_DONE:
-					handshake.updateBody(msg_type);
 					this->handshake.updateHandshakeLength(msg_type);
 					this->TLS_record_layer.length = SERVER_DONE_RECORD_LAYER_LENGTH;
 					break;
 				case CERTIFICATE_VERIFY:
 					break;
 				case CLIENT_KEY_EXCHANGE:
+					this->handshake.updateHandshakeLength(msg_type);
 					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
 					break;
 				case FINISHED:
@@ -394,9 +400,7 @@ namespace netlab {
 					this->handshake.body.certificateVerify.digitally_signed.handshake_messages.end());
 				break;
 			case CLIENT_KEY_EXCHANGE:
-				this->handshake.updateHandshakeLength(msg_type);
 				// Handshake's Record Layer
-				updateHandshakeProtocol(msg_type);
 				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
 				// HandshakeType and its length.
 				serialized_string.push_back(this->handshake.msg_type);
