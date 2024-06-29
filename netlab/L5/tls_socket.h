@@ -22,6 +22,12 @@ public:
         p_socket = new L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet);
     }
 
+    secure_socket(inet_os& inet, L5_socket* p_sock) : L5_socket(inet), p_socket(p_sock)
+    {
+        // TODO: may move to tls_socket class, i dont want to force use of the specif implemnt
+       // p_socket = new L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet);
+    }
+
     ~secure_socket() 
     {
         delete p_socket;
@@ -223,16 +229,19 @@ class tls_socket : public secure_socket
 {
 public:
 
-    tls_socket(inet_os& inet);
+    tls_socket(inet_os& inet, bool server = false);
+    tls_socket(inet_os& inet, L5_socket* p_sock, bool server = false) : secure_socket(inet, p_sock), server(server) {}
     ~tls_socket();
 
     void bind(_In_ const struct sockaddr* addr, _In_ int addr_len) override;
 
     void listen(_In_ int backlog) override;
 
-    L5_socket* accept(_Out_ struct sockaddr* addr, _Inout_ int* addr_len) override;
+    L5_socket* accept(_Out_ struct sockaddr* addr, _Inout_ int* addr_len) ;
 
     void connect(_In_ const struct sockaddr* name, _In_ int name_len) override;
+
+    void handshake() ;
 
     void shutdown(_In_ int how = SD_BOTH) override;
 
@@ -256,15 +265,18 @@ protected:
 
     std::vector < uint16_t> get_cipher_suites() const;
 
-    RSA* p_rsa;
-
     int extract_public_key(const unsigned char* raw_cert, size_t raw_cert_len);
 
     std::vector<uint8_t> extract_master_secret(const std::vector<uint8_t>& preMasterSecret, const std::vector<uint8_t>& clientRandom,  const std::vector<uint8_t>& serverRandom);
 
+    RSA* p_rsa;
+
+    L5_socket* sock;
+
     uint64_t client_seq_num;
     uint64_t server_seq_num;
 
+    bool server;
 };
 
 

@@ -868,11 +868,12 @@ void tls_playground()
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 	inet_os inet_server = inet_os();
-	inet_os dflt = inet_os();
+	//inet_os dflt = inet_os();
 
 
-	NIC nic_server(	inet_server,"10.0.0.10","aa:aa:aa:aa:aa:aa",nullptr,nullptr,true,"arp or ip src 10.0.0.15"); // Declaring a filter to make a cleaner testing.
-	NIC nic_client(inet_client,	"10.0.0.15", "bb:bb:bb:bb:bb:bb",nullptr,nullptr,true,"arp or ip src 10.0.0.10");
+
+	NIC nic_client(inet_client,	"10.0.0.15", "bb:bb:bb:bb:bb:bb",nullptr,nullptr,true,"ip src 10.0.0.10 ");
+	NIC nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "ip src 10.0.0.15 "); // Declaring a filter to make a cleaner testing.
 	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
 
 	L2_impl datalink_client1(inet_server);
@@ -882,6 +883,7 @@ void tls_playground()
 	inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 	inet_server.domaininit();
 	arp_server.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
+	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
 
 
 
@@ -892,9 +894,10 @@ void tls_playground()
 	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 	inet_client.domaininit();
 	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-	//arp_client.insertPermanent(dflt_gtw.ip_addr().s_addr, dflt_gtw.mac());
-	inet_client.connect();
+	arp_client.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
+	
 	inet_server.connect();
+	inet_client.connect();
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
 	clientService.sin_addr.s_addr = inet_addr("10.0.0.10");
@@ -915,7 +918,7 @@ void tls_playground()
 //	AcceptSocket = nullptr;
 	
 	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
-	std::this_thread::sleep_for(std::chrono::seconds(1));
+	std::this_thread::sleep_for(std::chrono::seconds(2));
 	std::thread([ConnectSocket, clientService]()
 	{
 			ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
@@ -926,6 +929,8 @@ void tls_playground()
 	netlab::L5_socket* AcceptSocket = nullptr;
 	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
+	netlab::tls_socket* accept_tls_scoket = (new netlab::tls_socket(inet_server, AcceptSocket, true));
+	accept_tls_scoket->handshake();
 	//AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
 
@@ -936,7 +941,7 @@ void tls_playground()
 
 
 
-	std::string send_msg(100, 'T');
+	std::string send_msg((16 * 5)-1, 'T');
 	send_msg.push_back('\n');
 
 	 
@@ -945,7 +950,7 @@ void tls_playground()
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	std::string rcv_msg;
-	ConnectSocket->recv(rcv_msg, 100, 1, 0);
+	accept_tls_scoket->recv(rcv_msg, 200, 120, 0);
 
 	cout << rcv_msg << endl;
 
@@ -2408,7 +2413,7 @@ void main()
 		"[9] Application Use Case (with drop)" << std::endl <<
 		"[10] Cwnd Fall Test" << std::endl;
 
-//	tls_playground();
+	tls_playground();
 	//return;
 
 	int request(4);

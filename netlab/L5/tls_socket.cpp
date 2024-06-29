@@ -82,9 +82,6 @@ int tls_socket::extract_public_key(const unsigned char* raw_cert, size_t raw_cer
     char* modulus_hex = BN_bn2hex(n);
     char* exponent_hex = BN_bn2hex(e);
 
-    // Print modulus and exponent
-    //std::cout << "Modulus: " << modulus_hex << std::endl;
-   // std::cout << "Exponent: " << exponent_hex << std::endl;
     EVP_PKEY_free(pubkey);
     X509_free(cert);
     BIO_free(bio);
@@ -95,7 +92,7 @@ int tls_socket::extract_public_key(const unsigned char* raw_cert, size_t raw_cer
 
 
 
-tls_socket::tls_socket(inet_os& inet) : secure_socket(inet), client_seq_num(0), server_seq_num(0) {
+tls_socket::tls_socket(inet_os& inet, bool server) : secure_socket(inet), client_seq_num(0), server_seq_num(0), server(server) {
     // TODO: Implement TLS socket constructor
     SSL_library_init();
 
@@ -127,7 +124,6 @@ std::vector<uint16_t> tls_socket::get_cipher_suites() const
     STACK_OF(SSL_CIPHER)* ciphers = SSL_get_ciphers(ssl);
 
     // Print the list of supported cipher suites
-    //std::cout << "Supported Cipher Suites:" << std::endl;
     int counter = 0;
     for (int i = 0; i < sk_SSL_CIPHER_num(ciphers); ++i) {
         const SSL_CIPHER* cipher = sk_SSL_CIPHER_value(ciphers, i);
@@ -155,22 +151,18 @@ void tls_socket::listen(int backlog) {
 }
 
 
-
-L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
-
-
-    L5_socket* sock = p_socket->accept(addr, addr_len);
-
+void tls_socket::handshake()
+{
     // handle handshake
     std::string recv_buffer;
     recv_buffer.reserve(1500);
-    int byte_recived = sock->recv(recv_buffer, 1500, 1, 0);
+    int byte_recived = p_socket->recv(recv_buffer, 1500, 1, 0);
 
     // get client hello msg
     tls_header* recv_header = (tls_header*)recv_buffer.c_str();
     if (ntohs(recv_header->version) != TLS_VERSION_TLSv1_0)
     {
-        return nullptr;
+        return ;
     }
 
     char* start_of_client_hello = (char*)recv_buffer.c_str() + sizeof(tls_header);
@@ -195,8 +187,8 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     RAND_bytes(sid, 32);
     server_hello_msg.session_id.insert(server_hello_msg.session_id.end(), sid, sid + 32);
 
-    server_hello_msg.cipher_suites = { 0x2f00};
-    
+    server_hello_msg.cipher_suites = { 0x2f00 };
+
     server_hello_msg.length[0] = (len >> 16) & 0xFF;
     server_hello_msg.length[1] = (len >> 8) & 0xFF;
     server_hello_msg.length[2] = len & 0xFF;
@@ -211,18 +203,18 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
 
     const char* cert_file = "C:/Program Files/OpenSSL-Win64/server.crt";
 
-   
+
     FILE* fp = fopen(cert_file, "r");
     if (!fp) {
         fprintf(stderr, "unable to open: %s\n", cert_file);
-       // return EXIT_FAILURE;
+        // return EXIT_FAILURE;
     }
 
     X509* cert = PEM_read_X509(fp, NULL, NULL, NULL);
     if (!cert) {
         fprintf(stderr, "unable to parse certificate in: %s\n", cert_file);
         fclose(fp);
-      //  return EXIT_FAILURE;  
+        //  return EXIT_FAILURE;  
     }
 
     unsigned char* buf;
@@ -231,9 +223,7 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
 
     std::string cartificate(buf, buf + len);
     fclose(fp);
-    std::cout << cartificate << std::endl;
 
-    
 
     tls_certificate server_certificate_msg;
     uint32_t len2 = cartificate.size() + 3;
@@ -243,7 +233,7 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     server_certificate_msg.length[0] = (total_len >> 16) & 0xFF;
     server_certificate_msg.length[1] = (total_len >> 8) & 0xFF;
     server_certificate_msg.length[2] = total_len & 0xFF;
-     
+
     server_certificate_msg.cert_length[0] = (len2 >> 16) & 0xFF;
     server_certificate_msg.cert_length[1] = (len2 >> 8) & 0xFF;
     server_certificate_msg.cert_length[2] = len2 & 0xFF;
@@ -258,7 +248,7 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     std::string server_certificate_buffer;
     server_certificate_buffer.append((char*)&server_certificate_header, sizeof(tls_header));
     server_certificate_buffer.append((char*)&(server_certificate_msg), 7);
-    
+
     // add 3 bytes of cartificate length
     uint8_t len3[3];
     len3[0] = (len >> 16) & 0xFF;
@@ -268,7 +258,7 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
 
     server_certificate_buffer.append(cartificate);
 
-   // sock->send(server_certificate_buffer, server_certificate_buffer.size(), 0, 0);
+    // sock->send(server_certificate_buffer, server_certificate_buffer.size(), 0, 0);
     server_hello_buffer.append(server_certificate_buffer);
 
     // send server hello done msg
@@ -284,11 +274,11 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     server_hello_done_buffer.append((char*)&server_hell_done, 4);
 
     server_hello_buffer.append(server_hello_done_buffer);
-    sock->send(server_hello_buffer, server_hello_buffer.size(), 0, 0);
+    p_socket->send(server_hello_buffer, server_hello_buffer.size(), 0, 0);
 
     // receive client key exchange msg
     std::string recv_buffer2 = "";
-    sock->recv(recv_buffer2, 1500, 1, 0);
+    p_socket->recv(recv_buffer2, 1500, 1, 0);
 
 
 
@@ -296,13 +286,13 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     tls_header* key_exchange_header = (tls_header*)recv_buffer2.c_str();
 
     if (ntohs(key_exchange_header->version) != TLS_VERSION_TLSv1_2) {
-		std::cout << "version not match" << std::endl;
-		return nullptr;
-	}
+        std::cout << "version not match" << std::endl;
+        return ;
+    }
 
 
     tls_key_exchanege_msg client_key_exchange;
-    memcpy(&client_key_exchange, (char*)key_exchange_header + 5 , 4);
+    memcpy(&client_key_exchange, (char*)key_exchange_header + 5, 4);
     client_key_exchange.premaster = std::string((char*)key_exchange_header + 9, ntohs(key_exchange_header->length) - 4);
 
     // decrypt the premaster secret
@@ -310,22 +300,22 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     const char* key_file = "C:/Program Files/OpenSSL-Win64/server.key";
     FILE* key_fp = fopen(key_file, "r");
     if (!key_fp) {
-		fprintf(stderr, "unable to open: %s\n", key_file);
-		// return EXIT_FAILURE;
-	}
+        fprintf(stderr, "unable to open: %s\n", key_file);
+        // return EXIT_FAILURE;
+    }
     RSA* rsa_priv_key = PEM_read_RSAPrivateKey(key_fp, NULL, NULL, NULL);
     if (!rsa_priv_key) {
         // Handle error loading private key
         fprintf(stderr, "Error loading private key\n");
-       // return EXIT_FAILURE;
+        // return EXIT_FAILURE;
     }
-    
+
     uint8_t decrypted_premaster_secret[48];
 
-  
+
     // Decrypt the premaster secret
     size_t a = client_key_exchange.premaster.size();
-    uint8_t encrypted_premaster_secret[256] ;
+    uint8_t encrypted_premaster_secret[256];
     memcpy(encrypted_premaster_secret, client_key_exchange.premaster.data() + 2, 256);
     int decrypted_len = RSA_private_decrypt(256, encrypted_premaster_secret, decrypted_premaster_secret, rsa_priv_key, RSA_PKCS1_PADDING);
     if (decrypted_len == -1) {
@@ -333,7 +323,7 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
         fprintf(stderr, "RSA_private_decrypt failed: %s\n", ERR_error_string(ERR_get_error(), NULL));
         // Free resources and cleanup if necessary
         RSA_free(rsa_priv_key);
-      //  return EXIT_FAILURE;
+        //  return EXIT_FAILURE;
     }
     RSA_free(rsa_priv_key);
 
@@ -360,9 +350,9 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     uint32_t key_exchange_len = client_key_exchange.length[0] << 16 | client_key_exchange.length[1] << 8 | client_key_exchange.length[2];
     tls_header* change_cipher_spec_header = (tls_header*)(recv_buffer2.c_str() + sizeof(tls_header) + key_exchange_len + 4);
 
-    tls_header* client_finished_header = (tls_header*)((char*)change_cipher_spec_header + sizeof(tls_header) + 1) ;
-    
-    std::vector<uint8_t> encrypted_data((char *)client_finished_header + sizeof(tls_header), (char*)client_finished_header + sizeof(tls_header) + ntohs(client_finished_header->length));
+    tls_header* client_finished_header = (tls_header*)((char*)change_cipher_spec_header + sizeof(tls_header) + 1);
+
+    std::vector<uint8_t> encrypted_data((char*)client_finished_header + sizeof(tls_header), (char*)client_finished_header + sizeof(tls_header) + ntohs(client_finished_header->length));
 
     // as string
     std::string encrypted_data_str(encrypted_data.begin(), encrypted_data.end());
@@ -431,11 +421,15 @@ L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
     encrypted_handshake_msg.append((char*)&encrypted_handshake_header, sizeof(encrypted_handshake_header));
     encrypted_handshake_msg.append(encrypted_final_msg);
 
-    sock->send(encrypted_handshake_msg, encrypted_handshake_msg.size(), 0, 0);
+    p_socket->send(encrypted_handshake_msg, encrypted_handshake_msg.size(), 0, 0);
+
+}
+L5_socket* tls_socket::accept(struct sockaddr* addr, int* addr_len) {
 
 
+    L5_socket* sock = p_socket->accept(addr, addr_len);
 
-
+  
 
     return sock;
 }
@@ -683,7 +677,6 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     uint8_t server_verify_data[12];
     prf(seed23, "server finished", master_secret_vec, server_verify_data, 12);
 
-    std::cout << decrypted << std::endl;
 }
 
 
@@ -738,7 +731,7 @@ int tls_socket::recv(std::string& uio, size_t uio_resid, size_t chunk, int flags
 
     std::string encrtped_msg(start_of_encrypted_data, start_of_encrypted_data + ntohs(recv_header->length));
 
-    uio = decrypt(encrtped_msg);
+    uio = decrypt(encrtped_msg, server);
 
 	
 	return 0;
@@ -777,7 +770,6 @@ void tls_socket::prf(std::vector<uint8_t>& seed, std::string label, std::vector<
 }
 
 std::string tls_socket::encrypt(std::string& msg, bool server )  {
-
     std::vector<uint8_t> text(msg.data(), msg.data() + msg.size());
     std::vector<uint8_t> to_mac;
 
@@ -839,6 +831,7 @@ std::string tls_socket::encrypt(std::string& msg, bool server )  {
     std::string ss;
     ss.insert(ss.end(), ciphertext1.begin(), ciphertext1.end());
     EVP_CIPHER_CTX_free(ctx3);
+
     return ss;
 }
 

@@ -125,8 +125,8 @@ protected:
 	TCP_Tests() :
 		inet_server(),
 		inet_client(),
-		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, ""),
-		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, ""),
+		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "ip src 10.0.0.15 or ip src 192.168.1.228 or arp"),
+		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "ip src 10.0.0.10 or ip src 192.168.1.228 or arp"),
 		datalink_server(inet_server),
 		datalink_client(inet_client),
 		arp_server(inet_server, 10, 10000),
@@ -188,7 +188,7 @@ protected:
 
 		sockaddr_in client_service;
 		client_service.sin_family = AF_INET;
-		client_service.sin_addr.s_addr = inet_addr("192.168.1.225");
+		client_service.sin_addr.s_addr = inet_addr("192.168.1.228");
 		client_service.sin_port = htons(8888);
 
 		WSADATA wsaData;
