@@ -75,43 +75,8 @@ namespace netlab
 
 	inline bool L5_socket::sockbuf::empty() const { return sb_mb.empty(); }
 
-	//inline L5_socket::sockbuf::const_iterator L5_socket::sockbuf::begin() const { return sb_mb.begin(); }
-
 	inline L5_socket::sockbuf::size_type L5_socket::sockbuf::sbspace() const { return sb_mb.reserve(); }
 
-	//void L5_socket::sockbuf::sbappend(std::vector<byte>::iterator first, std::vector<byte>::iterator last)
-	//{
-	//	
-	//	int to_add = std::distance(first, last);
-	//	if (to_add > 0)
-	//	{
-	//		//std::lock_guard<std::mutex> guard(sb_mutex);
-	//		/*
-	//		* Put the first mbuf on the queue.
-	//		* Note this permits zero length records.
-	//		*/
-
-	//		sb_mb.insert(sb_mb.end(), first, last);
-	//	}
-	//}
-
-	//void L5_socket::sockbuf::sbflush()
-	//{
-	//	std::lock_guard<std::mutex> read_guard(sb_mutex);
-	//	sb_mb.clear();
-	//}
-
-	//inline void L5_socket::sockbuf::sbdrop(const size_type len)
-	//{
-	//	//std::lock_guard<std::mutex> guard(sb_mutex);
-	//	if (len > size())
-	//		sb_mb.clear();
-	//	else {
-	//		//sb_mb.erase_begin(len);
-	//		sb_mb.erase(sb_mb.begin(), sb_mb.begin() + len);
-	//		notify_all();
-	//	}
-	//}
 
 	inline void L5_socket::sockbuf::notify_all()
 	{

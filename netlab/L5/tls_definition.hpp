@@ -1,6 +1,5 @@
 #pragma once
 
-#include "tls_socket.h"
 #include "tls_utils.hpp"
 #include "L5.h"
 
@@ -17,16 +16,30 @@ namespace netlab {
 /*                               #define                                */
 /************************************************************************/
 
-#define TLS_VERSION_SSLv3 = 0x0300
-#define TLS_VERSION_TLSv1_0 = 0x0301
-#define TLS_VERSION_TLSv1_1 = 0x0302
-#define TLS_VERSION_TLSv1_2 = 0x0303
-#define TLS_VERSION_TLSv1_3 = 0x0304
+
+
+	enum tls_version
+	{
+	    TLS_VERSION_SSLv3 = 0x0300,
+	    TLS_VERSION_TLSv1_0 = 0x0301,
+	    TLS_VERSION_TLSv1_1 = 0x0302,
+	    TLS_VERSION_TLSv1_2 = 0x0303,
+	    TLS_VERSION_TLSv1_3 = 0x0304,
+
+	};
 
 #define RANDOM_BYTES_SIZE 28
 #define SESSION_ID_SIZE 32
 #define PRE_MASTER_SECRET_RND_SIZE 46
+#define PRE_MASTER_SECRET_ENCRYPTED_SIZE 256
 #define MASTER_SECRET_SIZE 48
+
+#define RECORD_LAYER_DEFAULT_LENGTH 5
+#define SERVER_DONE_RECORD_LAYER_LENGTH 4
+#define CHANGE_CIPHER_SPEC_RECORD_LAYER_LENGTH 1
+
+#define HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH 4
+#define CERTIFICATE_HANDSHAKE_OFFSET_LENGTH 3
 
 /************************************************************************/
 /*                               typedef                                */
@@ -45,52 +58,53 @@ namespace netlab {
 		request any signature-capable certificate in the certificate request
 		message.*/
 
-	CipherSuite TLS_NULL_WITH_NULL_NULL = { 0x00,0x00 };
-	CipherSuite TLS_RSA_WITH_NULL_MD5 = { 0x00,0x01 };
-	CipherSuite TLS_RSA_WITH_NULL_SHA = { 0x00,0x02 };
-	CipherSuite TLS_RSA_WITH_NULL_SHA256 = { 0x00,0x3B };
-	CipherSuite TLS_RSA_WITH_RC4_128_MD5 = { 0x00,0x04 };
-	CipherSuite TLS_RSA_WITH_RC4_128_SHA = { 0x00,0x05 };
-	CipherSuite TLS_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x0A };
-	CipherSuite TLS_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x2F };
-	CipherSuite TLS_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x35 };
-	CipherSuite TLS_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x3C };
-	CipherSuite TLS_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x3D };
+	static CipherSuite TLS_NULL_WITH_NULL_NULL = { 0x00,0x00 };
+	static CipherSuite TLS_EMPTY_RENEGOTIATION_INFO_SCSV = { 0x00,0xFF };
+	static CipherSuite TLS_RSA_WITH_NULL_MD5 = { 0x00,0x01 };
+	static CipherSuite TLS_RSA_WITH_NULL_SHA = { 0x00,0x02 };
+	static CipherSuite TLS_RSA_WITH_NULL_SHA256 = { 0x00,0x3B };
+	static CipherSuite TLS_RSA_WITH_RC4_128_MD5 = { 0x00,0x04 };
+	static CipherSuite TLS_RSA_WITH_RC4_128_SHA = { 0x00,0x05 };
+	static CipherSuite TLS_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x0A };
+	static CipherSuite TLS_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x2F };
+	static CipherSuite TLS_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x35 };
+	static CipherSuite TLS_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x3C };
+	static CipherSuite TLS_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x3D };
 
 	/* The following cipher suite definitions are used for server-
 	   authenticated (and optionally client-authenticated) Diffie-Hellman. */
-
-	CipherSuite TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x0D };
-	CipherSuite TLS_DH_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x10 };
-	CipherSuite TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x13 };
-	CipherSuite TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x16 };
-	CipherSuite TLS_DH_DSS_WITH_AES_128_CBC_SHA = { 0x00,0x30 };
-	CipherSuite TLS_DH_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x31 };
-	CipherSuite TLS_DHE_DSS_WITH_AES_128_CBC_SHA = { 0x00,0x32 };
-	CipherSuite TLS_DHE_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x33 };
-	CipherSuite TLS_DH_DSS_WITH_AES_256_CBC_SHA = { 0x00,0x36 };
-	CipherSuite TLS_DH_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x37 };
-	CipherSuite TLS_DHE_DSS_WITH_AES_256_CBC_SHA = { 0x00,0x38 };
-	CipherSuite TLS_DHE_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x39 };
-	CipherSuite TLS_DH_DSS_WITH_AES_128_CBC_SHA256 = { 0x00,0x3E };
-	CipherSuite TLS_DH_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x3F };
-	CipherSuite TLS_DHE_DSS_WITH_AES_128_CBC_SHA256 = { 0x00,0x40 };
-	CipherSuite TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x67 };
-	CipherSuite TLS_DH_DSS_WITH_AES_256_CBC_SHA256 = { 0x00,0x68 };
-	CipherSuite TLS_DH_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x69 };
-	CipherSuite TLS_DHE_DSS_WITH_AES_256_CBC_SHA256 = { 0x00,0x6A };
-	CipherSuite TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x6B };
+	
+	static CipherSuite TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x0D };
+	static CipherSuite TLS_DH_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x10 };
+	static CipherSuite TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA = { 0x00,0x13 };
+	static CipherSuite TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA = { 0x00,0x16 };
+	static CipherSuite TLS_DH_DSS_WITH_AES_128_CBC_SHA = { 0x00,0x30 };
+	static CipherSuite TLS_DH_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x31 };
+	static CipherSuite TLS_DHE_DSS_WITH_AES_128_CBC_SHA = { 0x00,0x32 };
+	static CipherSuite TLS_DHE_RSA_WITH_AES_128_CBC_SHA = { 0x00,0x33 };
+	static CipherSuite TLS_DH_DSS_WITH_AES_256_CBC_SHA = { 0x00,0x36 };
+	static CipherSuite TLS_DH_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x37 };
+	static CipherSuite TLS_DHE_DSS_WITH_AES_256_CBC_SHA = { 0x00,0x38 };
+	static CipherSuite TLS_DHE_RSA_WITH_AES_256_CBC_SHA = { 0x00,0x39 };
+	static CipherSuite TLS_DH_DSS_WITH_AES_128_CBC_SHA256 = { 0x00,0x3E };
+	static CipherSuite TLS_DH_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x3F };
+	static CipherSuite TLS_DHE_DSS_WITH_AES_128_CBC_SHA256 = { 0x00,0x40 };
+	static CipherSuite TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 = { 0x00,0x67 };
+	static CipherSuite TLS_DH_DSS_WITH_AES_256_CBC_SHA256 = { 0x00,0x68 };
+	static CipherSuite TLS_DH_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x69 };
+	static CipherSuite TLS_DHE_DSS_WITH_AES_256_CBC_SHA256 = { 0x00,0x6A };
+	static CipherSuite TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 = { 0x00,0x6B };
 
 	/* The following cipher suites are used for completely anonymous
 	   Diffie-Hellman communications in which neither party is
 	   authenticated. */
 
-	CipherSuite TLS_DH_anon_WITH_RC4_128_MD5 = { 0x00,0x18 };
-	CipherSuite TLS_DH_anon_WITH_3DES_EDE_CBC_SHA = { 0x00,0x1B };
-	CipherSuite TLS_DH_anon_WITH_AES_128_CBC_SHA = { 0x00,0x34 };
-	CipherSuite TLS_DH_anon_WITH_AES_256_CBC_SHA = { 0x00,0x3A };
-	CipherSuite TLS_DH_anon_WITH_AES_128_CBC_SHA256 = { 0x00,0x6C };
-	CipherSuite TLS_DH_anon_WITH_AES_256_CBC_SHA256 = { 0x00,0x6D };
+	static CipherSuite TLS_DH_anon_WITH_RC4_128_MD5 = { 0x00,0x18 };
+	static CipherSuite TLS_DH_anon_WITH_3DES_EDE_CBC_SHA = { 0x00,0x1B };
+	static CipherSuite TLS_DH_anon_WITH_AES_128_CBC_SHA = { 0x00,0x34 };
+	static CipherSuite TLS_DH_anon_WITH_AES_256_CBC_SHA = { 0x00,0x3A };
+	static CipherSuite TLS_DH_anon_WITH_AES_128_CBC_SHA256 = { 0x00,0x6C };
+	static CipherSuite TLS_DH_anon_WITH_AES_256_CBC_SHA256 = { 0x00,0x6D };
 
 /************************************************************************/
 /*								  enums                                 */
@@ -98,7 +112,7 @@ namespace netlab {
 
 /**************************** TLS Record Layer **************************/
 
-	enum ContentType {
+	enum ContentType : uint8_t {
 
 		TLS_CONTENT_TYPE_CHANGE_CIPHER_SPEC = 0x14,
 		TLS_CONTENT_TYPE_ALERT = 0x15,
@@ -110,7 +124,7 @@ namespace netlab {
 
 /************************** Change Cipher Spect ************************/
 
-	enum Type {
+	enum Type : uint8_t {
 		CHANGE_CIPHER_SPEC = 1,
 		CHANGE_CIPHER_SPEC_MAX_VALUE = 255,
 	};
@@ -186,11 +200,11 @@ namespace netlab {
 		MD5 = 1,
 		SHA1 = 2,
 		SHA224 = 3,
-		SHA256 = 4,
+		HashAlgorithm_SHA256 = 4,
 		SHA384 = 5,
 		SHA512 = 6,
 		HASH_ALGORITHM_MAX_VALUE = 255,
-	};
+	} ;
 
 	enum SignatureAlgorithm {
 		ANONYMOUS = 0,
@@ -400,7 +414,7 @@ namespace netlab {
 			: client_version{ 3, 3 },
 			random{ 0, {} },
 			session_id{},
-			cipher_suites{ TLS_RSA_WITH_AES_128_CBC_SHA },
+			cipher_suites{ TLS_RSA_WITH_AES_128_CBC_SHA , TLS_EMPTY_RENEGOTIATION_INFO_SCSV },
 			compression_methods{ NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE },
 			extensions_present(false),
 			extensions_union{}
@@ -410,8 +424,36 @@ namespace netlab {
 
 			random.gmt_unix_time = static_cast<uint32_t>(time(0));
 			random.random_bytes = generate_random_bytes<RANDOM_BYTES_SIZE>();
-			session_id = generate_random_bytes<SESSION_ID_SIZE>();
+			//session_id = generate_random_bytes<SESSION_ID_SIZE>();
 		}
+
+		uint16_t getClientHelloSize() {
+			uint16_t clientHelloSize = 0;
+			clientHelloSize += sizeof(client_version);
+			clientHelloSize += sizeof(random.gmt_unix_time);
+			clientHelloSize += RANDOM_BYTES_SIZE;
+			clientHelloSize += 1; // 1 byte of SessionID length.
+			if (!(std::all_of(session_id.begin(), session_id.end(), [](uint8_t byte) { return byte == 0; }))) {
+				clientHelloSize += SESSION_ID_SIZE; // 32 bytes of SessionID.
+			}
+			clientHelloSize += sizeof(uint16_t); // 2 bytes of cipher_suites length.
+			clientHelloSize += cipher_suites.size() * sizeof(CipherSuite);
+			clientHelloSize += sizeof(uint8_t); // 1 byte of compression_methods length.
+			clientHelloSize += compression_methods.size() * sizeof(CompressionMethod);
+			if (extensions_present) {
+				clientHelloSize += sizeof(uint16_t); // 2 bytes of extensions length.
+				for (auto& extension : extensions_union.extensions) {
+					clientHelloSize += sizeof(extension.extension_type);
+					clientHelloSize += sizeof(uint16_t); // 2 bytes of extension_data length.
+					clientHelloSize += extension.extension_data.size();
+				}
+			}
+			else {
+				clientHelloSize += 2; // 2 bytes of extensions length.
+			}
+			return clientHelloSize;
+		}
+
 	};
 
 	struct ServerHello {
@@ -419,7 +461,7 @@ namespace netlab {
 		Random random;
 		SessionID session_id;
 		CipherSuite cipher_suite;
-		std::vector<CompressionMethod> compression_methods;
+		CompressionMethod compression_method;
 		bool extensions_present;
 		ExtensionUnion extensions_union;
 
@@ -428,8 +470,8 @@ namespace netlab {
 			: server_version{ 3, 3 },
 			random{ 0, {} },
 			session_id{},
-			cipher_suite(TLS_NULL_WITH_NULL_NULL),
-			compression_methods{ NULL_COMPRESSION, COMPRESSION_METHOD_MAX_VALUE },
+			cipher_suite(TLS_RSA_WITH_AES_128_CBC_SHA),
+			compression_method{ NULL_COMPRESSION },
 			extensions_present(false),
 			extensions_union{}
 		{ }
@@ -438,7 +480,31 @@ namespace netlab {
 			random.gmt_unix_time = static_cast<uint32_t>(time(0));
 			random.random_bytes = generate_random_bytes<RANDOM_BYTES_SIZE>();
 			session_id = generate_random_bytes<SESSION_ID_SIZE>();
-			cipher_suite = TLS_RSA_WITH_AES_128_CBC_SHA;
+		}
+
+		uint16_t getServerHelloSize() {
+			uint16_t serverHelloSize = 0;
+			serverHelloSize += sizeof(server_version);
+			serverHelloSize += sizeof(random.gmt_unix_time);
+			serverHelloSize += RANDOM_BYTES_SIZE;
+			serverHelloSize += sizeof(uint8_t); // 1 byte of SessionID length.
+			if (!is_all_zeros_array(session_id)) {
+				serverHelloSize += SESSION_ID_SIZE; // 32 bytes of SessionID.
+			}
+			serverHelloSize += sizeof(cipher_suite);
+			serverHelloSize += sizeof(compression_method);
+			if (extensions_present) {
+				serverHelloSize += sizeof(uint16_t); // 2 bytes of extensions length.
+				for (auto& extension : extensions_union.extensions) {
+					serverHelloSize += sizeof(extension.extension_type);
+					serverHelloSize += sizeof(uint16_t); // 2 bytes of extension_data length.
+					serverHelloSize += extension.extension_data.size();
+				}
+			}
+			else {
+				serverHelloSize += 2; // 2 bytes of extensions length.
+			}
+			return serverHelloSize;
 		}
 	};
 
@@ -449,8 +515,11 @@ namespace netlab {
 
 	struct Certificate {
 		std::vector<std::vector<uint8_t>> certificate_list; /* Represents ASN.1Cert certificate_list<0..2 ^ 24 - 1>. */
-
 		Certificate() : certificate_list() { }
+
+		void addCertificate(const std::vector<uint8_t>& certificate) {
+			certificate_list.push_back(certificate);
+		}
 	};
 
 	struct ServerDHParams {
@@ -522,14 +591,13 @@ namespace netlab {
 		ProtocolVersion client_version;
 		std::array<uint8_t, PRE_MASTER_SECRET_RND_SIZE> random;
 
-		PreMasterSecret() : client_version(), random() { }
+		PreMasterSecret() : client_version({ 3, 3 }), random(generate_random_bytes<PRE_MASTER_SECRET_RND_SIZE>()) { }
 	};
 
 	struct EncryptedPreMasterSecret {
-		//public-key-encrypted PreMasterSecret pre_master_secret;
 		PreMasterSecret pre_master_secret;
-
-		EncryptedPreMasterSecret() : pre_master_secret() { }
+		std::array<uint8_t, PRE_MASTER_SECRET_ENCRYPTED_SIZE> encrypted_pre_master_secret;
+		EncryptedPreMasterSecret() : encrypted_pre_master_secret() { }
 	};
 
 	struct ClientDiffieHellmanPublic {
@@ -558,7 +626,7 @@ namespace netlab {
 	struct ClientKeyExchange {
 		KeyExchangeAlgorithm key_exchange_algorithm;
 		union ClientExchangeKeys {
-			EncryptedPreMasterSecret encryptedPreMasterSecret; /* KeyExchangeAlgorithm = RSA (1) */
+			EncryptedPreMasterSecret encryptedPreMasterSecret; /* KeyExchangeAlgorithm = KEY_EXCHANGE_ALGORITHM_RSA (1) */
 			ClientDiffieHellmanPublic clientDiffieHellmanPublic; /* KeyExchangeAlgorithm = DH_ANON (6) */
 			struct {} dhe_dss_dhe_rsa_dh_dss_dh_rsa; /* KeyExchangeAlgorithm = DHE_DSS (4), DHE_RSA (5), DH_DSS (2), DH_RSA (3) */
 
@@ -568,7 +636,7 @@ namespace netlab {
 
 		void createClientKeyExchange() {
 			switch (key_exchange_algorithm) {
-			case DH_RSA:
+			case KEY_EXCHANGE_ALGORITHM_RSA:
 				new (&client_exchange_keys.encryptedPreMasterSecret) EncryptedPreMasterSecret();
 				break;
 			case DH_ANON:
@@ -577,6 +645,33 @@ namespace netlab {
 			default:
 				break;
 			}
+		}
+
+		ClientKeyExchange() : key_exchange_algorithm(KEY_EXCHANGE_ALGORITHM_RSA), client_exchange_keys() { }
+
+		void setClientKeyExchange() {
+			client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version = { 3, 3 };
+			client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random = generate_random_bytes<PRE_MASTER_SECRET_RND_SIZE>();
+		}
+
+		uint16_t getClientKeyExchangeSize() {
+			uint16_t clientKeyExchangeSize = 0;
+			switch (key_exchange_algorithm) {
+			case KEY_EXCHANGE_ALGORITHM_RSA:
+				clientKeyExchangeSize += 2; // 2 bytes of pre_master_secret length.
+				clientKeyExchangeSize += PRE_MASTER_SECRET_ENCRYPTED_SIZE;
+				break;
+			case DH_ANON:
+				clientKeyExchangeSize += sizeof(client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding);
+				if (client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding == EXPLICIT) {
+					clientKeyExchangeSize += sizeof(uint16_t); // 2 bytes of dh_Yc length.
+					clientKeyExchangeSize += client_exchange_keys.clientDiffieHellmanPublic.dh_public.dh_Yc.size();
+				}
+				break;
+			default:
+				break;
+			}
+			return clientKeyExchangeSize;
 		}
 	};
 
@@ -610,9 +705,11 @@ namespace netlab {
 				break;
 			case CLIENT_HELLO:
 				new (&clientHello) ClientHello();
+				clientHello.setClientHello();
 				break;
 			case SERVER_HELLO:
 				new (&serverHello) ServerHello();
+				serverHello.setServerHello();
 				break;
 			case CERTIFICATE:
 				new (&certificate) Certificate();
@@ -631,6 +728,7 @@ namespace netlab {
 				break;
 			case CLIENT_KEY_EXCHANGE:
 				new (&clientKeyExchange) ClientKeyExchange();
+				clientKeyExchange.setClientKeyExchange();
 				break;
 			case FINISHED:
 				new (&finished) Finished(); break;
@@ -689,9 +787,43 @@ namespace netlab {
 			body.destroy(msg_type); // Pass msg_type to Body destructor
 		}
 
-		void updateBody(HandshakeType passed_msg_type) {
-			msg_type = passed_msg_type;
+		void configureHandshakeBody(HandshakeType passed_msg_type) {
+			this->msg_type = passed_msg_type;
 			body.createBody(msg_type); // Create a new body based on the current msg_type
+		}
+
+		void updateHandshakeLength(HandshakeType passed_msg_type) {
+
+			switch (passed_msg_type) {
+				// Update the length of the message
+			case HELLO_REQUEST:
+				this->length = 0;
+				break;
+			case CLIENT_HELLO:
+				this->length = body.clientHello.getClientHelloSize();
+				break;
+			case SERVER_HELLO:
+				this->length = body.serverHello.getServerHelloSize();
+				break;
+			case CERTIFICATE:
+				this->length = this->body.certificate.certificate_list.data()->size() + CERTIFICATE_HANDSHAKE_OFFSET_LENGTH * 2;
+				break;
+			case SERVER_KEY_EXCHANGE:
+				break;
+			case CERTIFICATE_REQUEST:
+				break;
+			case SERVER_HELLO_DONE:
+				this->length = 0;
+				break;
+			case CERTIFICATE_VERIFY:
+				break;
+			case CLIENT_KEY_EXCHANGE:
+				this->length = this->body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size();
+				this->length += sizeof(uint16_t);
+				break;
+			case FINISHED:
+				break;
+			}
 		}
 	};
 
