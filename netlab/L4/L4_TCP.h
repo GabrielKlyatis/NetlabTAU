@@ -449,6 +449,7 @@ struct L4_TCP::tcpiphdr
 	inline	void ti_next(struct L4_TCP::tcpiphdr *ih_next) { ti_i.ih_next = ih_next; }
 
 	inline	struct L4_TCP::tcpiphdr* ti_prev() { return ti_i.ih_prev; }
+
 	inline	void ti_prev(struct L4_TCP::tcpiphdr *ih_prev) { ti_i.ih_prev = ih_prev; }
 	
 	inline	u_char& ti_x1() { return ti_i.ih_x1; }
@@ -1933,7 +1934,7 @@ protected:
 	
 	const int 	tcp_mssdflt = TCP_MSS;  /*!< patchable/settable default MSS for tcp */
 	const int 	tcp_rttdflt = TCPTV_SRTTDFLT / PR_SLOWHZ;   /*!< patchable/settable parameters for tcp round trip time */
-	const int	tcp_do_rfc1323 = 1;		/*!< The patchable/settable do rfc1323 for tcp */
+	const int	tcp_do_rfc1323 = 0;		/*!< The patchable/settable do rfc1323 for tcp */
 
 	const int	tcp_keepidle = TCPTV_KEEP_IDLE;			/*!< The TCP keep idle */
 	const int	tcp_keepintvl = TCPTV_KEEPINTVL;		/*!< The TCP keep intvl */

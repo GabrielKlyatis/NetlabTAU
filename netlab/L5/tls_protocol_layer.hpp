@@ -1,7 +1,6 @@
 #pragma once
 
 #include "tls_definition.hpp"
-#include "L5.h"
 
 #include <iterator>
 #include <ctime>
@@ -20,65 +19,96 @@ namespace netlab {
 		uint16_t length;
 		std::vector<uint8_t> fragment;
 
-		/* Constructor */
+		// Constructor
 		TLSRecordLayer()
 			: protocol_version{ 3, 3 },
-			content_type(TLS_CONTENT_TYPE_MAX_VALUE),
-			length(0),
+			content_type(TLS_CONTENT_TYPE_HANDSHAKE),
+			length(RECORD_LAYER_DEFAULT_LENGTH),
 			fragment{}
 		{ }
 
-		/* Method used for serializing the record layer data into a string type for sending. */
+		// Serialize Record Layer Data.
 		std::string serialize_record_layer_data() {
-			std::string serialized_string;
 
-			/* Insert the members into the serialized_string. */
+			std::string serialized_string;
+			// Serialize the record layer's content type and protocol version.
+			serialized_string.push_back(this->content_type);
 			serialized_string.push_back(this->protocol_version.major);
 			serialized_string.push_back(this->protocol_version.minor);
-			serialized_string.push_back(this->content_type);
-			for (int i = 1; i >= 0; --i) {
-				serialized_string.push_back(static_cast<char>((this->length >> (i * 8)) & 0xFF));
+            // Serialize the record layer's length.
+			serialize_2_bytes(serialized_string, this->length);
+			// Serialize the fragment (if it exists).
+			if (fragment.size() > 0) {
+				serialized_string.push_back(static_cast<char>(fragment.size()));
+				serialized_string.insert(serialized_string.end(),
+										this->fragment.begin(),
+										this->fragment.end());
 			}
-			append_size_to_string(serialized_string, this->fragment.size());
-			serialized_string.insert(serialized_string.end(),
-								this->fragment.begin(),
-								this->fragment.end());
 
 			return serialized_string;
 		}
 
-		/* Method used for deserializing the record layer data from a string type (receiving). */
+		// Deserialize Record Layer Data.
 		void deserialize_record_layer_data(std::string::const_iterator& it, const std::string& serialized_string) {
 
-			/* Deserialize the members from the serialized_string. */
+			// Deserialize the record layer's content type.
+			this->content_type = static_cast<ContentType>(*it);
+			it += sizeof(ContentType);
+			// Deserialize the record layer's protocol version.
 			this->protocol_version.major = *it;
 			it++;
 			this->protocol_version.minor = *it;
 			it++;
-			this->content_type = static_cast<ContentType>(*it);
-			it += sizeof(ContentType);
-			this->length = (*it << 8);
-			it++;
-			this->length |= *it;
-			it++;
-			uint32_t fragment_length = *it;
-			it++;
-			this->fragment = { it, it + fragment_length };
-			it += fragment_length;
+			// Deserialize the record layer's length.
+			this->length = deserialize_2_bytes(it);
+			/*if (this->length > RECORD_LAYER_DEFAULT_LENGTH) {
+				uint32_t fragment_length = *it;
+				it++;
+				this->fragment = { it, it + fragment_length };
+				it += fragment_length;
+			}*/
 		}
 	};
-
 /************************************************************************/
 /*                      Change Cipher Specs Message                     */
 /************************************************************************/
 
 	class ChangeCipherSpec {
 	public:
-		TLSRecordLayer record_layer;
+		TLSRecordLayer TLS_record_layer;
 		Type type;
-		/* Constructor */
+
+		// Constructor
 		ChangeCipherSpec() : type(CHANGE_CIPHER_SPEC_MAX_VALUE) { }
 
+		// Set ChangeCipherSpec Members:
+		void setChangeCipherSpec() {
+			this->type = CHANGE_CIPHER_SPEC;
+			this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_CHANGE_CIPHER_SPEC;
+			this->TLS_record_layer.length = CHANGE_CIPHER_SPEC_RECORD_LAYER_LENGTH;
+		}
+
+		// ChangeCipherSpec Serialization Method
+		std::string serialize_change_cipher_spec_data() {
+
+			std::string serialized_string;
+			// Record Layer
+			serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
+			// ChangeCipherSpec type.
+			serialized_string.push_back(type);
+
+			return serialized_string;
+		}
+
+		// ChangeCipherSpec Deserialization Method
+		void deserialize_change_cipher_spec_data(std::string serialized_string) {
+
+			std::string::const_iterator it = serialized_string.begin();
+			// Record Layer
+			this->TLS_record_layer.deserialize_record_layer_data(it, serialized_string);
+			// ChangeCipherSpec type.
+			this->type = static_cast<Type>(*it);
+		}
 	};
 
 /************************************************************************/
@@ -88,7 +118,7 @@ namespace netlab {
 	class TLSAlertProtocol {
 	public:
 		Alert alert;
-		/* Constructor */
+		// Constructor
 		TLSAlertProtocol() : alert{ ALERT_LEVEL_MAX_VALUE, ALERT_DESCRIPTION_MAX_VALUE } { }
 	};
 
@@ -103,19 +133,54 @@ namespace netlab {
 		Handshake handshake;
 		std::vector<SignatureAndHashAlgorithm> supported_signature_hash_algorithms; /* Represents SignatureAndHashAlgorithm supported_signature_algorithms<2..2 ^ 16 - 1>. */
 		
-		/* Constructor */
+		// Constructor
 		TLSHandshakeProtocol()
 			: TLS_record_layer(),
 			handshake{ HELLO_REQUEST, 0 },
 			supported_signature_hash_algorithms{}
 		{ }
 		
-		/* Serializes the handshake data into a string type for sending. */
-		std::string serialize_handshake_protocol_data(HandshakeType msg_type) {
-
-			/* The initialization of specific data would probably be in the main code (tls_playground) */
+		void updateHandshakeProtocol(HandshakeType msg_type) {
+			
 			this->TLS_record_layer.content_type = TLS_CONTENT_TYPE_HANDSHAKE;
-			this->TLS_record_layer.length = this->handshake.length;
+			switch (msg_type) {
+				case CLIENT_HELLO:
+					this->handshake.updateHandshakeLength(msg_type);
+					this->TLS_record_layer.protocol_version.major = 3;
+					this->TLS_record_layer.protocol_version.minor = 1;
+					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+					break;
+				case SERVER_HELLO:
+					this->handshake.updateHandshakeLength(msg_type);
+					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+					break;
+				case CERTIFICATE:
+					this->handshake.updateHandshakeLength(msg_type);
+					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+				case SERVER_KEY_EXCHANGE:
+					break;
+				case CERTIFICATE_REQUEST:
+					break;
+				case SERVER_HELLO_DONE:
+					this->handshake.updateHandshakeLength(msg_type);
+					this->TLS_record_layer.length = SERVER_DONE_RECORD_LAYER_LENGTH;
+					break;
+				case CERTIFICATE_VERIFY:
+					break;
+				case CLIENT_KEY_EXCHANGE:
+					this->handshake.updateHandshakeLength(msg_type);
+					this->TLS_record_layer.length = this->handshake.length + HANDSHAKE_RECORD_LAYER_OFFSET_LENGTH;
+					break;
+				case FINISHED:
+					break;
+				default:
+					break;
+			}
+		}
+
+		// Serialize Handshake Protocol Data.
+		std::string serialize_handshake_protocol_data(HandshakeType msg_type) {
+			
 			KeyExchangeAlgorithm clientKeyExchangeAlgorithm = this->handshake.body.clientKeyExchange.key_exchange_algorithm;
 			KeyExchangeAlgorithm serverKeyExchangeAlgorithm = this->handshake.body.serverKeyExchange.key_exchange_algorithm;
 			PublicValueEncoding publicValueEncoding = this->handshake.body.clientKeyExchange.client_exchange_keys.clientDiffieHellmanPublic.public_value_encoding;
@@ -124,40 +189,37 @@ namespace netlab {
 
 			std::string serialized_string;
 
-			/* Append the serialized record layer string */
-			serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
-
-			/* Serialize the handshake type and its length */
-			serialized_string.push_back(this->handshake.msg_type);
-			for (int i = 3; i >= 0; --i) {
-				serialized_string.push_back(static_cast<char>((this->handshake.length >> (i * 8)) & 0xFF));
-			}
-
-			/* Serialize the handshake body */
+			// Serialize the handshake's body based on the message type.
 			switch (msg_type) {
 			case CLIENT_HELLO:
+				// Handshake's Record Layer
+				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
+				// HandshakeType and its length.
+				serialized_string.push_back(this->handshake.msg_type);
+				serialize_3_bytes(serialized_string, this->handshake.length);
 				// ProtocolVersion
 				serialized_string.push_back(this->handshake.body.clientHello.client_version.major);
 				serialized_string.push_back(this->handshake.body.clientHello.client_version.minor);
 				// Random.gmt_unix_time
-				for (size_t i = 0; i < sizeof(uint32_t); ++i) {
-					serialized_string.push_back(static_cast<char>((this->handshake.body.clientHello.random.gmt_unix_time >> (i * 8)) & 0xFF));
-				}
+				serialize_4_bytes(serialized_string, this->handshake.body.clientHello.random.gmt_unix_time);
 				// Random.random_bytes
-				serialized_string.push_back(this->handshake.body.clientHello.random.random_bytes.size());
 				serialized_string.insert(serialized_string.end(),
 					this->handshake.body.clientHello.random.random_bytes.begin(),
 					this->handshake.body.clientHello.random.random_bytes.end());
 				// SessionID
-				serialized_string.push_back(this->handshake.body.clientHello.session_id.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.clientHello.session_id.begin(),
-					this->handshake.body.clientHello.session_id.end());
+				if (is_all_zeros_array(this->handshake.body.clientHello.session_id)) {
+					serialized_string.push_back(0);
+				}
+				else {
+					serialized_string.push_back(this->handshake.body.clientHello.session_id.size());
+					serialized_string.insert(serialized_string.end(),
+						this->handshake.body.clientHello.session_id.begin(),
+						this->handshake.body.clientHello.session_id.end());
+				}
 				// CipherSuites
-				serialized_string.push_back(this->handshake.body.clientHello.cipher_suites.size());
-				for (const auto& cipher_suite : this->handshake.body.clientHello.cipher_suites) {
-					serialized_string.push_back(static_cast<char>(cipher_suite[0]));
-					serialized_string.push_back(static_cast<char>(cipher_suite[1]));
+				serialize_2_bytes(serialized_string, static_cast<uint16_t>(this->handshake.body.clientHello.cipher_suites.size() * sizeof(CipherSuite)));
+				for (CipherSuite cipher_suite : this->handshake.body.clientHello.cipher_suites) {
+					serialized_string.append(reinterpret_cast<const char*>(cipher_suite.data()), cipher_suite.size());
 				}
 				// CompressionMethods
 				serialized_string.push_back(this->handshake.body.clientHello.compression_methods.size());
@@ -165,7 +227,6 @@ namespace netlab {
 					this->handshake.body.clientHello.compression_methods.begin(),
 					this->handshake.body.clientHello.compression_methods.end());
 				// Extensions
-				serialized_string.push_back(this->handshake.body.clientHello.extensions_present);
 				if (this->handshake.body.clientHello.extensions_present) {
 					serialized_string.push_back(this->handshake.body.clientHello.extensions_union.extensions.size());
 					for (const auto& extension : this->handshake.body.clientHello.extensions_union.extensions) {
@@ -175,35 +236,41 @@ namespace netlab {
 							extension.extension_data.end());
 					}
 				}
+				else {
+					serialize_2_bytes(serialized_string, 0); // Extensions length is 0.
+				}
 				break;
 			case SERVER_HELLO:
+				// Handshake's Record Layer
+				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
+				// HandshakeType and its length.
+				serialized_string.push_back(this->handshake.msg_type);
+				serialize_3_bytes(serialized_string, this->handshake.length);
 				// ProtocolVersion
 				serialized_string.push_back(this->handshake.body.serverHello.server_version.major);
 				serialized_string.push_back(this->handshake.body.serverHello.server_version.minor);
 				// Random.gmt_unix_time
-				for (size_t i = 0; i < sizeof(uint32_t); ++i) {
-					serialized_string.push_back(static_cast<char>((this->handshake.body.serverHello.random.gmt_unix_time >> (i * 8)) & 0xFF));
-				}
+				serialize_4_bytes(serialized_string, this->handshake.body.serverHello.random.gmt_unix_time);
 				// Random.random_bytes
-				serialized_string.push_back(this->handshake.body.serverHello.random.random_bytes.size());
 				serialized_string.insert(serialized_string.end(),
 					this->handshake.body.serverHello.random.random_bytes.begin(),
 					this->handshake.body.serverHello.random.random_bytes.end());
 				// SessionID
-				serialized_string.push_back(this->handshake.body.serverHello.session_id.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.serverHello.session_id.begin(),
-					this->handshake.body.serverHello.session_id.end());
+				if (is_all_zeros_array(this->handshake.body.serverHello.session_id)) {
+					serialized_string.push_back(0);
+				}
+				else {
+					serialized_string.push_back(this->handshake.body.serverHello.session_id.size());
+					serialized_string.insert(serialized_string.end(),
+						this->handshake.body.serverHello.session_id.begin(),
+						this->handshake.body.serverHello.session_id.end());
+				}
 				// CipherSuites
-				serialized_string.push_back(this->handshake.body.serverHello.cipher_suite[0]);
-				serialized_string.push_back(this->handshake.body.serverHello.cipher_suite[1]);
+				serialized_string.append(reinterpret_cast<const char*>(this->handshake.body.serverHello.cipher_suite.data()),
+					this->handshake.body.serverHello.cipher_suite.size());
 				// CompressionMethods
-				serialized_string.push_back(this->handshake.body.serverHello.compression_methods.size());
-				serialized_string.insert(serialized_string.end(),
-					this->handshake.body.serverHello.compression_methods.begin(),
-					this->handshake.body.serverHello.compression_methods.end());
+				serialized_string.push_back(this->handshake.body.serverHello.compression_method);
 				// Extensions
-				serialized_string.push_back(this->handshake.body.serverHello.extensions_present);
 				if (this->handshake.body.serverHello.extensions_present) {
 					serialized_string.push_back(this->handshake.body.serverHello.extensions_union.extensions.size());
 					for (const auto& extension : this->handshake.body.serverHello.extensions_union.extensions) {
@@ -213,17 +280,25 @@ namespace netlab {
 							extension.extension_data.end());
 					}
 				}
+				else {
+					serialize_2_bytes(serialized_string, 0); // Extensions length is 0.
+				}
 				break;
 			case CERTIFICATE:
-				// CertificateList
-				append_size_to_string(serialized_string, this->handshake.body.certificate.certificate_list.size());
-				for (std::size_t i = 0; i < this->handshake.body.certificate.certificate_list.size(); ++i) {
-					const auto& certificate = this->handshake.body.certificate.certificate_list[i];
-					for (int j = 0; j < sizeof(uint32_t); ++j) {
-						serialized_string.push_back(static_cast<char>((certificate.size() >> (j * 8)) & 0xFF));
-					}
-					serialized_string.insert(serialized_string.end(), certificate.begin(), certificate.end());
-				}
+				// Handshake's Record Layer
+				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
+				// HandshakeType and its length.
+				serialized_string.push_back(this->handshake.msg_type);
+				serialize_3_bytes(serialized_string, this->handshake.length);
+				// Certificate List.		
+				serialize_3_bytes(serialized_string, this->handshake.length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH);
+                for (std::size_t i = 0; i < this->handshake.body.certificate.certificate_list.size(); ++i) {
+                    std::vector<uint8_t> certificate = this->handshake.body.certificate.certificate_list[i];
+                    if (!is_all_zeros_vector(certificate)) {
+						serialize_3_bytes(serialized_string, certificate.size());
+                        serialized_string.insert(serialized_string.end(), certificate.begin(), certificate.end());
+                    }
+                }
 				break;
 			case SERVER_KEY_EXCHANGE:
 				// KeyExchangeAlgorithm
@@ -309,6 +384,11 @@ namespace netlab {
 				}
 				break;
 			case SERVER_HELLO_DONE:
+				// Handshake's Record Layer
+				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
+				// HandshakeType and its length.
+				serialized_string.push_back(this->handshake.msg_type); // HandshakeType = SERVER_HELLO_DONE
+				serialize_3_bytes(serialized_string, 0); // Length = 0
 				break;
 			case CERTIFICATE_VERIFY:
 				// DigitallySigned.handshake_messages
@@ -318,18 +398,20 @@ namespace netlab {
 					this->handshake.body.certificateVerify.digitally_signed.handshake_messages.end());
 				break;
 			case CLIENT_KEY_EXCHANGE:
+				// Handshake's Record Layer
+				serialized_string.append(this->TLS_record_layer.serialize_record_layer_data());
+				// HandshakeType and its length.
+				serialized_string.push_back(this->handshake.msg_type);
+				serialize_3_bytes(serialized_string, this->handshake.length);
 				// KeyExchangeAlgorithm
-				serialized_string.push_back(this->handshake.body.clientKeyExchange.key_exchange_algorithm);
 				switch (clientKeyExchangeAlgorithm) {
-				case DH_RSA:
-					// EncryptedPreMasterSecret.client_version
-					serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major);
-					serialized_string.push_back(this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor);
-					// EncryptedPreMasterSecret.pre_master_secret.random
-					append_size_to_string(serialized_string, this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.size());
+				case KEY_EXCHANGE_ALGORITHM_RSA:
+					// EncryptedPreMasterSecret.encrypted_pre_master_secret
+					serialize_2_bytes(serialized_string, 
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size());
 					serialized_string.insert(serialized_string.end(),
-						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.begin(),
-						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.end());
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.begin(),
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.end());
 					break;
 				case DH_ANON:
 					// PublicValueEncoding
@@ -358,11 +440,11 @@ namespace netlab {
 			default:
 				break;
 			}
-			serialized_string.push_back(this->supported_signature_hash_algorithms.size());
+			/*serialized_string.push_back(this->supported_signature_hash_algorithms.size());
 			for (const auto& algo : this->supported_signature_hash_algorithms) {
 				serialized_string.push_back(static_cast<char>(algo.signature));
 				serialized_string.push_back(static_cast<char>(algo.hash));
-			}
+			}*/
 
 			return serialized_string;
 		}
@@ -372,73 +454,77 @@ namespace netlab {
 
 			/* Initialization */
 
-			uint32_t session_id_length = 0;
-			uint32_t cipher_suites_length = 0;
-			uint32_t compression_methods_length = 0;
-			uint32_t extensions_length = 0;
+			// Client/Server Hello
+			uint16_t session_id_length = 0;
+			std::vector<CipherSuite> cipher_suites;
+			uint16_t cipher_suites_length = 0;
+			uint8_t compression_methods_length = 0;
+			uint16_t extensions_length = 0;
+			// Certificate
 			uint32_t certificate_list_length = 0;
 			uint32_t certificate_size = 0;
+			// Certificate Request
 			uint32_t certificate_types_length = 0;
 			uint32_t certificate_authorities_length = 0;
+			// Certificate Verify
 			uint32_t handshake_messages_length = 0;
+			// Client Key Exchange
+			uint16_t EncryptedPreMaster_length = 0;
+			// Finished
 			uint32_t verify_data_length = 0;
+
+
 			uint32_t random_bytes_length = 0;
 			uint32_t vector_size = 0;
 
-			std::vector<CipherSuite> cipher_suites;
-
 			auto it = serialized_string.begin();
 
-			/* Deserialize TLS_record_layer's members. */
+			// Deserialize the record layer.
 			this->TLS_record_layer.deserialize_record_layer_data(it, serialized_string);
-
-			/* Deserialize the handshake type and its length. */
+			// Deserialize the HandshakeType.
 			this->handshake.msg_type = static_cast<HandshakeType>(*it);
 			it++;
-			this->handshake.length = (*it++ << 24) | (*it++ << 16) | (*it++ << 8) | *it++;
+			// Deserialize the handshake length.
+			this->handshake.length = deserialize_3_bytes(it);
 
-			/* Deserialize the handshake body. */
+			// Deserialize the handshake body.
 			switch (msg_type) {
 			case CLIENT_HELLO:
-				// Deserialize clientHello struct
+				// ProtocolVersion
 				this->handshake.body.clientHello.client_version.major = *it;
 				it++;
 				this->handshake.body.clientHello.client_version.minor = *it;
 				it++;
-				for (size_t i = 0; i < sizeof(uint32_t); ++i) {
-					this->handshake.body.clientHello.random.gmt_unix_time |= (static_cast<uint32_t>(static_cast<uint8_t>(*it++)) << (i * 8));
-				}
-				random_bytes_length = *it;
-				it++;
-				for (int i = 0; i < random_bytes_length; ++i, ++it) {
-					this->handshake.body.clientHello.random.random_bytes[i] = static_cast<uint8_t>(*it);
-				}
+				// Random.gmt_unix_time
+				this->handshake.body.clientHello.random.gmt_unix_time = deserialize_4_bytes(it);
+				// Random.random_bytes
+				this->handshake.body.clientHello.random.random_bytes = deserialize_28_bytes(it);
+				// SessionID
 				session_id_length = *it;
 				it++;
-				for (int i = 0; i < session_id_length; ++i, ++it) {
-					this->handshake.body.clientHello.session_id[i] = static_cast<uint8_t>(*it);
+				if (session_id_length > 0) {
+					this->handshake.body.clientHello.session_id = deserialize_32_bytes(it);
 				}
-				cipher_suites_length = *it;
-				it++;
-				
-				for (int i = 0; i < cipher_suites_length; i++) {
+				// CipherSuites
+				cipher_suites_length = deserialize_2_bytes(it);
+				for (int i = 0; i < cipher_suites_length; i += 2) {
 					CipherSuite cipher_suite = { *it, *(it + 1) };
 					cipher_suites.push_back(cipher_suite);
 					it += sizeof(CipherSuite);
 				}
 				this->handshake.body.clientHello.cipher_suites = cipher_suites;
-
+				// CompressionMethods
 				compression_methods_length = *it;
 				it++;
 				for (int i = 0; i < compression_methods_length; ++i, ++it) {
 					this->handshake.body.clientHello.compression_methods[i] = static_cast<CompressionMethod>(*it);
 				}
-				this->handshake.body.clientHello.extensions_present = *it;
+				// Extensions
+				extensions_length = *it;
 				it++;
-				if (this->handshake.body.clientHello.extensions_present) {
-					extensions_length = *it;
-					it++;
-					for (size_t i = 0; i < extensions_length; i++) {
+				if (extensions_length > 0) {
+					this->handshake.body.clientHello.extensions_present = true;
+					for (uint16_t i = 0; i < extensions_length; i++) {
 						// Read the Extension
 						Extension extension(it, it + sizeof(Extension));
 						this->handshake.body.clientHello.extensions_union.extensions.push_back(extension);
@@ -447,56 +533,48 @@ namespace netlab {
 				}
 				break;
 			case SERVER_HELLO:
-				// Deserialize serverHello struct
+				// ProtocolVersion
 				this->handshake.body.serverHello.server_version.major = *it;
 				it++;
 				this->handshake.body.serverHello.server_version.minor = *it;
 				it++;
-				for (size_t i = 0; i < sizeof(uint32_t); ++i) {
-					this->handshake.body.serverHello.random.gmt_unix_time |= (static_cast<uint32_t>(static_cast<uint8_t>(*it++)) << (i * 8));
-				}
-				random_bytes_length = *it;
-				it++;
-				for (int i = 0; i < random_bytes_length; ++i, ++it) {
-					this->handshake.body.serverHello.random.random_bytes[i] = static_cast<uint8_t>(*it);
-				}
+				// Random.gmt_unix_time
+				this->handshake.body.serverHello.random.gmt_unix_time = deserialize_4_bytes(it);
+				this->handshake.body.serverHello.random.random_bytes = deserialize_28_bytes(it);
+				// SessionID
 				session_id_length = *it;
 				it++;
-				for (int i = 0; i < session_id_length; ++i, ++it) {
-					this->handshake.body.serverHello.session_id[i] = static_cast<uint8_t>(*it);
+				if (session_id_length > 0) {
+					this->handshake.body.serverHello.session_id = deserialize_32_bytes(it);
 				}
-				for (int i = 0; i < sizeof(CipherSuite); ++i, ++it) {
+				// CipherSuite
+				for (uint16_t i = 0; i < sizeof(CipherSuite); ++i, ++it) {
 					this->handshake.body.serverHello.cipher_suite[i] = static_cast<uint8_t>(*it);
 				}
+				// CompressionMethod
 				compression_methods_length = *it;
 				it++;
-				this->handshake.body.serverHello.compression_methods.resize(compression_methods_length);
-				for (int i = 0; i < compression_methods_length; ++i, ++it) {
-					this->handshake.body.serverHello.compression_methods[i] = static_cast<CompressionMethod>(*it);
-				}
-				this->handshake.body.serverHello.extensions_present = *it;
+				this->handshake.body.serverHello.compression_method = static_cast<CompressionMethod>(*it);
+				// Extensions
+				extensions_length = *it;
 				it++;
-				if (this->handshake.body.serverHello.extensions_present) {
-					extensions_length = *it;
-					it++;
-
-					for (int i = 0; i < extensions_length; i++) {
-						// Read the size of the next Extension
-						size_t extension_size = sizeof(Extension);
-
+				if (extensions_length > 0) {
+					this->handshake.body.serverHello.extensions_present = true;
+					for (uint16_t i = 0; i < extensions_length; i++) {
 						// Read the Extension
-						Extension extension (it, it + extension_size);
+						Extension extension(it, it + sizeof(Extension));
 						this->handshake.body.serverHello.extensions_union.extensions.push_back(extension);
-						it += extension_size;
+						it += sizeof(Extension);
 					}
 				}
 				break;
 			case CERTIFICATE:
 				// Deserialize certificate struct
-				certificate_list_length = read_uint32_from_iterator(it);
-				for (int i = 0; i < certificate_list_length; i++) {
+				certificate_list_length = deserialize_3_bytes(it);
+				this->handshake.body.certificate.certificate_list.resize(certificate_list_length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH);
+				for (size_t i = 0; i < certificate_list_length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH; i++) {
 					// Read the size of the next Certificate
-					certificate_size = read_uint32_from_iterator(it);
+					certificate_size = deserialize_3_bytes(it);
 
 					// Read the Certificate
 					std::vector<uint8_t> certificate(it, it + certificate_size);
@@ -605,6 +683,7 @@ namespace netlab {
 				}
 				break;
 			case SERVER_HELLO_DONE:
+				this->handshake.length = deserialize_3_bytes(it);
 				break;
 			case CERTIFICATE_VERIFY:
 				// Deserialize certificateVerify struct
@@ -615,19 +694,12 @@ namespace netlab {
 				break;
 			case CLIENT_KEY_EXCHANGE:
 				// Deserialize clientKeyExchange struct
-				this->handshake.body.clientKeyExchange.key_exchange_algorithm = static_cast<KeyExchangeAlgorithm>(*it);
-				it++;
 				switch (this->handshake.body.clientKeyExchange.key_exchange_algorithm) {
-				case DH_RSA:
+				case KEY_EXCHANGE_ALGORITHM_RSA:
 					// EncryptedPreMasterSecret.client_version
-					this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major = *it;
-					it++;
-					this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor = *it;
-					it++;
-					// EncryptedPreMasterSecret.pre_master_secret.random
-					random_bytes_length = read_uint32_from_iterator(it);
-					for (int i = 0; i < random_bytes_length; i++, it++) {
-						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random[i] = *it;
+					EncryptedPreMaster_length = deserialize_2_bytes(it);
+					for (int i = 0; i < PRE_MASTER_SECRET_ENCRYPTED_SIZE; i++, it++) {
+						this->handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret[i] = *it;
 					}
 					break;
 					case DH_ANON:
