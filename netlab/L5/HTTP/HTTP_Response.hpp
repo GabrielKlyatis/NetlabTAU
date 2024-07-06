@@ -24,36 +24,70 @@ namespace netlab {
 /*								 enums			   				        */
 /************************************************************************/
 
-    enum HTTPMethod {
+    enum HTTPMethod : uint8_t {
         GET,
         POST,
     };
 
-    enum HTTPStatusCode {
+    enum ContentType : uint8_t {
+		TEXT_PLAIN,
+		TEXT_HTML,
+		TEXT_CSS,
+		TEXT_JAVASCRIPT,
+		TEXT_XML,
+		IMAGE_JPEG,
+		IMAGE_PNG,
+		IMAGE_GIF,
+		IMAGE_BMP,
+		IMAGE_SVG,
+		APPLICATION_JSON,
+		APPLICATION_XML,
+		APPLICATION_PDF,
+		APPLICATION_ZIP,
+		APPLICATION_OCTET_STREAM,
+	};
+
+    enum ResponseHeader : uint8_t {
+		Date,
+		Expires,
+		CacheControl,
+		ContentType,
+		ContentEncoding,
+		Server,
+		ContentLength,
+		X_XSS_Protection,
+		X_Frame_Options,
+		Set_Cookie,
+	};
+
+    enum HTTPStatusCode : uint8_t {
         OK = 200,
         NotFound = 404,
         BadRequest = 400,
         Unauthorized = 401,
         Forbidden = 403,
         InternalServerError = 500,
-        // Add more status codes as needed
     };
 
 /************************************************************************/
 /*                             Structs                                  */
 /************************************************************************/
 
-    struct HTTPRequest {
-        HTTPMethod method;
-        std::string uri;
-        std::map<std::string, std::string> headers;
-        std::string body;
-    };
+    struct HTTPDate {
+		uint16_t day;
+		uint16_t month;
+		uint16_t year;
+		uint16_t hour;
+		uint16_t minute;
+		uint16_t second;
+		std::string timezone;
+	};
+
 
     struct HTTPResponse {
-        HTTPStatusCode statusCode;
-        std::string reasonPhrase;
-        std::map<std::string, std::string> headers;
+        HTTPStatusCode statusCode; // 200, 404, 400, 401, 403, 500
+        std::string reasonPhrase; // OK, Not Found, Bad Request, Unauthorized, Forbidden, Internal Server Error
+        std::map<ResponseHeader, std::string> headers;
         std::string body;
     };
 
