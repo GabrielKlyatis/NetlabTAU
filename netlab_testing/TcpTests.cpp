@@ -9,6 +9,17 @@
 
 #include "pch.h"
 
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iostream>
+#include "../netlab/L5/tls_socket.h"
+
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "libssl.lib")
+#pragma comment(lib, "libcrypto.lib")
+
 using namespace std;
 
 enum tcp_flavor
@@ -182,7 +193,7 @@ protected:
 	
 	// reciver socket is OS / our impl
 	// sender socket is our implementation
-	void test_sender()
+	virtual void test_sender()
 	{
 		ConnectSocket = new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_client);
 
@@ -271,7 +282,7 @@ protected:
 
 	// reciver socket is our implementation
 	// sender socket is OS / our impl
-	void test_reciver()
+	virtual void test_reciver()
 	{
 		// sokcet for incoming connection requests
 		ListenSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_server));
@@ -356,7 +367,7 @@ protected:
 		ASSERT_EQ(ret, ret2);
 	}
 
-	void test_big_packet()
+	virtual void test_big_packet()
 	{
 
 		ListenSocket = (new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_server));
@@ -443,28 +454,154 @@ protected:
 
 };
 
-
-TEST_F(TCP_Tests, test_reno)
-{
-	std::cout << "TEST TCP RENO" << std::endl;
-	run_all_test(TCP_RENO);
-	std::cout << "PASS TEST TCP RENO" << std::endl;
+void init_openssl() {
+	SSL_load_error_strings();
+	OpenSSL_add_ssl_algorithms();
 }
 
-
-TEST_F(TCP_Tests, test_tahoe)
-{
-	std::cout << "TEST TCP TAHOE" << std::endl;
-	run_all_test(TCP_TAHOE);
-	std::cout << "PASS TEST TCP TAHOE" << std::endl;
-}
-
-TEST_F(TCP_Tests, test_base)
-{
-	std::cout << "TEST TCP BASIC" << std::endl;
-	run_all_test(TCP_BASE);
-	std::cout << "PASS TEST TCP BASIC" << std::endl;
+void cleanup_openssl() {
+	EVP_cleanup();
 }
 
 
 
+SSL_CTX* create_context() {
+	const SSL_METHOD* method;
+	SSL_CTX* ctx;
+
+	method = TLS_server_method(); // Using TLS_server_method for TLS 1.2
+	ctx = SSL_CTX_new(method);
+	if (!ctx) {
+		perror("Unable to create SSL context");
+		ERR_print_errors_fp(stderr);
+		exit(EXIT_FAILURE);
+	}
+
+	// Set options to disable all extensions and only allow TLS 1.2
+	SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_TICKET | SSL_OP_NO_EXTENDED_MASTER_SECRET | SSL_OP_NO_ENCRYPT_THEN_MAC | SSL_OP_NO_TICKET) ;
+
+
+
+
+	return ctx;
+}
+
+
+void configure_context(SSL_CTX* ctx) {
+	SSL_CTX_use_certificate_file(ctx, "C:/Program Files/OpenSSL-Win64/server.crt", SSL_FILETYPE_PEM);
+	SSL_CTX_use_PrivateKey_file(ctx, "C:/Program Files/OpenSSL-Win64/server.key", SSL_FILETYPE_PEM);
+}
+
+class TLS_test : public TCP_Tests {
+
+public:
+	void test_sender() override
+	{/*
+		WSADATA wsaData;
+		WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+		int sockfd, newsockfd;
+		struct sockaddr_in addr;
+		int addr_len = sizeof(addr);
+
+		init_openssl();
+		SSL_CTX* ctx = create_context();
+
+		configure_context(ctx);
+
+
+
+		sockfd = socket(AF_INET, SOCK_STREAM, 0);
+		if (sockfd < 0) {
+			perror("Unable to create socket");
+			exit(EXIT_FAILURE);
+		}
+
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(4433);
+		addr.sin_addr.s_addr = INADDR_ANY;
+
+		if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+			perror("Unable to bind");
+			exit(EXIT_FAILURE);
+		}
+
+		if (listen(sockfd, 1) < 0) {
+			perror("Unable to listen");
+			exit(EXIT_FAILURE);
+		}*/
+
+		
+
+
+		sockaddr_in clientService;
+		clientService.sin_family = AF_INET;
+		clientService.sin_addr.s_addr = inet_addr("192.168.1.228");
+		clientService.sin_port = htons(4433);
+
+		netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
+		ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+
+
+		std::cout << "AA" << std::endl;
+
+	/*	std::thread([ConnectSocket, clientService]()
+		{
+				ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+		}).detach();
+*/
+
+		//std::this_thread::sleep_for(std::chrono::seconds(1));
+		//newsockfd = accept(sockfd, (struct sockaddr*)&addr, &addr_len);
+		//if (newsockfd < 0) {
+		//	perror("Unable to accept");
+		//	exit(EXIT_FAILURE);
+		//}
+
+		//SSL* ssl = SSL_new(ctx);
+		//SSL_set_fd(ssl, newsockfd);
+
+		//if (SSL_accept(ssl) <= 0) {
+		//	ERR_print_errors_fp(stderr);
+		//}
+		//
+		//char buffer[1024] = { 0 };
+		//int bytes = SSL_read(ssl, buffer, sizeof(buffer));
+
+
+
+
+
+
+
+		//SSL_shutdown(ssl);
+		//SSL_free(ssl);
+		//closesocket(newsockfd);
+		//
+	}
+
+};
+
+//TEST_F(TCP_Tests, test_reno)
+//{
+//	run_all_test(TCP_RENO);
+//}
+
+
+//TEST_F(TCP_Tests, test_tahoe)
+//{
+//	run_all_test(TCP_TAHOE);
+//}
+//
+//TEST_F(TCP_Tests, test_base)
+//{
+//	run_all_test(TCP_BASE);
+//}
+//
+
+TEST_F(TLS_test, tls_test)
+{
+	set_tcp(inet_client,TCP_RENO);
+	set_tcp(inet_server, TCP_RENO);
+	test_sender();
+}
