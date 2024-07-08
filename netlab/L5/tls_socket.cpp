@@ -478,12 +478,8 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     // send client hello msg
     p_socket->send(buffer, buffer.size(), 0, 0);
 
-    std::cout << "finish send client hello" << std::endl;
-
     // we need to change the state to wait for server hello
     std::string recv_buffer;
-
-    //std::this_thread::sleep_for(std::chrono::milliseconds(4000));
    
     p_socket->recv(recv_buffer, 1500, 1, 0);
 
@@ -498,7 +494,6 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     char* start_of_server_hello = (char*)recv_buffer.c_str() + sizeof(tls_header);
     TLSHello server_hello(start_of_server_hello);
 
-    std::cout << "finish receive server hello" << std::endl;
     // verify the server hello msg
     // TODO: implemtent the verification method
 
@@ -510,15 +505,11 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     char* start_of_server_certificate = start_of_next_header + sizeof(tls_header);
   
     tls_certificate cartificate(start_of_server_certificate);
-    
-    std::cout << "finish receive server certificate" << std::endl;
 
     // verify the certificate
     msg_len = (cartificate.length[0] << 16) + (cartificate.length[1] << 8) + cartificate.length[2];
     start_of_next_header = start_of_server_certificate + msg_len + 4;
     char*  start_of_server_hello_done = start_of_next_header + sizeof(tls_header);
-
-    std::cout << "finish receive server hello done" << std::endl;
 
     // verify the server hello done msg TODO: implement the verification method
 
@@ -536,8 +527,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     // encrypt the premaster secret using the public key
     uint8_t encrypted_premaster_secret[256];
     int rt = RSA_public_encrypt(48, premaster_secret, encrypted_premaster_secret, p_rsa, RSA_PKCS1_PADDING);
-    std::cout << "encrypted premaster secret" << std::endl;
-    
+
     // create the client key exchange msg
     tls_header client_key_exchange_header;
 
@@ -642,14 +632,8 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     // send client key exchange msg 
     p_socket->send(key_exchange_buffer, key_exchange_buffer.size(), 0, 0);
 
-
-
-    std::cout << "finish send client key exchange" << std::endl;
     recv_buffer.clear();
     p_socket->recv(recv_buffer, 1500, 1, 0); // tls recive
-
-
-    std::cout << "finish receive server change cipher spec" << std::endl;
 
     // verify the server change cipher spec msg
     tls_header* recv_header2 = (tls_header*)recv_buffer.c_str();
@@ -699,7 +683,7 @@ void add_pkcs7_padding(std::vector<uint8_t>& message, size_t block_size)
 
 void tls_socket::send(std::string uio, size_t uio_resid, size_t chunk, int flags) {
 
-    std::string encrypted_msg = encrypt(uio);
+    std::string encrypted_msg = encrypt(uio, server);
 
     // create encrypted handshake msg
     tls_header header;

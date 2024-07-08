@@ -858,23 +858,117 @@ int aaaa()
 	return 0;
 	
 }
+#include <algorithm> // for std::reverse
+void tls_playground3()
+{
+	/* Client is declared similarly: */
+	inet_os inet_client = inet_os();
+
+	NIC nic_client(inet_client, "192.168.1.228", "60:6c:66:62:1c:4f", nullptr, nullptr, true, "ip src 192.168.1.85 or arp ");
+
+	L2_impl datalink_client(inet_client);
+	L2_ARP_impl arp_client(inet_client, 10, 10000);
+	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
+	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
+	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
+	inet_client.domaininit();
+	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+
+	inet_client.connect();
+
+	netlab::tls_socket* ListenSocket = (new netlab::tls_socket(inet_client));
+	sockaddr_in service2;
+	service2.sin_family = AF_INET;
+	service2.sin_addr.s_addr = INADDR_ANY;
+	service2.sin_port = htons(4444);
+
+	ListenSocket->bind((SOCKADDR*)&service2, sizeof(service2));
+	ListenSocket->listen(5);
+
+	netlab::L5_socket* AcceptSocket = nullptr;
+	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
+
+	netlab::tls_socket* accept_tls_scoket = (new netlab::tls_socket(inet_client, AcceptSocket, true));
+	accept_tls_scoket->handshake();
+
+
+	std::string rcv_msg;
+	accept_tls_scoket->recv(rcv_msg, 200, 96, 0);
+
+	cout << rcv_msg << endl;
+
+	std::reverse(rcv_msg.begin(), rcv_msg.end());
+
+
+	accept_tls_scoket->send(rcv_msg, 100, 1, 0);
+
+
+
+	
+	ListenSocket->shutdown(SD_RECEIVE);
+
+
+	cout << "fin" << endl;
+}
+
+
+
+void tls_playground2()
+{
+	/* Client is declared similarly: */
+	inet_os inet_client = inet_os();
+
+	NIC nic_client(inet_client, "192.168.1.228", "60:6c:66:62:1c:4f", nullptr, nullptr, true, "ip src 192.168.1.85 or arp ");
+
+
+	L2_impl datalink_client(inet_client);
+	L2_ARP_impl arp_client(inet_client, 10, 10000);
+	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
+	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
+	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
+	inet_client.domaininit();
+	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+
+	inet_client.connect();
+	sockaddr_in clientService;
+	clientService.sin_family = AF_INET;
+	clientService.sin_addr.s_addr = inet_addr("192.168.1.85");
+	clientService.sin_port = htons(433);
+	
+
+	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
+	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+
+	std::string send_msg("hello world!, this is my first tls implemtation");
+	send_msg.push_back('\n');
+
+
+	ConnectSocket->send(send_msg, 100, 1, 0);
+
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+
+	std::string rcv_msg;
+	ConnectSocket->recv(rcv_msg, 200, 96, 0);
+
+
+	cout << rcv_msg << endl;
+
+	ConnectSocket->shutdown(SD_SEND);
+
+	cout << "fin" << endl;
+}
 
 
 void tls_playground()
 {
-
-//	aaaa();
-
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 	inet_os inet_server = inet_os();
-	//inet_os dflt = inet_os();
-
-
 
 	NIC nic_client(inet_client,	"10.0.0.15", "bb:bb:bb:bb:bb:bb",nullptr,nullptr,true,"ip src 10.0.0.10 ");
 	NIC nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "ip src 10.0.0.15 "); // Declaring a filter to make a cleaner testing.
-	//NIC dflt_gtw(dflt, "192.168.1.1", "c8:70:23:14:46:ef", nullptr, nullptr, true, "");
 
 	L2_impl datalink_client1(inet_server);
 	L2_ARP_impl arp_server(inet_server, 10, 10000);
@@ -884,7 +978,6 @@ void tls_playground()
 	inet_server.domaininit();
 	arp_server.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac());
 	arp_server.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-
 
 
 	L2_impl datalink_client(inet_client);
@@ -902,9 +995,7 @@ void tls_playground()
 	clientService.sin_family = AF_INET;
 	clientService.sin_addr.s_addr = inet_addr("10.0.0.10");
 	clientService.sin_port = htons(4433);
-	//1603010067010000630303c580c4a20b669355c7e1712761254c1586ab63aa491b75082696f936ed8d82a700003c130213031301c02cc030009fcca9cca8ccaac02bc02f009ec024c028006bc023c0270067c00ac0140039c009c013003300ad00abccaeccadccac009d0100
-
-	//netlab::L5_socket* AcceptSocket;
+;
 
 	netlab::tls_socket* ListenSocket = (new netlab::tls_socket(inet_server));
 	sockaddr_in service2;
@@ -915,8 +1006,6 @@ void tls_playground()
 	ListenSocket->bind((SOCKADDR*)&service2, sizeof(service2));
 	ListenSocket->listen(5);
 
-//	AcceptSocket = nullptr;
-	
 	netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 	std::thread([ConnectSocket, clientService]()
@@ -931,17 +1020,8 @@ void tls_playground()
 
 	netlab::tls_socket* accept_tls_scoket = (new netlab::tls_socket(inet_server, AcceptSocket, true));
 	accept_tls_scoket->handshake();
-	//AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
-
-
-	std::cout << "SDFSADFASDf" << std::endl;
-
-
-
-
-
-	std::string send_msg((16 * 5)-1, 'T');
+	std::string send_msg("hello world!, this is my first tls implemtation");
 	send_msg.push_back('\n');
 
 	 
@@ -950,10 +1030,15 @@ void tls_playground()
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	std::string rcv_msg;
-	accept_tls_scoket->recv(rcv_msg, 200, 120, 0);
+	accept_tls_scoket->recv(rcv_msg, 200, 96, 0);
+
 
 	cout << rcv_msg << endl;
 
+	ConnectSocket->shutdown(SD_SEND);
+	ListenSocket->shutdown(SD_RECEIVE);
+	
+	cout << "fin" << endl;
 }
 
 
@@ -2413,8 +2498,13 @@ void main()
 		"[9] Application Use Case (with drop)" << std::endl <<
 		"[10] Cwnd Fall Test" << std::endl;
 
-	tls_playground();
-	//return;
+	cout << "test1" << endl;
+//	tls_playground();
+	cout << "test2" << endl;
+	tls_playground2();
+	cout << "test3" << endl;
+	tls_playground3();
+	return;
 
 	int request(4);
 	//std::cin >> request;

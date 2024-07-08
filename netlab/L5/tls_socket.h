@@ -107,7 +107,7 @@ public:
         std::vector<uint8_t> session_id; // session id vector
         std::vector<uint16_t> cipher_suites; // cipher vector
         std::vector<uint8_t> compression_methods; // comp method length
-        std::vector<uint8_t> extensions; // extantuion length
+        std::vector<uint16_t> extensions; // extantuion length
 
         TLSHello() {}
         TLSHello(char* raw_header)
@@ -134,6 +134,7 @@ public:
         std::string parse(bool server = false)
         {
             std::string str;
+          //  length[2] += 10;
 			str.append((char*)&msg_type, sizeof(HandshakeType));
 			str.append((char*)&length, sizeof(length));
 			str.append((char*)&tls_version, sizeof(uint16_t));
@@ -161,12 +162,11 @@ public:
 			    str.append((char*)compression_methods.data(), compression_methods.size());
             
 			// add extensions
-            /*uint8_t extensions_len = extensions.size();
-            str.append((char*)&extensions_len,1);
-            if (extensions_len > 0)
-                str.append((char*)extensions.data(), extensions.size());*/
+                   
+            //char ext[] = {0x00, 0x08, 0x00, 0x0d, 0x00, 0x04, 0x00, 0x02, 0x04, 0x01 };
+            //str.append(ext, 10);
 
-			return str;
+            return str;
         }
 
     };
