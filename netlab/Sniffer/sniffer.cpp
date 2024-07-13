@@ -169,7 +169,7 @@ PtrPacket BaseSniffer::next_packet() {
         handler = &sniff_loop_handler<Tins::Loopback>;
     else if(iface_type == DLT_LINUX_SLL)
         handler = &sniff_loop_handler<SLL>;
-    else if(iface_type == DLT_PPI)
+    else if(iface_type == DLT_PPI) 
         handler = &sniff_loop_handler<PPI>;
     else
         throw unknown_link_type();

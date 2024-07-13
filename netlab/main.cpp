@@ -1065,7 +1065,7 @@ void server_hello_serialization_test() {
 
 	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
 
-	NIC nic_client(inet_client, "192.168.1.228", "60:6c:66:62:1c:4f", nullptr, nullptr, true, "ip src 192.168.1.85 or arp ");
+	/*NIC nic_client(inet_client, "192.168.1.228", "60:6c:66:62:1c:4f", nullptr, nullptr, true, "ip src 192.168.1.85 or arp ");
 
 	L2_impl datalink_client(inet_client);
 	L2_ARP_impl arp_client(inet_client, 10, 10000);
@@ -1109,9 +1109,60 @@ void server_hello_serialization_test() {
 	ListenSocket->shutdown(SD_RECEIVE);
 
 
-	cout << "fin" << endl;
+	cout << "fin" << endl;*/
 }
 
+void tls_playground3()
+{
+	/* Client is declared similarly: */
+	inet_os inet_client = inet_os();
+
+	NIC nic_client(inet_client, "192.168.1.225", "60:6c:66:62:1c:4f", nullptr, nullptr, true, "ip src 192.168.1.66 or arp ");
+
+
+	L2_impl datalink_client(inet_client);
+	L2_ARP_impl arp_client(inet_client, 10, 10000);
+	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
+	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
+	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
+	inet_client.domaininit();
+	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
+
+	inet_client.connect();
+	netlab::tls_socket* ListenSocket = (new netlab::tls_socket(inet_client));
+	sockaddr_in service2;
+	service2.sin_family = AF_INET;
+	service2.sin_addr.s_addr = INADDR_ANY;
+	service2.sin_port = htons(4444);
+
+	ListenSocket->bind((SOCKADDR*)&service2, sizeof(service2));
+	ListenSocket->listen(5);
+
+	netlab::L5_socket* AcceptSocket = nullptr;
+	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
+
+	netlab::tls_socket* accept_tls_scoket = (new netlab::tls_socket(inet_client, AcceptSocket, true));
+	accept_tls_scoket->handshake();
+
+
+	std::string rcv_msg;
+	accept_tls_scoket->recv(rcv_msg, 200, 96, 0);
+
+	cout << rcv_msg << endl;
+
+	std::reverse(rcv_msg.begin(), rcv_msg.end());
+
+
+	accept_tls_scoket->send(rcv_msg, 100, 1, 0);
+
+
+
+
+	ListenSocket->shutdown(SD_RECEIVE);
+
+
+	cout << "fin" << endl; 
+}
 
 
 void tls_playground2()
@@ -1119,7 +1170,7 @@ void tls_playground2()
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 
-	NIC nic_client(inet_client, "192.168.1.228", "60:6c:66:62:1c:4f", nullptr, nullptr, true, "ip src 192.168.1.85 or arp ");
+	NIC nic_client(inet_client, "192.168.1.225", "60:6c:66:62:1c:4f", nullptr, nullptr, true, "ip src 192.168.1.66 or arp ");
 
 
 	L2_impl datalink_client(inet_client);
@@ -1133,7 +1184,7 @@ void tls_playground2()
 	inet_client.connect();
 	sockaddr_in clientService;
 	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_addr("192.168.1.85");
+	clientService.sin_addr.s_addr = inet_addr("192.168.1.66");
 	clientService.sin_port = htons(433);
 	
 
@@ -2699,9 +2750,9 @@ void main()
 		"[10] Cwnd Fall Test" << std::endl;
 
 	cout << "test1" << endl;
-//	tls_playground();
+	//tls_playground();
 	cout << "test2" << endl;
-	tls_playground2();
+	//tls_playground2();
 	cout << "test3" << endl;
 	tls_playground3();
 	return;

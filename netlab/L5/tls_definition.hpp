@@ -33,6 +33,9 @@ namespace netlab {
 #define PRE_MASTER_SECRET_RND_SIZE 46
 #define PRE_MASTER_SECRET_ENCRYPTED_SIZE 256
 #define MASTER_SECRET_SIZE 48
+#define KEY_BLOCK_SIZE 104
+#define SHA256_HASH_LEN 32
+#define VERIFY_DATA_LEN 12
 
 #define RECORD_LAYER_DEFAULT_LENGTH 5
 #define SERVER_DONE_RECORD_LAYER_LENGTH 4
@@ -379,6 +382,21 @@ namespace netlab {
 
 		Random(uint32_t gmt_unix_time, std::array<uint8_t, RANDOM_BYTES_SIZE> random_bytes)
 			: gmt_unix_time(gmt_unix_time), random_bytes(random_bytes) { }
+
+		std::string get_random()
+		{
+			std::string st;
+			st.push_back((gmt_unix_time >> 24) & 0xff);
+			st.push_back((gmt_unix_time >> 16) & 0xff);
+			st.push_back((gmt_unix_time >> 8) & 0xff);
+			st.push_back(gmt_unix_time & 0xff);
+			
+			
+		//	serialize_4_bytes(st, gmt_unix_time);
+			st.append((char*)random_bytes.data(), RANDOM_BYTES_SIZE);
+			return st;
+		}
+
 	};
 
 	struct Extension {

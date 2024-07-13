@@ -271,10 +271,12 @@ namespace netlab {
 				// CompressionMethods
 				serialized_string.push_back(this->handshake.body.serverHello.compression_method);
 				// Extensions
+
 				if (this->handshake.body.serverHello.extensions_present) {
-					serialized_string.push_back(this->handshake.body.serverHello.extensions_union.extensions.size());
+					uint16_t ext_size = this->handshake.body.serverHello.extensions_union.extensions.size() * this->handshake.body.serverHello.extensions_union.extensions[0].extension_data.size();
+					serialize_2_bytes(serialized_string, ext_size);
 					for (const auto& extension : this->handshake.body.serverHello.extensions_union.extensions) {
-						serialized_string.push_back(static_cast<char>(extension.extension_type));
+						//serialized_string.push_back(static_cast<char>(extension.extension_type));
 						serialized_string.insert(serialized_string.end(),
 							extension.extension_data.begin(),
 							extension.extension_data.end());
@@ -520,7 +522,7 @@ namespace netlab {
 					this->handshake.body.clientHello.compression_methods[i] = static_cast<CompressionMethod>(*it);
 				}
 				// Extensions
-				extensions_length = *it;
+				extensions_length = deserialize_2_bytes(it);
 				it++;
 				if (extensions_length > 0) {
 					this->handshake.body.clientHello.extensions_present = true;
@@ -529,6 +531,7 @@ namespace netlab {
 						Extension extension(it, it + sizeof(Extension));
 						this->handshake.body.clientHello.extensions_union.extensions.push_back(extension);
 						it += sizeof(Extension);
+						i+= sizeof(Extension);
 					}
 				}
 				break;
@@ -556,15 +559,18 @@ namespace netlab {
 				it++;
 				this->handshake.body.serverHello.compression_method = static_cast<CompressionMethod>(*it);
 				// Extensions
+				//break;
+				it++;
 				extensions_length = *it;
 				it++;
 				if (extensions_length > 0) {
 					this->handshake.body.serverHello.extensions_present = true;
-					for (uint16_t i = 0; i < extensions_length; i++) {
+					for (uint16_t i = 0; i < extensions_length; ) {
 						// Read the Extension
-						Extension extension(it, it + sizeof(Extension));
+						Extension extension(it, it + extensions_length);
 						this->handshake.body.serverHello.extensions_union.extensions.push_back(extension);
-						it += sizeof(Extension);
+						it += extensions_length;
+						i += extensions_length;
 					}
 				}
 				break;
@@ -572,7 +578,7 @@ namespace netlab {
 				// Deserialize certificate struct
 				certificate_list_length = deserialize_3_bytes(it);
 				this->handshake.body.certificate.certificate_list.resize(certificate_list_length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH);
-				for (size_t i = 0; i < certificate_list_length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH; i++) {
+				for (size_t i = 0; i < certificate_list_length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH; ) {
 					// Read the size of the next Certificate
 					certificate_size = deserialize_3_bytes(it);
 
@@ -580,6 +586,7 @@ namespace netlab {
 					std::vector<uint8_t> certificate(it, it + certificate_size);
 					this->handshake.body.certificate.certificate_list[i] = certificate;
 					it += certificate_size;
+					i += certificate_size;
 				}
 				break;
 			case SERVER_KEY_EXCHANGE:
