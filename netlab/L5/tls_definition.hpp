@@ -16,7 +16,16 @@ namespace netlab {
 /*                               #define                                */
 /************************************************************************/
 
+#pragma pack(push, 1) // Pack struct tightly without any padding
 
+	struct tls_header {
+		uint8_t type;             // Content Type (TLS_ContentType)
+		uint16_t version;         // TLS Version (tls_version)
+		uint16_t length;          // Length of the TLS record payload
+	};
+
+
+#pragma pack(pop)
 
 	enum tls_version
 	{
@@ -36,6 +45,9 @@ namespace netlab {
 #define KEY_BLOCK_SIZE 104
 #define SHA256_HASH_LEN 32
 #define VERIFY_DATA_LEN 12
+#define ENCRYPTION_KEY_SIZE 16
+#define IV_KEY_SIZE 16
+#define MAC_KEY_SIZE 20
 
 #define RECORD_LAYER_DEFAULT_LENGTH 5
 #define SERVER_DONE_RECORD_LAYER_LENGTH 4
