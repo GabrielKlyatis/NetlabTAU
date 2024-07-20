@@ -90,6 +90,15 @@
     <ClCompile Include="L5\tls_socket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="L5\HTTP\HTTP.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="L5\HTTP\HTTPClient.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="L5\HTTP\HTTPServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="L1\NIC.h">
@@ -180,6 +189,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="L5\tls_definition.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L5\HTTP\HTTP.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L5\HTTP\HTTPClient.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L5\HTTP\HTTPServer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

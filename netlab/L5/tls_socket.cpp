@@ -296,10 +296,10 @@ void tls_socket::listen(int backlog) {
 }
 
 
-std::vector<uint8_t> get_cartificate()
+std::vector<uint8_t> get_certificate()
 {
-    // create cartificate
-    const char* cert_file = "C:/Program Files/OpenSSL-Win64/server.crt";
+    // create certificate
+    const char* cert_file = "C:/Projects/OpenSSL-Win64/server.crt";
 
     FILE* fp = fopen(cert_file, "r");
     if (!fp) {
@@ -318,14 +318,14 @@ std::vector<uint8_t> get_cartificate()
     buf = NULL;
     len = i2d_X509(cert, &buf);  // converting to unsigned char*
 
-    std::vector<uint8_t> cartificate(buf, buf + len);
-    return cartificate;
+    std::vector<uint8_t> certificate(buf, buf + len);
+    return certificate;
 }
 
 void rsa_decrypt(uint8_t decrypted_premaster_secret[MASTER_SECRET_SIZE], uint8_t encrypted[PRE_MASTER_SECRET_ENCRYPTED_SIZE])
 {
     // load the private key
-    const char* key_file = "C:/Program Files/OpenSSL-Win64/server.key";
+    const char* key_file = "C:/Projects/OpenSSL-Win64/server.key";
     FILE* key_fp = fopen(key_file, "r");
     if (!key_fp) {
         fprintf(stderr, "unable to open: %s\n", key_file);
@@ -337,8 +337,6 @@ void rsa_decrypt(uint8_t decrypted_premaster_secret[MASTER_SECRET_SIZE], uint8_t
         fprintf(stderr, "Error loading private key\n");
         // return EXIT_FAILURE;
     }
-
-
 
     int decrypted_len = RSA_private_decrypt(256, encrypted, decrypted_premaster_secret, rsa_priv_key, RSA_PKCS1_PADDING);
 
@@ -380,19 +378,19 @@ void tls_socket::derrive_keys(std::vector<uint8_t> master_sercret, std::string c
 
 void tls_socket::handshake()
 {
-    // handle handshake
+    // Handle handshake
     std::string recv_buffer;
     //recv_buffer.reserve(1500);
     int byte_recived = p_socket->recv(recv_buffer, 1500, 1, 0);
 
-    // get client hello msg
+    // Get Client Hello msg
     HandshakeType msg_type = CLIENT_HELLO;
     TLSHandshakeProtocol client_hello;
     client_hello.handshake.configureHandshakeBody(msg_type);
     client_hello.updateHandshakeProtocol(msg_type);
     client_hello.deserialize_handshake_protocol_data(recv_buffer, msg_type);
 
-
+    // Server Hello
     TLSHandshakeProtocol server_hello;
     msg_type = SERVER_HELLO;
     server_hello.handshake.configureHandshakeBody(msg_type);
@@ -400,19 +398,17 @@ void tls_socket::handshake()
     std::string server_hello_msg = server_hello.serialize_handshake_protocol_data(msg_type);
     std::string serialized_string(server_hello_msg);
 
-
-
+    // Certificate
     msg_type = CERTIFICATE;
-    auto cartificate = get_cartificate();
-    TLSHandshakeProtocol server_cartificate;
-    server_cartificate.handshake.configureHandshakeBody(msg_type);
-    server_cartificate.handshake.body.certificate.addCertificate(cartificate);
-    server_cartificate.updateHandshakeProtocol(msg_type);
-    std::string cartificate_msg = server_cartificate.serialize_handshake_protocol_data(msg_type);
-    serialized_string.append(cartificate_msg);
+    auto certificate = get_certificate();
+    TLSHandshakeProtocol server_certificate;
+    server_certificate.handshake.configureHandshakeBody(msg_type);
+    server_certificate.handshake.body.certificate.addCertificate(certificate);
+    server_certificate.updateHandshakeProtocol(msg_type);
+    std::string certificate_msg = server_certificate.serialize_handshake_protocol_data(msg_type);
+    serialized_string.append(certificate_msg);
 
-   
-    // server hello done
+    // Server hello done
     TLSHandshakeProtocol server_hello_done;
     msg_type = SERVER_HELLO_DONE;
     server_hello_done.handshake.configureHandshakeBody(msg_type);
@@ -420,17 +416,15 @@ void tls_socket::handshake()
     std::string server_done = server_hello_done.serialize_handshake_protocol_data(msg_type);
     serialized_string.append(server_done);
 
-
     p_socket->send(serialized_string, serialized_string.size(), 0, 0);
 
-    // receive client key exchange msg
+    // Receive client key exchange msg
     std::string recv_buffer2 = "";
     p_socket->recv(recv_buffer2, 1500, 1, 0);
 
+    // Reciving client key exchange, change cipher , client finished
 
-    // reciving client key exchane, change cipher , client finished
-
-    // client key exchange
+    // Client key exchange
     TLSHandshakeProtocol key_exchange;
     msg_type = CLIENT_KEY_EXCHANGE;
     key_exchange.handshake.configureHandshakeBody(msg_type);
@@ -441,38 +435,38 @@ void tls_socket::handshake()
     uint8_t decrypted_premaster_secret[MASTER_SECRET_SIZE];
     rsa_decrypt(decrypted_premaster_secret, key_exchange.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.data());
     
-    // derive master secret
+    // Derive master secret
     std::string client_rand = client_hello.handshake.body.clientHello.random.get_random();
     std::string server_rand = server_hello.handshake.body.clientHello.random.get_random();
     std::vector<uint8_t> pre_master_vec(decrypted_premaster_secret, decrypted_premaster_secret + MASTER_SECRET_SIZE);
     std::vector<uint8_t> master_secret_vec = derrive_master_secret(pre_master_vec, client_rand, server_rand);
     
-    // key derive
+    // Key deriviation
     derrive_keys(master_secret_vec, client_rand, server_rand);
     
 
-    //change cipher massage
+    // Change cipher message
     ChangeCipherSpec changeCipherSpec;
     std::string cipher(recv_buffer2.begin() + key_exchange.TLS_record_layer.length + RECORD_LAYER_DEFAULT_LENGTH, recv_buffer2.end());
     changeCipherSpec.deserialize_change_cipher_spec_data(cipher);
 
 
-    // finish massage
+    // Finish message
     tls_header* client_finished_header = (tls_header*)(recv_buffer2.data() + key_exchange.TLS_record_layer.length + RECORD_LAYER_DEFAULT_LENGTH + 6);
     std::vector<uint8_t> encrypted_data((char*)client_finished_header + sizeof(tls_header), (char*)client_finished_header + sizeof(tls_header) + ntohs(client_finished_header->length));
 
-    // as string
+    // As string
     std::string encrypted_data_str(encrypted_data.begin(), encrypted_data.end());
     std::string client_verify_data = decrypt(encrypted_data_str, true);
 
 
-    // concatinating hanshake nassages
+    // Concatinating hanshake messages
     std::vector<uint8_t> handshake_msg;
 
     std::string client_hello_msg = client_hello.serialize_handshake_protocol_data(CLIENT_HELLO);
     handshake_msg.insert(handshake_msg.end(), recv_buffer.begin() + RECORD_LAYER_DEFAULT_LENGTH, recv_buffer.begin() + RECORD_LAYER_DEFAULT_LENGTH + client_hello.TLS_record_layer.length ); // client hello
     handshake_msg.insert(handshake_msg.end(), server_hello_msg.begin() + RECORD_LAYER_DEFAULT_LENGTH, server_hello_msg.end());
-    handshake_msg.insert(handshake_msg.end(), cartificate_msg.begin() + RECORD_LAYER_DEFAULT_LENGTH, cartificate_msg.end());
+    handshake_msg.insert(handshake_msg.end(), certificate_msg.begin() + RECORD_LAYER_DEFAULT_LENGTH, certificate_msg.end());
     handshake_msg.insert(handshake_msg.end(), server_done.begin() + RECORD_LAYER_DEFAULT_LENGTH, server_done.end());
 
     std::string client_ket_exchange = key_exchange.serialize_handshake_protocol_data(CLIENT_KEY_EXCHANGE);
@@ -552,10 +546,9 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     p_socket->send(client_hello_msg, client_hello_msg.size(), 0, 0);
 
 
-    // recive server hello, cartificate, server hello done
+    // recive server hello, certificate, server hello done
     std::string recv_buffer;
     p_socket->recv(recv_buffer, 1500, 1, 0);
-
 
     msg_type = SERVER_HELLO;
     TLSHandshakeProtocol server_hello;
@@ -576,9 +569,6 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     serv_hello_done.handshake.configureHandshakeBody(msg_type);
     std::string frr2(frr.begin() + recive_cartificate.TLS_record_layer.length + RECORD_LAYER_DEFAULT_LENGTH, frr.end());
     serv_hello_done.deserialize_handshake_protocol_data(frr2, msg_type);
-
-
-  
 
     // create the client key exchange , change cipher spce, client finish
     msg_type = CLIENT_KEY_EXCHANGE;
@@ -625,7 +615,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     std::string server_hello_msg = server_hello.serialize_handshake_protocol_data(SERVER_HELLO);
     plaintext.insert(plaintext.end(), server_hello_msg.begin() + RECORD_LAYER_DEFAULT_LENGTH, server_hello_msg.end()); // add server hello
     std::string server_certificate = recive_cartificate.serialize_handshake_protocol_data(CERTIFICATE);
-    plaintext.insert(plaintext.end(), server_certificate.begin() + RECORD_LAYER_DEFAULT_LENGTH, server_certificate.end());  // add server cartificate
+    plaintext.insert(plaintext.end(), server_certificate.begin() + RECORD_LAYER_DEFAULT_LENGTH, server_certificate.end());  // add server certificate
     std::string server_hello_done_msg = serv_hello_done.serialize_handshake_protocol_data(SERVER_HELLO_DONE);
     plaintext.insert(plaintext.end(), server_hello_done_msg.begin() + RECORD_LAYER_DEFAULT_LENGTH, server_hello_done_msg.end()) ;   // add server hello done 
     plaintext.insert(plaintext.end(), client_key_msg.begin() + RECORD_LAYER_DEFAULT_LENGTH, client_key_msg.end()); // client key exchange

@@ -770,29 +770,30 @@ namespace netlab {
 			case HELLO_REQUEST:
 				break;
 			case CLIENT_HELLO:
-				clientHello.~ClientHello();
+				delete &clientHello;
 				break;
 			case SERVER_HELLO:
-				serverHello.~ServerHello();
+				delete &serverHello;
 				break;
 			case CERTIFICATE:
-				certificate.~Certificate();
+				delete &certificate;
 				break;
 			case SERVER_KEY_EXCHANGE:
-				serverKeyExchange.~ServerKeyExchange();
+				delete &serverKeyExchange;
 				break;
 			case CERTIFICATE_REQUEST:
-				certificateRequest.~CertificateRequest();
+				delete &certificateRequest;
 				break;
 			case SERVER_HELLO_DONE:
 				break;
 			case CERTIFICATE_VERIFY:
-				certificateVerify.~CertificateVerify();
+				delete &certificateVerify;
 				break;
 			case CLIENT_KEY_EXCHANGE:
-				clientKeyExchange.~ClientKeyExchange();
+				delete &clientKeyExchange;
 				break;
-			case FINISHED: finished.~Finished();
+			case FINISHED:
+				delete &finished;
 				break;
 			default: 
 				break;
@@ -805,7 +806,7 @@ namespace netlab {
 
 	struct Handshake {
 		HandshakeType msg_type;    /* handshake type */
-		uint32_t length;           /* bytes in message */ /***** Maybe needs to be uint16_t*/
+		uint32_t length;           /* bytes in message - 24 bits */
 		Body body;                 /* message contents */
 
 		Handshake(HandshakeType msg_type, uint32_t length)
