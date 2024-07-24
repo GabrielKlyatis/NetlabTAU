@@ -8,16 +8,21 @@ namespace netlab {
 
 	class HTTPClient {
 	public:
+		// Client Members
 		HTTPProtocol protocol;
-		netlab::L5_socket* socket;
 		uint16_t port;
+		L5_socket* socket;
 		std::vector<Resource> resources;
 
 		// Constructor
-		HTTPClient(class inet_os inet_client, HTTPProtocol protocol);
+		HTTPClient(class inet_os &inet_client, HTTPProtocol protocol);
 
-		void get();
-		void post();
-		void handle_response(HTTPResponse response);
+		// Destructor
+		~HTTPClient();
+
+		// Client Methods
+		void get(std::string get_request);
+		void post(std::string post_request);
+		void handle_response(HTTPResponse response, HTTPMethod http_method);
 	};
 }

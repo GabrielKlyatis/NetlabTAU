@@ -19,12 +19,11 @@ namespace netlab {
 /*                               #define                                */
 /************************************************************************/
 
+#define RESULT_NOT_DEFINED -1
+#define RESULT_SUCCESS 0
+#define RESULT_FAILURE 1
 #define R_N_OFFSET 2
-
-/************************************************************************/
-/*                             typedefs                                 */
-/************************************************************************/
-
+#define SERVER_FILESYSTEM "../Server_filesystem"
 
 /************************************************************************/
 /*								aliases                                 */
@@ -33,8 +32,39 @@ namespace netlab {
 	using HTTPHeaders = std::multimap<std::string, std::string>; // Header Name, Header Value
 	using QueryParams = std::multimap<std::string, std::string>; // Parameter Name, Parameter Value
 
-	struct HTTPResponse; // Forward Declaration
-	using ResponseHandler = std::function<bool(const HTTPResponse& response)>; // Response Callback
+/************************************************************************/
+/*							  constants					                */
+/************************************************************************/
+
+	const HTTPHeaders default_request_headers = {
+	{"Host", ""},
+	{"Connection", ""},
+	{"Content-Type", ""},
+	{"Content-Length", "0"}
+	};
+
+	const std::vector<std::string> default_request_headers_order = {
+		"Host",
+		"Connection",
+		"Content-Type",
+		"Content-Length"
+	};
+
+	const HTTPHeaders default_response_headers = {
+	{"Server", "inet_os_HTTP/1.1"},
+	{"Date", ""},
+	{"Content-Type", ""},
+	{"Content-Length", "0"},
+	{"Connection", ""}
+	};
+
+	const std::vector<std::string> default_response_headers_order = {
+		"Server",
+		"Date",
+		"Content-Type",
+		"Content-Length",
+		"Connection"
+	};
 
 /************************************************************************/
 /*								 enums			   				        */
@@ -43,6 +73,11 @@ namespace netlab {
 	enum HTTPProtocol : uint8_t {
 		HTTP,
 		HTTPS
+	};
+
+	enum HTTPMethod : uint8_t {
+		GET,
+		POST
 	};
 
 	enum HTTPContentType : uint8_t {
@@ -158,33 +193,45 @@ namespace netlab {
 	public:
 		std::string request_method; // GET | POST
 		std::string request_uri; // URI - Uniform Resource Identifier
-		std::string request_version = "HTTP/1.1"; // HTTP Version
+		std::string request_path; // Path
+		std::string request_version; // HTTP Version
 		HTTPHeaders headers; // Header Name, Header Value
 		std::vector<std::string> headers_order; // Order of Headers
 		QueryParams query_params; // Query Parameter Name, Query Parameter Value
 		std::string body; // Request Body
+		QueryParams body_params; // Body Parameter Name, Body Parameter Value
+
+		// Constructor
+		HTTPRequest();
+		HTTPRequest(const std::string& request_string);
 
 		// HTTPHeaders
 		bool HTTPRequest::has_header(const std::string& key);
 		std::string get_header_value(const std::string& key, size_t id);
 		uint64_t get_header_value_u64(const std::string& key, size_t id);
-		void set_header(const std::string& key, const std::string& val);
+		void set_header_value(const std::string& key, const std::string& val);
+		void insert_header(const std::string& key, const std::string& val);
 		void parse_headers(const std::vector<std::string>& lines);
-		std::string to_string();
+		
 
 		// QueryParams
 		bool has_param(const std::string& key);
 		std::string get_param_value(const std::string& key, size_t id);
-		void set_param(const std::string& key, const std::string& val);
-		QueryParams parse_query_params(const std::string& query);
+		void insert_param(const std::string& key, const std::string& val);
+		void parse_query_params(const std::string& query);
+
+		// Body
+		void insert_body_param(const std::string& key, const std::string& val);
+		void parse_body_query_params(std::string& unfiltered_body);
 
 		// Request
 		void parse_request(const std::string& request_string);
+		std::string to_string();
 	};
 /***************************** Response **********************************/
 	class HTTPResponse {
 	public:
-		std::string version = "HTTP/1.1"; // HTTP Version
+		std::string version; // HTTP Version
 		StatusCode status_code; // e.g. - 200, 404, 400, 401, 403, 500
 		std::string reason; // e.g. - OK, Not Found, Bad Request, Unauthorized, Forbidden, Internal Server Error
 		HTTPHeaders headers; // Header Name, Header Value
@@ -192,17 +239,28 @@ namespace netlab {
 		std::string body; // Response Body
 		std::string location; // Redirect Location
 
+		// Constructor
+		HTTPResponse();
+
+		// Status
+		static std::string status_message(StatusCode status_code);
+
 		// HTTPHeaders
 		bool has_header(const std::string& key);
 		std::string get_header_value(const std::string& key, size_t id);
 		uint64_t get_header_value_u64(const std::string& key, size_t id);
 		void set_header(const std::string& key, const std::string& val);
-
+		void parse_headers(const std::vector<std::string>& lines);
+		static std::string get_current_time();
+	
 		void set_redirect(const std::string& url, int status = StatusCode::Found);
 		void set_content(const char* s, size_t n, const std::string& content_type);
 		void set_content(const std::string& s, const std::string& content_type);
 		void set_content(std::string&& s, const std::string& content_type);
 
+		// Response
+		void parse_response(const std::string& response_string);
+		std::string to_string();
 	};
 
 } // namespace netlab

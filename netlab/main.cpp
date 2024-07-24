@@ -139,32 +139,32 @@ void http_playground_inet_os() {
 			connectSocket->send(request, request.size(), 1024);
 		}).detach();
 
-		std::string buffer;
-		int bytes_received = 0;
-		std::string received_request;
+	std::string buffer;
+	int bytes_received = 0;
+	std::string received_request;
 
-		std::thread([AcceptSocket, &received_request, &buffer, &bytes_received]()
-			{
-				while ((bytes_received = AcceptSocket->recv(buffer, sizeof(buffer), 0, 0)) > 0) {
-					buffer[bytes_received] = '\0';
-					received_request += buffer;
-				}
-			}).detach();
-
-			// Create the request object
-			HTTPRequest HTTP_request;
-			HTTP_request.parse_request(received_request);
-
-			std::string sendBuff = HTTP_request.to_string();
-			size_t size = sendBuff.size();
-
-			std::this_thread::sleep_for(std::chrono::seconds(4));
-
-			std::ofstream file("response.html");
-			if (file.is_open()) {
-				file << received_request;
-				file.close();
+	std::thread([AcceptSocket, &received_request, &buffer, &bytes_received]()
+		{
+			while ((bytes_received = AcceptSocket->recv(buffer, sizeof(buffer), 0, 0)) > 0) {
+				buffer[bytes_received] = '\0';
+				received_request += buffer;
 			}
+		}).detach();
+
+		// Create the request object
+		HTTPRequest HTTP_request;
+		HTTP_request.parse_request(received_request);
+
+		std::string sendBuff = HTTP_request.to_string();
+		size_t size = sendBuff.size();
+
+		std::this_thread::sleep_for(std::chrono::seconds(4));
+
+		std::ofstream file("response.html");
+		if (file.is_open()) {
+			file << received_request;
+			file.close();
+		}
 
 }
 
@@ -205,28 +205,66 @@ void http_playground_client_server() {
 	clientService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
 	clientService.sin_port = htons(8888);
 
-	netlab::HTTPServer http_server;
+	netlab::HTTPServer http_server(inet_server, HTTP);
 	netlab::HTTPClient http_client(inet_client, HTTP);
 
-	http_server.socket = new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_server);
 	http_server.socket->bind((SOCKADDR*)&serverService, sizeof(serverService));
 	http_server.socket->listen(5);
 
-	http_client.socket = new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_client);
 	http_client.socket->connect((SOCKADDR*)&clientService, sizeof(clientService));
 
 	netlab::L5_socket* AcceptSocket = nullptr;
+	AcceptSocket = http_server.socket->accept(nullptr, 0);
 
-	AcceptSocket = http_server.socket->accept(nullptr, nullptr);
+	std::string request = "POST /search?query=example&sort=asc HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nContent-Length: 0\r\n\r\nparam1=value1&param2=value2&query=anotherExample&sort=desc&param3=value3&param4=value4";
 
-	std::string request = "POST / HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nContent-Length: 5\r\n\r\nHello";
+	HTTPRequest HTTP_request;
+	HTTP_request.parse_request(request);
 
-	std::thread([http_client, request]()
-		{
-			http_client.socket->send(request, request.size(), 1024, 0);
-		}).detach();
+	// For the Content Length field - Lookup the header using the key and update it's value with the actual size of the body
+	HTTP_request.set_header_value("Content-Length", std::to_string(HTTP_request.body.size()));
+
+	std::string requestSendBuff = HTTP_request.to_string();
+
+	// GET request with params inside the URL
+	//std::string request = "GET /search?query=example&sort=asc&page=2 HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n";
+	size_t request_size = requestSendBuff.size();
+
+    L5_socket_impl* connectSocket = reinterpret_cast<L5_socket_impl*>(http_client.socket);
+    std::thread sending_thread([connectSocket, requestSendBuff, request_size]() {
+        connectSocket->send(requestSendBuff, request_size, 1024, 0);
+    });
+	sending_thread.join();
+
+	std::string buffer;
+	int bytes_received = 0;
+	std::string received_request;
+
+	bytes_received = AcceptSocket->recv(received_request, request_size, 0, 0);
+
+	// Create the request object
+	HTTPRequest HTTP_request2;
+	HTTP_request2.parse_request(received_request);
+
+	// Compare HTTP_request and HTTP_request2
+	if (HTTP_request2.to_string() != received_request) {
+		std::cout << "Error: HTTP_request and HTTP_request2 are not equal" << std::endl;
+	}
+
+	HTTPResponse HTTP_response = http_server.handle_request(HTTP_request2);
 
 
+
+	std::string responseSendBuff = HTTP_request.to_string();
+	size_t size = responseSendBuff.size();
+
+	std::this_thread::sleep_for(std::chrono::seconds(4));
+
+	std::ofstream file("response.html");
+	if (file.is_open()) {
+		file << received_request;
+		file.close();
+	}
 }
 
 
@@ -2959,8 +2997,8 @@ void main()
 		"[9] Application Use Case (with drop)" << std::endl <<
 		"[10] Cwnd Fall Test" << std::endl;
 
-	cout << "TLS Playground" << endl;
-	tls_playground();
+	//cout << "TLS Playground" << endl;
+	//tls_playground();
 	cout << "HTTP Playground" << endl;
 	http_playground_client_server();
 	//cout << "test2" << endl;
