@@ -216,8 +216,8 @@ void http_playground_client_server() {
 	netlab::L5_socket* AcceptSocket = nullptr;
 	AcceptSocket = http_server.socket->accept(nullptr, 0);
 
-	std::string request = "POST /search?query=example&sort=asc HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nContent-Length: 0\r\n\r\nparam1=value1&param2=value2&query=anotherExample&sort=desc&param3=value3&param4=value4";
-
+	//std::string request = "POST /search?query=example&sort=asc HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nContent-Length: 0\r\n\r\nparam1=value1&param2=value2&query=anotherExample&sort=desc&param3=value3&param4=value4";
+	std::string request = "GET /response.html?query=example&sort=asc&page=2 HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n";
 	HTTPRequest HTTP_request;
 	HTTP_request.parse_request(request);
 
@@ -225,9 +225,7 @@ void http_playground_client_server() {
 	HTTP_request.set_header_value("Content-Length", std::to_string(HTTP_request.body.size()));
 
 	std::string requestSendBuff = HTTP_request.to_string();
-
-	// GET request with params inside the URL
-	//std::string request = "GET /search?query=example&sort=asc&page=2 HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n";
+	
 	size_t request_size = requestSendBuff.size();
 
     L5_socket_impl* connectSocket = reinterpret_cast<L5_socket_impl*>(http_client.socket);
@@ -253,10 +251,11 @@ void http_playground_client_server() {
 
 	HTTPResponse HTTP_response = http_server.handle_request(HTTP_request2);
 
+	std::string responseSendBuff = HTTP_response.to_string();
+	size_t responseSize = responseSendBuff.size();
 
-
-	std::string responseSendBuff = HTTP_request.to_string();
-	size_t size = responseSendBuff.size();
+	// Send the response from 10.0.0.10 to 10.0.0.15
+	AcceptSocket->send(responseSendBuff, responseSize, 1024, 0);
 
 	std::this_thread::sleep_for(std::chrono::seconds(4));
 
@@ -264,6 +263,11 @@ void http_playground_client_server() {
 	if (file.is_open()) {
 		file << received_request;
 		file.close();
+	}
+
+	if (HTTP_response.get_header_value("Connection", 0) == "close") {
+		http_client.socket->shutdown(SD_SEND);
+		http_server.socket->shutdown(SD_RECEIVE);
 	}
 }
 

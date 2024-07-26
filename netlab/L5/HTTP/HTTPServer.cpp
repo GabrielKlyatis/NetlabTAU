@@ -1,8 +1,5 @@
 #include "HTTPServer.hpp"
 
-#include <fstream>
-#include <ctime>
-
 namespace netlab {
 
 	// Constructor
@@ -23,16 +20,19 @@ namespace netlab {
     // Check if the server has the requested resource
     bool HTTPServer::has_resource(std::string& request_path) {
 		std::string full_path = SERVER_FILESYSTEM + request_path;
-		std::ifstream file(request_path);
+		std::ifstream file(full_path);
 		return file.good();
     }
 
 	int HTTPServer::remove_resource(std::string& request_path) {
 		std::string full_path = SERVER_FILESYSTEM + request_path;
 		std::remove(full_path.c_str());
-		if (has_resource(request_path)) {
-			std::cerr << "Failed to remove resource at " << full_path << std::endl;
+		if (has_resource(full_path)) {
+			std::cerr << "Failed to remove the resource from the server." << full_path << std::endl;
 			return RESULT_FAILURE;
+		}
+		else {
+			std::cout << "No such resource on the server." << full_path << std::endl;
 		}
 		return RESULT_SUCCESS;
 	}
@@ -40,29 +40,30 @@ namespace netlab {
 	int HTTPServer::create_resource(std::string& request_path, std::string& data) {
 		int res = RESULT_NOT_DEFINED;
 		std::string full_path = SERVER_FILESYSTEM + request_path;
-		if (has_resource(request_path)) {
-			res = remove_resource(request_path);
+		if (has_resource(full_path)) {
+			res = remove_resource(full_path);
 			if (res != RESULT_SUCCESS) {
-				std::cerr << "Failed to remove resource at " << full_path << std::endl;
 				return RESULT_FAILURE;
 			}
 		}
 		std::ofstream resource_file(full_path.c_str(), std::ios::binary);
 		if (!resource_file.is_open()) {
-			std::cerr << "Failed to create resource at " << full_path << std::endl;
+			std::cerr << "Failed to create resource on the server. " << full_path << std::endl;
 			return RESULT_FAILURE;
 		}
 		resource_file << data;
 		resource_file.close();
 		return RESULT_SUCCESS;
-	} 
+	}
 
 	// Handle the request
 	HTTPResponse HTTPServer::handle_request(HTTPRequest HTTP_request) {
 
 		HTTPResponse HTTP_response;
 		// Update the response date header
-		HTTP_response.set_header("Date", HTTPResponse::get_current_time());
+		HTTP_response.set_header_value("Date", get_current_time());
+		// Update the connection header
+		HTTP_response.update_connection_state(HTTP_request);
 		HTTPMethod HTTP_method = 
 			HTTP_request.request_method == "GET" ? HTTPMethod::GET : HTTPMethod::POST; // Only GET and POST methods are supported
 		switch (HTTP_method) {
@@ -72,8 +73,10 @@ namespace netlab {
 					// Send a 200 OK response
 					HTTP_response.status_code = StatusCode::OK;
 					HTTP_response.reason = HTTPResponse::status_message(HTTP_response.status_code);
-
-					send_response(HTTP_response);
+					HTTP_response.set_header_value("Content-Type", get_content_type(HTTP_request.request_path));
+					HTTP_response.body = get_file_contents(HTTP_request.request_path);
+					HTTP_response.set_header_value("Content-Length", std::to_string(HTTP_response.body.size()));
+					return HTTP_response;
 				}
 				else {
 					// Send a 404 Not Found response
@@ -89,7 +92,7 @@ namespace netlab {
 					// Send a 201 Created response
 					HTTP_response.status_code = StatusCode::Created;
 					HTTP_response.reason = HTTPResponse::status_message(HTTP_response.status_code);
-					HTTP_response.set_header("Content-Type", HTTP_request.get_header_value("Content-Type", 0));
+					HTTP_response.set_header_value("Content-Type", HTTP_request.get_header_value("Content-Type", 0));
 					send_response(HTTP_response);
 				}
 				else {

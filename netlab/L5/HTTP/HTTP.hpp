@@ -11,6 +11,9 @@
 #include <sstream>
 #include <unordered_map>
 #include <functional>
+#include <regex>
+#include <fstream>
+#include <ctime>
 
 
 namespace netlab {
@@ -23,7 +26,7 @@ namespace netlab {
 #define RESULT_SUCCESS 0
 #define RESULT_FAILURE 1
 #define R_N_OFFSET 2
-#define SERVER_FILESYSTEM "../Server_filesystem"
+#define SERVER_FILESYSTEM "L5/HTTP/Server_filesystem"
 
 /************************************************************************/
 /*								aliases                                 */
@@ -206,14 +209,13 @@ namespace netlab {
 		HTTPRequest(const std::string& request_string);
 
 		// HTTPHeaders
-		bool HTTPRequest::has_header(const std::string& key);
+		bool has_header(const std::string& key);
 		std::string get_header_value(const std::string& key, size_t id);
 		uint64_t get_header_value_u64(const std::string& key, size_t id);
 		void set_header_value(const std::string& key, const std::string& val);
 		void insert_header(const std::string& key, const std::string& val);
 		void parse_headers(const std::vector<std::string>& lines);
 		
-
 		// QueryParams
 		bool has_param(const std::string& key);
 		std::string get_param_value(const std::string& key, size_t id);
@@ -249,18 +251,28 @@ namespace netlab {
 		bool has_header(const std::string& key);
 		std::string get_header_value(const std::string& key, size_t id);
 		uint64_t get_header_value_u64(const std::string& key, size_t id);
-		void set_header(const std::string& key, const std::string& val);
+		void set_header_value(const std::string& key, const std::string& val);
+		void insert_header(const std::string& key, const std::string& val);
 		void parse_headers(const std::vector<std::string>& lines);
-		static std::string get_current_time();
+		void update_connection_state(HTTPRequest& http_request);
 	
-		void set_redirect(const std::string& url, int status = StatusCode::Found);
+		/*void set_redirect(const std::string& url, int status = StatusCode::Found);
 		void set_content(const char* s, size_t n, const std::string& content_type);
 		void set_content(const std::string& s, const std::string& content_type);
-		void set_content(std::string&& s, const std::string& content_type);
+		void set_content(std::string&& s, const std::string& content_type);*/
 
 		// Response
 		void parse_response(const std::string& response_string);
 		std::string to_string();
 	};
+
+
+/************************************************************************/
+/*                               Utils                                  */
+/************************************************************************/
+
+	std::string get_current_time();
+	std::string get_content_type(std::string& resource_path);
+	std::string get_file_contents(const std::string& resource_path);
 
 } // namespace netlab

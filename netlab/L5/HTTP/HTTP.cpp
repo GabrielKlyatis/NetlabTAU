@@ -1,7 +1,5 @@
 #include "HTTP.hpp"
 
-#include <string>
-#include <regex>
 
 namespace netlab {
 
@@ -9,7 +7,7 @@ namespace netlab {
 /*											Utils								              */
 /**********************************************************************************************/
 
-	std::string HTTPResponse::get_current_time() {
+	std::string get_current_time() {
 		std::time_t now = std::time(nullptr);
 		char buf[100];
 		std::strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", std::gmtime(&now));
@@ -87,6 +85,89 @@ namespace netlab {
 		}
 	}
 
+	std::string get_content_type(std::string& resource_path) {
+
+		std::string resource_extension = resource_path.substr(resource_path.find_last_of('.') + 1);
+		if (resource_extension == "html") {
+			return "text/html";
+		}
+		else if (resource_extension == "css") {
+			return "text/css";
+		}
+		else if (resource_extension == "js") {
+			return "text/javascript";
+		}
+		else if (resource_extension == "png") {
+			return "image/png";
+		}
+		else if (resource_extension == "jpg" || resource_extension == "jpeg") {
+			return "image/jpeg";
+		}
+		else if (resource_extension == "gif") {
+			return "image/gif";
+		}
+		else if (resource_extension == "svg") {
+			return "image/svg+xml";
+		}
+		else if (resource_extension == "ico") {
+			return "image/x-icon";
+		}
+		else if (resource_extension == "json") {
+			return "application/json";
+		}
+		else if (resource_extension == "pdf") {
+			return "application/pdf";
+		}
+		else if (resource_extension == "zip") {
+			return "application/zip";
+		}
+		else if (resource_extension == "xml") {
+			return "application/xml";
+		}
+		else if (resource_extension == "mp4") {
+			return "video/mp4";
+		}
+		else if (resource_extension == "mpeg") {
+			return "video/mpeg";
+		}
+		else if (resource_extension == "webm") {
+			return "video/webm";
+		}
+		else if (resource_extension == "ogg") {
+			return "video/ogg";
+		}
+		else if (resource_extension == "mp3") {
+			return "audio/mp3";
+		}
+		else if (resource_extension == "wav") {
+			return "audio/wav";
+		}
+		else if (resource_extension == "flac") {
+			return "audio/flac";
+		}
+		else if (resource_extension == "aac") {
+			return "audio/aac";
+		}
+		else if (resource_extension == "midi") {
+			return "audio/midi";
+		}
+		else if (resource_extension == "weba") {
+			return "audio/webm";
+		}
+
+		return "text/plain";
+	}
+
+	std::string get_file_contents(const std::string& resource_path) {
+		std::string full_path = SERVER_FILESYSTEM + resource_path;
+		std::ifstream file(full_path);
+		if (!file.is_open()) {
+			throw std::runtime_error("Unable to open file: " + full_path);
+		}
+		std::stringstream buffer;
+		buffer << file.rdbuf();
+		return buffer.str();
+	}
 
 /**********************************************************************************************/
 /*											Request								              */
@@ -297,8 +378,82 @@ namespace netlab {
 		}
 		return 0;
 	}
-	void HTTPResponse::set_header(const std::string& key, const std::string& val) {
+	void HTTPResponse::set_header_value(const std::string& key, const std::string& val) {
+		auto range = headers.equal_range(key);
+		for (auto it = range.first; it != range.second; ++it) {
+			it->second = val;
+		}
+	}
+	void HTTPResponse::insert_header(const std::string& key, const std::string& val) {
 		headers.emplace(key, val);
+		headers_order.push_back(key);
+	}
+	void HTTPResponse::parse_headers(const std::vector<std::string>& lines) {
+		for (size_t i = 0; i < lines.size(); ++i) {
+			size_t pos = lines[i].find(':');
+			if (pos != std::string::npos) {
+				std::string field_name = lines[i].substr(0, pos);
+				// Check if the header is supported
+				if (field_name == "Date" || field_name == "Server" || field_name == "Content-Type" ||
+					field_name == "Content-Length" || field_name == "Connection" || field_name == "Location") {
+					std::string field_value = lines[i].substr(pos + 2); // Skip ": " (colon and space)
+					if (has_header(field_name)) {
+						set_header_value(field_name, field_value);
+					}
+					else {
+						insert_header(field_name, field_value);
+					}
+				}
+				else {
+					std::cout << "Unsupported Header: " << field_name << std::endl;
+				}
+			}
+		}
+	}
+
+	void HTTPResponse::update_connection_state(HTTPRequest& http_request) {
+		std::string connection_state = http_request.get_header_value("Connection", 0);
+		if (connection_state == "close") {
+			 HTTPResponse::set_header_value("Connection", "close");
+		}
+		else {
+			 HTTPResponse::set_header_value("Connection", "keep-alive");
+		}
+	}
+
+	// Response
+	void HTTPResponse::parse_response(const std::string& response_string) {
+		// Parse HTTP Version
+		size_t version_end = response_string.find(' ');
+		if (version_end != std::string::npos) {
+			version = response_string.substr(0, version_end); // HTTP Version
+			// Parse Status Code
+			size_t status_code_end = response_string.find(' ', version_end + 1);
+			if (status_code_end != std::string::npos) {
+				status_code = static_cast<StatusCode>(std::stoi(response_string.substr(version_end + 1, status_code_end - version_end - 1))); // Status Code
+				reason = response_string.substr(status_code_end + 1, response_string.find('\r') - status_code_end - 1); // Reason
+				// Parse Headers
+				std::vector<std::string> header_lines = split_lines(response_string.substr(response_string.find("\r\n") + R_N_OFFSET));
+				parse_headers(header_lines); // Header Name, Header Value
+				// Parse Body
+				size_t body_start = response_string.find("\r\n\r\n") + 2 * R_N_OFFSET;
+				body = response_string.substr(body_start);
+			}
+		}
+	}
+
+	std::string HTTPResponse::to_string() {
+		std::string response_string = "";
+		response_string += version + " " + std::to_string(status_code) + " " + reason + "\r\n";
+		// Serialize the headers
+		for (auto& header : headers_order) {
+			std::string header_value = headers.find(header)->second;
+			response_string += header + ": " + header_value + "\r\n";
+		}
+		response_string += "\r\n";
+		// Serialize the body
+		response_string += body;
+		return response_string;
 	}
 
 } // namespace netlab
