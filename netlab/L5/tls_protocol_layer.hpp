@@ -526,12 +526,11 @@ namespace netlab {
 				it++;
 				if (extensions_length > 0) {
 					this->handshake.body.clientHello.extensions_present = true;
-					for (uint16_t i = 0; i < extensions_length; i++) {
+					for (uint16_t i = 0; i < extensions_length; i += sizeof(Extension)) {
 						// Read the Extension
 						Extension extension(it, it + sizeof(Extension));
 						this->handshake.body.clientHello.extensions_union.extensions.push_back(extension);
 						it += sizeof(Extension);
-						i+= sizeof(Extension);
 					}
 				}
 				break;
@@ -578,13 +577,13 @@ namespace netlab {
 				// Deserialize certificate struct
 				certificate_list_length = deserialize_3_bytes(it);
 				this->handshake.body.certificate.certificate_list.resize(certificate_list_length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH);
-				for (size_t i = 0; i < certificate_list_length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH; ) {
+				for (size_t i = 0, cartificate_index = 0; i < certificate_list_length - CERTIFICATE_HANDSHAKE_OFFSET_LENGTH; ) {
 					// Read the size of the next Certificate
 					certificate_size = deserialize_3_bytes(it);
 
 					// Read the Certificate
-					std::vector<uint8_t> certificate(it, it + certificate_size);
-					this->handshake.body.certificate.certificate_list[i] = certificate;
+					std::vector<uint8_t> certificate(it, it + certificate_size); 
+					this->handshake.body.certificate.certificate_list[cartificate_index++] = certificate;
 					it += certificate_size;
 					i += certificate_size;
 				}

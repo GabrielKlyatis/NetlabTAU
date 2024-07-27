@@ -2750,11 +2750,11 @@ void main()
 		"[10] Cwnd Fall Test" << std::endl;
 
 	cout << "test1" << endl;
-	//tls_playground();
+	tls_playground();
 	cout << "test2" << endl;
-	//tls_playground2();
+	tls_playground2();
 	cout << "test3" << endl;
-	tls_playground3();
+	//tls_playground3();
 	return;
 
 	int request(4);

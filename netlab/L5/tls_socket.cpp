@@ -30,6 +30,7 @@
 
 #pragma warning(disable : 4996)
 
+#define MAX_MTU     1500
 
 
 using namespace netlab;
@@ -79,7 +80,7 @@ std::string secure_socket::encrypt(std::string& msg, bool server) {
     uint8_t type = first_byte == 0 ? TLS_CONTENT_TYPE_HANDSHAKE : TLS_CONTENT_TYPE_APPLICATION_DATA;
     client_seq_num++;
 
-    uint8_t seq_bym[8] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, first_byte };
+    uint8_t seq_bym[8] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, first_byte }; // can be optemize but not really importent now
     uint8_t rest[5] = { type, 0x03, 0x03 };  // Handshake type , version
 
     // Correct length (high byte, low byte)
@@ -382,8 +383,8 @@ void tls_socket::handshake()
 {
     // handle handshake
     std::string recv_buffer;
-    //recv_buffer.reserve(1500);
-    int byte_recived = p_socket->recv(recv_buffer, 1500, 1, 0);
+    //recv_buffer.reserve(MAX_MTU);
+    int byte_recived = p_socket->recv(recv_buffer, MAX_MTU, 1, 0);
 
     // get client hello msg
     HandshakeType msg_type = CLIENT_HELLO;
@@ -425,7 +426,7 @@ void tls_socket::handshake()
 
     // receive client key exchange msg
     std::string recv_buffer2 = "";
-    p_socket->recv(recv_buffer2, 1500, 1, 0);
+    p_socket->recv(recv_buffer2, MAX_MTU, 1, 0);
 
 
     // reciving client key exchane, change cipher , client finished
@@ -476,7 +477,7 @@ void tls_socket::handshake()
     handshake_msg.insert(handshake_msg.end(), server_done.begin() + RECORD_LAYER_DEFAULT_LENGTH, server_done.end());
 
     std::string client_ket_exchange = key_exchange.serialize_handshake_protocol_data(CLIENT_KEY_EXCHANGE);
-    handshake_msg.insert(handshake_msg.end(), client_ket_exchange.begin() + 5, client_ket_exchange.end());
+    handshake_msg.insert(handshake_msg.end(), client_ket_exchange.begin() + RECORD_LAYER_DEFAULT_LENGTH, client_ket_exchange.end());
 
 
     // verify the client verify data
@@ -554,7 +555,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
 
     // recive server hello, cartificate, server hello done
     std::string recv_buffer;
-    p_socket->recv(recv_buffer, 1500, 1, 0);
+    p_socket->recv(recv_buffer, MAX_MTU, 1, 0);
 
 
     msg_type = SERVER_HELLO;
@@ -566,7 +567,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     msg_type = CERTIFICATE;
     TLSHandshakeProtocol recive_cartificate;
     recive_cartificate.handshake.configureHandshakeBody(msg_type);
-    std::string frr (recv_buffer.begin() +0x51 + 5, recv_buffer.end());
+    std::string frr (recv_buffer.begin() + server_hello.TLS_record_layer.length + RECORD_LAYER_DEFAULT_LENGTH, recv_buffer.end());
     recive_cartificate.deserialize_handshake_protocol_data(frr, msg_type);
     extract_public_key(recive_cartificate.handshake.body.certificate.certificate_list[0].data(), recive_cartificate.handshake.body.certificate.certificate_list[0].size());
 
@@ -669,7 +670,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     p_socket->send(key_exchange_buffer, key_exchange_buffer.size(), 0, 0);
 
     recv_buffer.clear();
-    p_socket->recv(recv_buffer, 1500, 1, 0); // tls recive
+    p_socket->recv(recv_buffer, MAX_MTU, 1, 0); // tls recive
 
     // verify the server change cipher spec msg
     tls_header* recv_header2 = (tls_header*)recv_buffer.c_str();
@@ -719,7 +720,7 @@ void tls_socket::send(std::string uio, size_t uio_resid, size_t chunk, int flags
     header.length = htons(encrypted_msg.size());
 
 
-    char buff[5];
+    char buff[RECORD_LAYER_DEFAULT_LENGTH];
     memcpy(buff, &header, sizeof(tls_header));
     encrypted_msg.insert(encrypted_msg.begin(), buff, buff + sizeof(tls_header));
 
