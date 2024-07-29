@@ -1,10 +1,9 @@
 #include "HTTP.hpp"
 
-
 namespace netlab {
 
 /**********************************************************************************************/
-/*											Utils								              */
+/*								      Utility Functions								          */
 /**********************************************************************************************/
 
 	std::string get_current_time() {
@@ -211,10 +210,15 @@ namespace netlab {
         }
     }
 	void HTTPRequest::insert_header(const std::string& key, const std::string& val) {
+		if (has_header(key)) {
+			set_header_value(key, val);
+			return;
+		}
 		headers.emplace(key, val);
 		headers_order.push_back(key);
 	}
-	void HTTPRequest::parse_headers(const std::vector<std::string>& lines) {
+	int HTTPRequest::parse_headers(const std::vector<std::string>& lines) {
+		int res = RESULT_NOT_DEFINED;
 		for (size_t i = 0; i < lines.size(); ++i) {
 			size_t pos = lines[i].find(':');
 			if (pos != std::string::npos) {
@@ -224,18 +228,20 @@ namespace netlab {
 					field_name == "Content-Type" || field_name == "Content-Length" || field_name == "Accept-Encoding" ||
 					field_name == "Connection") {
 					std::string field_value = lines[i].substr(pos + 2); // Skip ": " (colon and space)
-					if (has_header(field_name)) {
-						set_header_value(field_name, field_value);
-					}
-					else {
-						insert_header(field_name, field_value);
-					}
+					insert_header(field_name, field_value);
+					res = RESULT_SUCCESS;
 				}
 				else {
-					std::cout << "Unsupported Header: " << field_name << std::endl;
+					std::cerr << "Unsupported Header: " << field_name << std::endl;
+					return RESULT_FAILURE;
 				}
 			}
 		}
+		if (res != RESULT_SUCCESS) {
+			std::cerr << "Failed to parse headers." << std::endl;
+			res = RESULT_FAILURE;
+		}
+		return res;
 	}
 
 	// QueryParams
@@ -252,6 +258,9 @@ namespace netlab {
 		return std::string();
 	}
 	void HTTPRequest::insert_param(const std::string& key, const std::string& val) {
+		if (has_param(key)) {
+			return;
+		}
 		query_params.emplace(key, val);
 	}
 	void HTTPRequest::parse_query_params(const std::string& query) {
@@ -261,9 +270,6 @@ namespace netlab {
 			size_t pos = pair.find('=');
 			if (pos != std::string::npos) {
 				std::string key = pair.substr(0, pos);
-				if (has_param(key)) {
-					continue;
-				}
 				std::string value = pair.substr(pos + 1);
 				insert_param(key, value);
 			}
@@ -289,7 +295,8 @@ namespace netlab {
 	}
 
 	// Request
-	void HTTPRequest::parse_request(const std::string& request_string) {
+	int HTTPRequest::parse_request(const std::string& request_string) {
+		int res = RESULT_NOT_DEFINED;
 		// Parse Method
 		size_t method_end = request_string.find(' ');
 		if (method_end != std::string::npos) {
@@ -312,8 +319,11 @@ namespace netlab {
 				}
 				// Parse Headers
 				std::vector<std::string> header_lines = split_lines(request_string.substr(version_end + R_N_OFFSET));
-				parse_headers(header_lines); // Header Name, Header Value
-
+				res = parse_headers(header_lines); // Header Name, Header Value
+				if (res != RESULT_SUCCESS) {
+					res = RESULT_FAILURE;
+					return res; 
+				}
 				// In the case of POST, parse the body
 				if (request_method == "POST") {
 					size_t content_length = get_header_value_u64("Content-Length");
@@ -329,6 +339,11 @@ namespace netlab {
 				}
 			}
 		}
+		if (res != RESULT_SUCCESS) {
+			std::cerr << "Failed to parse the request." << std::endl;
+			res = RESULT_FAILURE;
+		}
+		return res;
 	}
 	std::string HTTPRequest::to_string() {
 		std::string request_string = "";
@@ -355,6 +370,10 @@ namespace netlab {
 	HTTPResponse::HTTPResponse() : version("HTTP/1.1"), status_code(StatusCode::OK), 
 		reason(status_message(status_code)), headers(default_response_headers), 
 		headers_order(default_response_headers_order), body("") {}
+
+	HTTPResponse::HTTPResponse(const std::string& response_string) {
+		parse_response(response_string);
+	}
 
 	// HTTPHeaders
 	bool HTTPResponse::has_header(const std::string& key) {
@@ -385,10 +404,15 @@ namespace netlab {
 		}
 	}
 	void HTTPResponse::insert_header(const std::string& key, const std::string& val) {
+		if (has_header(key)) {
+			set_header_value(key, val);
+			return;
+		}
 		headers.emplace(key, val);
 		headers_order.push_back(key);
 	}
-	void HTTPResponse::parse_headers(const std::vector<std::string>& lines) {
+	int HTTPResponse::parse_headers(const std::vector<std::string>& lines) {
+		int res = RESULT_NOT_DEFINED;
 		for (size_t i = 0; i < lines.size(); ++i) {
 			size_t pos = lines[i].find(':');
 			if (pos != std::string::npos) {
@@ -397,32 +421,43 @@ namespace netlab {
 				if (field_name == "Date" || field_name == "Server" || field_name == "Content-Type" ||
 					field_name == "Content-Length" || field_name == "Connection" || field_name == "Location") {
 					std::string field_value = lines[i].substr(pos + 2); // Skip ": " (colon and space)
-					if (has_header(field_name)) {
-						set_header_value(field_name, field_value);
-					}
-					else {
-						insert_header(field_name, field_value);
-					}
+					insert_header(field_name, field_value);
+					res = RESULT_SUCCESS;
 				}
 				else {
 					std::cout << "Unsupported Header: " << field_name << std::endl;
+					res = RESULT_FAILURE;
+					return res;
 				}
 			}
 		}
+		if (res != RESULT_SUCCESS) {
+			std::cerr << "Failed to parse headers." << std::endl;
+			res = RESULT_FAILURE;
+		}
+		return res;
 	}
-
-	void HTTPResponse::update_connection_state(HTTPRequest& http_request) {
+	int HTTPResponse::update_connection_state(HTTPRequest& http_request) {
+		int res = RESULT_NOT_DEFINED;
 		std::string connection_state = http_request.get_header_value("Connection", 0);
 		if (connection_state == "close") {
 			 HTTPResponse::set_header_value("Connection", "close");
+			 res = RESULT_SUCCESS;
+		}
+		else if (connection_state == "keep-alive") {
+			 HTTPResponse::set_header_value("Connection", "keep-alive");
+			 res = RESULT_SUCCESS;
 		}
 		else {
-			 HTTPResponse::set_header_value("Connection", "keep-alive");
+			std::cerr << "Unsupported Connection State: " << connection_state << std::endl;
+			res = RESULT_FAILURE;
 		}
+		return res;
 	}
 
 	// Response
-	void HTTPResponse::parse_response(const std::string& response_string) {
+	int HTTPResponse::parse_response(const std::string& response_string) {
+		int res = RESULT_NOT_DEFINED;
 		// Parse HTTP Version
 		size_t version_end = response_string.find(' ');
 		if (version_end != std::string::npos) {
@@ -434,14 +469,22 @@ namespace netlab {
 				reason = response_string.substr(status_code_end + 1, response_string.find('\r') - status_code_end - 1); // Reason
 				// Parse Headers
 				std::vector<std::string> header_lines = split_lines(response_string.substr(response_string.find("\r\n") + R_N_OFFSET));
-				parse_headers(header_lines); // Header Name, Header Value
+				res = parse_headers(header_lines); // Header Name, Header Value
+				if (res != RESULT_SUCCESS) {
+					res = RESULT_FAILURE;
+					return res;
+				}
 				// Parse Body
 				size_t body_start = response_string.find("\r\n\r\n") + 2 * R_N_OFFSET;
 				body = response_string.substr(body_start);
 			}
 		}
+		if (res != RESULT_SUCCESS) {
+			std::cerr << "Failed to parse the response." << std::endl;
+			res = RESULT_FAILURE;
+		}
+		return res;
 	}
-
 	std::string HTTPResponse::to_string() {
 		std::string response_string = "";
 		response_string += version + " " + std::to_string(status_code) + " " + reason + "\r\n";

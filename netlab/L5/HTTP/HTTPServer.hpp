@@ -9,19 +9,26 @@ namespace netlab {
 	public:
 		HTTPProtocol protocol;
 		uint16_t port;
-		std::unique_ptr<netlab::L5_socket> socket;
+		L5_socket* socket;
+		L5_socket* client_socket;
 		std::vector<Resource> resources;
 		bool connection_closed;
 
 		// Constructor
-		HTTPServer(class inet_os &inet_server, HTTPProtocol protocol);
+		HTTPServer() = default;
+
+		// Destructor
+		~HTTPServer();
+
+		// HTTP Protocol
+		void set_HTTP_procotol(HTTPProtocol protocol, inet_os& inet_server);
 
 		// Server Methods
 		bool has_resource(std::string& request_path);
 		int create_resource(std::string& request_path, std::string& data);
 		int remove_resource(std::string& request_path);
 
-		HTTPResponse handle_request(HTTPRequest request);
-		void send_response(HTTPResponse response);
+		int handle_request(HTTPRequest& request);
+		void send_response(HTTPResponse& response);
 	};
 }

@@ -205,70 +205,103 @@ void http_playground_client_server() {
 	clientService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
 	clientService.sin_port = htons(8888);
 
-	netlab::HTTPServer http_server(inet_server, HTTP);
-	netlab::HTTPClient http_client(inet_client, HTTP);
+	//netlab::HTTPServer http_server(inet_server, HTTP);
+	//netlab::HTTPClient http_client(inet_client, HTTP);
 
-	http_server.socket->bind((SOCKADDR*)&serverService, sizeof(serverService));
-	http_server.socket->listen(5);
+	//http_server.socket->bind((SOCKADDR*)&serverService, sizeof(serverService));
+	//http_server.socket->listen(5);
 
-	http_client.socket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+	//http_client.socket->connect((SOCKADDR*)&clientService, sizeof(clientService));
 
-	netlab::L5_socket* AcceptSocket = nullptr;
-	AcceptSocket = http_server.socket->accept(nullptr, 0);
+	//http_server.client_socket = http_server.socket->accept(nullptr, 0);
 
-	//std::string request = "POST /search?query=example&sort=asc HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nContent-Length: 0\r\n\r\nparam1=value1&param2=value2&query=anotherExample&sort=desc&param3=value3&param4=value4";
-	std::string request = "GET /response.html?query=example&sort=asc&page=2 HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n";
-	HTTPRequest HTTP_request;
-	HTTP_request.parse_request(request);
+	//std::string post_request = "POST /search?query=example&sort=asc HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nContent-Length: 0\r\n\r\nparam1=value1&param2=value2&query=anotherExample&sort=desc&param3=value3&param4=value4";
+	//std::string get_request = "GET /msg.txt?query=example&sort=asc&page=2 HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n";
 
-	// For the Content Length field - Lookup the header using the key and update it's value with the actual size of the body
-	HTTP_request.set_header_value("Content-Length", std::to_string(HTTP_request.body.size()));
+	//std:: string get_request_uri = "/msg.txt?query=example&sort=asc&page=2";
+	//std::string get_request_version = "HTTP/1.1";
+	//HTTPHeaders get_headers = {
+	//	{"Host", "www.google.com"},
+	//	{"Connection", "close"},
+	//	{"Content-Length", "0"}
+	//};
+	//QueryParams get_params = {
+	//	{"param1", "value1"},
+	//	{"param2", "value2"},
+	//	{"query", "anotherExample"},
+	//	{"sort", "desc"},
+	//	{"param3", "value3"},
+	//	{"param4", "value4"}
+	//};
 
-	std::string requestSendBuff = HTTP_request.to_string();
-	
-	size_t request_size = requestSendBuff.size();
+	//std::string post_request_uri = "/search?query=example&sort=asc";
+	//std::string post_request_version = "HTTP/1.1";
+	//std::string post_body = "Hello";
+	//HTTPHeaders post_headers = {
+	//	{"Host", "www.google.com"},
+	//	{"Connection", "close"},
+	//	{"Content-Length", std::to_string(post_body.size())}
+	//};
+	//QueryParams post_params = {
+	//	{"param1", "value1"},
+	//	{"param2", "value2"},
+	//	{"query", "anotherExample"},
+	//	{"sort", "desc"},
+	//	{"param3", "value3"},
+	//	{"param4", "value4"}
+	//};
+	//QueryParams post_body_params = {
+	//	{"param1", "value1"},
+	//	{"param2", "value2"},
+	//	{"query", "anotherExample"},
+	//	{"sort", "desc"},
+	//	{"param3", "value3"},
+	//	{"param4", "value4"}
+	//};
 
-    L5_socket_impl* connectSocket = reinterpret_cast<L5_socket_impl*>(http_client.socket);
-    std::thread sending_thread([connectSocket, requestSendBuff, request_size]() {
-        connectSocket->send(requestSendBuff, request_size, 1024, 0);
-    });
-	sending_thread.join();
+	//int getRequestResult = http_client.get(get_request_uri, get_request_version, get_headers, get_params);
+	////int postRequestResult = http_client.post(post_request_uri, post_request_version, post_headers, post_params, post_body, post_body_params);
 
-	std::string buffer;
-	int bytes_received = 0;
-	std::string received_request;
+	//std::string buffer;
+	//int bytes_received = 0;
+	//std::string received_request;
+	//// GET 131
+	//// POST 129
+	//bytes_received = http_server.client_socket->recv(received_request, 131, 0, 0);
 
-	bytes_received = AcceptSocket->recv(received_request, request_size, 0, 0);
+	//// Create the request object
+	//HTTPRequest HTTP_request;
+	//HTTP_request.parse_request(received_request);
 
-	// Create the request object
-	HTTPRequest HTTP_request2;
-	HTTP_request2.parse_request(received_request);
+	//// Compare HTTP_request and HTTP_request2
+	//if (HTTP_request.to_string() != received_request) {
+	//	std::cout << "Error: HTTP_request and HTTP_request2 are not equal" << std::endl;
+	//}
 
-	// Compare HTTP_request and HTTP_request2
-	if (HTTP_request2.to_string() != received_request) {
-		std::cout << "Error: HTTP_request and HTTP_request2 are not equal" << std::endl;
-	}
+	//int postResponseResult = http_server.handle_request(HTTP_request);
 
-	HTTPResponse HTTP_response = http_server.handle_request(HTTP_request2);
+	//std::this_thread::sleep_for(std::chrono::seconds(4));
 
-	std::string responseSendBuff = HTTP_response.to_string();
-	size_t responseSize = responseSendBuff.size();
+	//std::string buffer2;
+	//
+	//// GET 151
+	//// POST 141
+	//http_client.socket->recv(buffer2, 151, 0, 0);
 
-	// Send the response from 10.0.0.10 to 10.0.0.15
-	AcceptSocket->send(responseSendBuff, responseSize, 1024, 0);
+	//HTTPResponse HTTP_response2(buffer2);
 
-	std::this_thread::sleep_for(std::chrono::seconds(4));
+	//http_client.handle_response(HTTP_response2, HTTP_request.request_path);
 
-	std::ofstream file("response.html");
-	if (file.is_open()) {
-		file << received_request;
-		file.close();
-	}
+	//if (HTTP_request.get_header_value("Connection", 0) == "close") {
+	//	http_client.socket->shutdown(SD_SEND);
+	//	http_server.client_socket->shutdown(SD_SEND);
+	//}
 
-	if (HTTP_response.get_header_value("Connection", 0) == "close") {
-		http_client.socket->shutdown(SD_SEND);
-		http_server.socket->shutdown(SD_RECEIVE);
-	}
+	//std::ofstream file("response.html");
+	//if (file.is_open()) {
+	//	file << received_request;
+	//	file.close();
+	//}
 }
 
 

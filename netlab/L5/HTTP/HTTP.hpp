@@ -26,7 +26,8 @@ namespace netlab {
 #define RESULT_SUCCESS 0
 #define RESULT_FAILURE 1
 #define R_N_OFFSET 2
-#define SERVER_FILESYSTEM "L5/HTTP/Server_filesystem"
+#define SERVER_FILESYSTEM "C:/Users/gabri/OneDrive/Desktop/NetlabTAUProject/netlab/L5/HTTP/Server_filesystem"
+#define CLIENT_HARD_DRIVE "C:/Users/gabri/OneDrive/Desktop/NetlabTAUProject/netlab/L5/HTTP/Client_HD"
 
 /************************************************************************/
 /*								aliases                                 */
@@ -177,11 +178,18 @@ namespace netlab {
 	};
 
 /************************************************************************/
+/*                        Utility Functions                             */
+/************************************************************************/
+
+	std::string get_current_time();
+	std::string get_content_type(std::string& resource_path);
+	std::string get_file_contents(const std::string& resource_path);
+
+/************************************************************************/
 /*                             structs                                  */
 /************************************************************************/
 
 	struct Resource {
-		std::string uri;
 		std::string file_name;
 		std::string content;
 		std::string content_type;
@@ -190,7 +198,8 @@ namespace netlab {
 /************************************************************************/
 /*                             classes                                  */
 /************************************************************************/
-	
+
+/************************************************************************/
 /***************************** Request **********************************/
 	class HTTPRequest {
 	public:
@@ -214,7 +223,7 @@ namespace netlab {
 		uint64_t get_header_value_u64(const std::string& key, size_t id);
 		void set_header_value(const std::string& key, const std::string& val);
 		void insert_header(const std::string& key, const std::string& val);
-		void parse_headers(const std::vector<std::string>& lines);
+		int parse_headers(const std::vector<std::string>& lines);
 		
 		// QueryParams
 		bool has_param(const std::string& key);
@@ -227,9 +236,11 @@ namespace netlab {
 		void parse_body_query_params(std::string& unfiltered_body);
 
 		// Request
-		void parse_request(const std::string& request_string);
+		int parse_request(const std::string& request_string);
 		std::string to_string();
 	};
+
+/*************************************************************************/
 /***************************** Response **********************************/
 	class HTTPResponse {
 	public:
@@ -239,10 +250,11 @@ namespace netlab {
 		HTTPHeaders headers; // Header Name, Header Value
 		std::vector<std::string> headers_order; // Order of Headers
 		std::string body; // Response Body
-		std::string location; // Redirect Location
+		//std::string location; // Redirect Location
 
 		// Constructor
 		HTTPResponse();
+		HTTPResponse::HTTPResponse(const std::string& response_string);
 
 		// Status
 		static std::string status_message(StatusCode status_code);
@@ -253,8 +265,8 @@ namespace netlab {
 		uint64_t get_header_value_u64(const std::string& key, size_t id);
 		void set_header_value(const std::string& key, const std::string& val);
 		void insert_header(const std::string& key, const std::string& val);
-		void parse_headers(const std::vector<std::string>& lines);
-		void update_connection_state(HTTPRequest& http_request);
+		int parse_headers(const std::vector<std::string>& lines);
+		int update_connection_state(HTTPRequest& http_request);
 	
 		/*void set_redirect(const std::string& url, int status = StatusCode::Found);
 		void set_content(const char* s, size_t n, const std::string& content_type);
@@ -262,17 +274,7 @@ namespace netlab {
 		void set_content(std::string&& s, const std::string& content_type);*/
 
 		// Response
-		void parse_response(const std::string& response_string);
+		int parse_response(const std::string& response_string);
 		std::string to_string();
 	};
-
-
-/************************************************************************/
-/*                               Utils                                  */
-/************************************************************************/
-
-	std::string get_current_time();
-	std::string get_content_type(std::string& resource_path);
-	std::string get_file_contents(const std::string& resource_path);
-
 } // namespace netlab
