@@ -6,29 +6,20 @@
 namespace netlab {
 
 	class HTTPServer {
-	public:
-		HTTPProtocol protocol;
-		uint16_t port;
-		L5_socket* socket;
-		L5_socket* client_socket;
-		std::vector<Resource> resources;
-		bool connection_closed;
-
+	protected:
 		// Constructor
 		HTTPServer() = default;
-
+	public:
 		// Destructor
-		~HTTPServer();
+		~HTTPServer() = default;
 
 		// HTTP Protocol
-		void set_HTTP_procotol(HTTPProtocol protocol, inet_os& inet_server);
+		virtual void set_HTTP_procotol(HTTPProtocol protocol, inet_os& inet_server) = 0;
 
 		// Server Methods
-		bool has_resource(std::string& request_path);
-		int create_resource(std::string& request_path, std::string& data);
-		int remove_resource(std::string& request_path);
+		virtual int handle_request(HTTPRequest& request) = 0;
 
-		int handle_request(HTTPRequest& request);
-		void send_response(HTTPResponse& response);
+		L5_socket* socket;
+		L5_socket* client_socket;
 	};
 }

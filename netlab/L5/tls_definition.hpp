@@ -766,7 +766,7 @@ namespace netlab {
 		}
 
 		void destroy(HandshakeType msg_type) {
-			switch (msg_type) {
+			/*switch (msg_type) {
 			case HELLO_REQUEST:
 				break;
 			case CLIENT_HELLO:
@@ -797,7 +797,7 @@ namespace netlab {
 				break;
 			default: 
 				break;
-			}
+			}*/
 		}
 
 		Body() { }

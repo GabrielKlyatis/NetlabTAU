@@ -237,8 +237,8 @@
     <ClCompile Include="L4\tcp_reno.cpp" />
     <ClCompile Include="L4\tcp_tahoe.cpp" />
     <ClCompile Include="L5\HTTP\HTTP.cpp" />
-    <ClCompile Include="L5\HTTP\HTTPClient.cpp" />
-    <ClCompile Include="L5\HTTP\HTTPServer.cpp" />
+    <ClCompile Include="L5\HTTP\HTTPClient_Impl.cpp" />
+    <ClCompile Include="L5\HTTP\HTTPServer_Impl.cpp" />
     <ClCompile Include="L5\L5_Sol.cpp" />
     <ClCompile Include="L5\tls_socket.cpp" />
     <ClCompile Include="main.cpp" />
@@ -272,7 +272,9 @@
     <ClInclude Include="L4\tcp_tahoe.h" />
     <ClInclude Include="L5\HTTP\HTTP.hpp" />
     <ClInclude Include="L5\HTTP\HTTPClient.hpp" />
+    <ClInclude Include="L5\HTTP\HTTPClient_Impl.hpp" />
     <ClInclude Include="L5\HTTP\HTTPServer.hpp" />
+    <ClInclude Include="L5\HTTP\HTTPServer_Impl.hpp" />
     <ClInclude Include="L5\L5.h" />
     <ClInclude Include="infra\NetworkInterface.h" />
     <ClInclude Include="L1\NIC.h" />

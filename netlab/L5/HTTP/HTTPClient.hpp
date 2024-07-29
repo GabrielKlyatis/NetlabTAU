@@ -3,32 +3,25 @@
 #include "../../infra/inet_os.hpp"
 #include "HTTP.hpp"
 
-
 namespace netlab {
 
 	class HTTPClient {
-	public:
-		// Client Members
-		HTTPProtocol protocol;
-		uint16_t port;
-		L5_socket* socket;
-		std::vector<Resource> resources;
-		bool connection_closed;
-		
+	protected:
 		// Constructor
 		HTTPClient() = default;
-
+	public:
 		// Destructor
-		~HTTPClient();
-
+		~HTTPClient() = default;
 		// HTTP Protocol
-		void set_HTTP_procotol(HTTPProtocol protocol, inet_os& inet_client);
+		virtual void set_HTTP_procotol(HTTPProtocol protocol, inet_os& inet_client) = 0;
 
 		// Client Methods
-		int get(std::string& uri, std::string& request_version, HTTPHeaders& headers, QueryParams& params) const;
-		int post(std::string& uri, std::string& request_version, HTTPHeaders& headers, 
-			QueryParams& params, std::string& body, QueryParams& body_params) const;
+		virtual int get(std::string& uri, std::string& request_version, HTTPHeaders& headers, QueryParams& params) = 0;
+		virtual int post(std::string& uri, std::string& request_version, HTTPHeaders& headers,
+			QueryParams& params, std::string& body, QueryParams& body_params) = 0;
 
-		int handle_response(HTTPResponse& HTTP_response, std::string& requested_resource);
+		virtual int handle_response(HTTPResponse& HTTP_response, std::string& requested_resource) = 0;
+
+		L5_socket* socket;
 	};
 }

@@ -2522,7 +2522,7 @@ void L4_TCP_impl::pr_input(const struct pr_input_args &args)
 	ti->ti_win() = ntohs(ti->ti_win());
 	ti->ti_urp() = ntohs(ti->ti_urp());
 
-#define NETLAB_L4_TCP_DEBUG
+
 #ifdef NETLAB_L4_TCP_DEBUG
 		print(ti->ti_t, htons(checksum));
 #endif
