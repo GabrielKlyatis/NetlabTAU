@@ -1,0 +1,38 @@
+#pragma once
+
+#include "HTTPServer.hpp"
+
+namespace netlab {
+
+	class HTTPServer_Impl : HTTPServer {
+	public:
+
+		// Constructor
+		HTTPServer_Impl() = default;
+
+		// Destructor
+		~HTTPServer_Impl();
+
+		// HTTP Protocol
+		void set_HTTP_procotol(HTTPProtocol protocol, inet_os& inet_server) override;
+
+		// Establish connection
+		//void accept_connection();
+
+		// Server Methods
+		bool has_resource(std::string& request_path);
+		int create_resource(std::string& request_path, std::string& data);
+		int remove_resource(std::string& request_path);
+
+		int handle_request(HTTPRequest& request) override;
+		void send_response(HTTPResponse& response);
+		
+		// Server Members
+		HTTPProtocol protocol;
+		uint16_t port;
+		L5_socket* socket;
+		L5_socket* client_socket;
+		std::vector<Resource> resources;
+		bool connection_closed;
+	};
+}
