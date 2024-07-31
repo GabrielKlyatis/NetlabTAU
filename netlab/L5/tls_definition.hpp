@@ -7,6 +7,7 @@
 #include <array>
 #include <vector>
 #include <string>
+#include <memory>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -715,92 +716,57 @@ namespace netlab {
 		std::vector<uint8_t> verify_data;
 	};
 
-	union Body { 				   
+	union Body {
 		HelloRequest helloRequest;
-		ClientHello clientHello;
-		ServerHello serverHello;
-		Certificate certificate;
-		ServerKeyExchange serverKeyExchange;
-		CertificateRequest certificateRequest;
+		std::unique_ptr<ClientHello> clientHello;
+		std::unique_ptr<ServerHello> serverHello;
+		std::unique_ptr<Certificate> certificate;
+		std::unique_ptr<ServerKeyExchange> serverKeyExchange;
+		std::unique_ptr<CertificateRequest> certificateRequest;
 		ServerHelloDone serverHelloDone;
-		CertificateVerify certificateVerify;
-		ClientKeyExchange clientKeyExchange;
-		Finished finished;
+		std::unique_ptr<CertificateVerify> certificateVerify;
+		std::unique_ptr<ClientKeyExchange> clientKeyExchange;
+		std::unique_ptr<Finished> finished;
 
 		void createBody(HandshakeType msg_type) {
-
 			switch (msg_type) {
 			case HELLO_REQUEST:
-				helloRequest = { };
+				helloRequest = {};
 				break;
 			case CLIENT_HELLO:
-				new (&clientHello) ClientHello();
-				clientHello.setClientHello();
+				clientHello = std::make_unique<ClientHello>();
+				clientHello->setClientHello();
 				break;
 			case SERVER_HELLO:
-				new (&serverHello) ServerHello();
-				serverHello.setServerHello();
+				serverHello = std::make_unique<ServerHello>();
+				serverHello->setServerHello();
 				break;
 			case CERTIFICATE:
-				new (&certificate) Certificate();
+				certificate = std::make_unique<Certificate>();
 				break;
 			case SERVER_KEY_EXCHANGE:
-				new (&serverKeyExchange) ServerKeyExchange();
+				serverKeyExchange = std::make_unique<ServerKeyExchange>();
 				break;
 			case CERTIFICATE_REQUEST:
-				new (&certificateRequest) CertificateRequest();
+				certificateRequest = std::make_unique<CertificateRequest>();
 				break;
 			case SERVER_HELLO_DONE:
-				serverHelloDone = { };
+				serverHelloDone = {};
 				break;
 			case CERTIFICATE_VERIFY:
-				new (&certificateVerify) CertificateVerify();
+				certificateVerify = std::make_unique<CertificateVerify>();
 				break;
 			case CLIENT_KEY_EXCHANGE:
-				new (&clientKeyExchange) ClientKeyExchange();
-				clientKeyExchange.setClientKeyExchange();
+				clientKeyExchange = std::make_unique<ClientKeyExchange>();
+				clientKeyExchange->setClientKeyExchange();
 				break;
 			case FINISHED:
-				new (&finished) Finished(); break;
+				finished = std::make_unique<Finished>();
+				break;
 			}
 		}
 
-		void destroy(HandshakeType msg_type) {
-			/*switch (msg_type) {
-			case HELLO_REQUEST:
-				break;
-			case CLIENT_HELLO:
-				delete &clientHello;
-				break;
-			case SERVER_HELLO:
-				delete &serverHello;
-				break;
-			case CERTIFICATE:
-				delete &certificate;
-				break;
-			case SERVER_KEY_EXCHANGE:
-				delete &serverKeyExchange;
-				break;
-			case CERTIFICATE_REQUEST:
-				delete &certificateRequest;
-				break;
-			case SERVER_HELLO_DONE:
-				break;
-			case CERTIFICATE_VERIFY:
-				delete &certificateVerify;
-				break;
-			case CLIENT_KEY_EXCHANGE:
-				delete &clientKeyExchange;
-				break;
-			case FINISHED:
-				delete &finished;
-				break;
-			default: 
-				break;
-			}*/
-		}
-
-		Body() { }
+		Body() {}
 		~Body() { }
 	};
 
@@ -812,10 +778,6 @@ namespace netlab {
 		Handshake(HandshakeType msg_type, uint32_t length)
 			: msg_type(msg_type), length(length) {
 			body.createBody(msg_type);
-		}
-
-		~Handshake() {
-			body.destroy(msg_type); // Pass msg_type to Body destructor
 		}
 
 		void configureHandshakeBody(HandshakeType passed_msg_type) {
@@ -831,13 +793,13 @@ namespace netlab {
 				this->length = 0;
 				break;
 			case CLIENT_HELLO:
-				this->length = body.clientHello.getClientHelloSize();
+				this->length = body.clientHello->getClientHelloSize();
 				break;
 			case SERVER_HELLO:
-				this->length = body.serverHello.getServerHelloSize();
+				this->length = body.serverHello->getServerHelloSize();
 				break;
 			case CERTIFICATE:
-				this->length = this->body.certificate.certificate_list.data()->size() + CERTIFICATE_HANDSHAKE_OFFSET_LENGTH * 2;
+				this->length = this->body.certificate->certificate_list.data()->size() + CERTIFICATE_HANDSHAKE_OFFSET_LENGTH * 2;
 				break;
 			case SERVER_KEY_EXCHANGE:
 				break;
@@ -849,7 +811,7 @@ namespace netlab {
 			case CERTIFICATE_VERIFY:
 				break;
 			case CLIENT_KEY_EXCHANGE:
-				this->length = this->body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size();
+				this->length = this->body.clientKeyExchange->client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.size();
 				this->length += sizeof(uint16_t);
 				break;
 			case FINISHED:

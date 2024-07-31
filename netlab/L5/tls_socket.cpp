@@ -404,7 +404,7 @@ void tls_socket::handshake()
     auto certificate = get_certificate();
     TLSHandshakeProtocol server_certificate;
     server_certificate.handshake.configureHandshakeBody(msg_type);
-    server_certificate.handshake.body.certificate.addCertificate(certificate);
+    server_certificate.handshake.body.certificate->addCertificate(certificate);
     server_certificate.updateHandshakeProtocol(msg_type);
     std::string certificate_msg = server_certificate.serialize_handshake_protocol_data(msg_type);
     serialized_string.append(certificate_msg);
@@ -434,11 +434,11 @@ void tls_socket::handshake()
   
     // Decrypt the premaster secret
     uint8_t decrypted_premaster_secret[MASTER_SECRET_SIZE];
-    rsa_decrypt(decrypted_premaster_secret, key_exchange.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.data());
+    rsa_decrypt(decrypted_premaster_secret, key_exchange.handshake.body.clientKeyExchange->client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.data());
     
     // Derive master secret
-    std::string client_rand = client_hello.handshake.body.clientHello.random.get_random();
-    std::string server_rand = server_hello.handshake.body.clientHello.random.get_random();
+    std::string client_rand = client_hello.handshake.body.clientHello->random.get_random();
+    std::string server_rand = server_hello.handshake.body.clientHello->random.get_random();
     std::vector<uint8_t> pre_master_vec(decrypted_premaster_secret, decrypted_premaster_secret + MASTER_SECRET_SIZE);
     std::vector<uint8_t> master_secret_vec = derrive_master_secret(pre_master_vec, client_rand, server_rand);
     
@@ -562,7 +562,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     recive_cartificate.handshake.configureHandshakeBody(msg_type);
     std::string frr (recv_buffer.begin() + server_hello.TLS_record_layer.length + RECORD_LAYER_DEFAULT_LENGTH, recv_buffer.end());
     recive_cartificate.deserialize_handshake_protocol_data(frr, msg_type);
-    extract_public_key(recive_cartificate.handshake.body.certificate.certificate_list[0].data(), recive_cartificate.handshake.body.certificate.certificate_list[0].size());
+    extract_public_key(recive_cartificate.handshake.body.certificate->certificate_list[0].data(), recive_cartificate.handshake.body.certificate->certificate_list[0].size());
 
 
     msg_type = SERVER_HELLO_DONE;
@@ -575,19 +575,19 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     msg_type = CLIENT_KEY_EXCHANGE;
     TLSHandshakeProtocol client_key_exchange;
     client_key_exchange.handshake.configureHandshakeBody(msg_type);
-    client_key_exchange.handshake.body.clientKeyExchange.key_exchange_algorithm = KEY_EXCHANGE_ALGORITHM_RSA;
-    client_key_exchange.handshake.body.clientKeyExchange.createClientKeyExchange();
-    client_key_exchange.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major = 0x03;
-    client_key_exchange.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor = 0x03;
-    client_key_exchange.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random = generate_random_bytes<PRE_MASTER_SECRET_RND_SIZE>();
+    client_key_exchange.handshake.body.clientKeyExchange->key_exchange_algorithm = KEY_EXCHANGE_ALGORITHM_RSA;
+    client_key_exchange.handshake.body.clientKeyExchange->createClientKeyExchange();
+    client_key_exchange.handshake.body.clientKeyExchange->client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.major = 0x03;
+    client_key_exchange.handshake.body.clientKeyExchange->client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.client_version.minor = 0x03;
+    client_key_exchange.handshake.body.clientKeyExchange->client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random = generate_random_bytes<PRE_MASTER_SECRET_RND_SIZE>();
 
     // TODO: check why can use .pre_master_secret
     unsigned char pre[MASTER_SECRET_SIZE];
     unsigned char encrypt_pre[PRE_MASTER_SECRET_ENCRYPTED_SIZE];
 
-    memcpy(pre, &client_key_exchange.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret, sizeof(PreMasterSecret));
+    memcpy(pre, &client_key_exchange.handshake.body.clientKeyExchange->client_exchange_keys.encryptedPreMasterSecret.pre_master_secret, sizeof(PreMasterSecret));
     RSA_public_encrypt(48, pre, encrypt_pre, p_rsa, RSA_PKCS1_PADDING);
-    std::copy(std::begin(encrypt_pre), std::end(encrypt_pre), client_key_exchange.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.begin());
+    std::copy(std::begin(encrypt_pre), std::end(encrypt_pre), client_key_exchange.handshake.body.clientKeyExchange->client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.begin());
  
     client_key_exchange.updateHandshakeProtocol(msg_type);
     std::string client_key_msg = client_key_exchange.serialize_handshake_protocol_data(msg_type);
@@ -599,8 +599,8 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
 
 
     // derive master secret
-    std::string client_rand = client_hello.handshake.body.clientHello.random.get_random();
-    std::string server_rand = server_hello.handshake.body.clientHello.random.get_random();
+    std::string client_rand = client_hello.handshake.body.clientHello->random.get_random();
+    std::string server_rand = server_hello.handshake.body.clientHello->random.get_random();
     std::vector<uint8_t> pre_master_vec(pre, pre + MASTER_SECRET_SIZE);
     std::vector<uint8_t> master_secret_vec = derrive_master_secret(pre_master_vec, client_rand, server_rand);
 
