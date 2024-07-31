@@ -13,10 +13,6 @@
 #include "L4/tcp_reno.h"
 #include "L4/tcp_tahoe.h"
 #include "L5/tls_socket.h"
-#include "L5/HTTP/HTTP.hpp"
-#include "L5/HTTP/HTTPServer.hpp"
-#include "L5/HTTP/HTTPClient.hpp"
-
 #include <openssl/ssl.h>
 #include <iostream>
 #include <iomanip>
@@ -25,284 +21,6 @@
 #include <cstdlib>
 #include <pthread.h>
 using namespace std;
-using namespace netlab;
-
-void http_playground() {
-
-	inet_os inet_client = inet_os();
-	NIC nic_client(inet_client, "10.100.102.13", "A8:6D:AA:68:39:A4", nullptr, nullptr, true, "");
-	L2_impl datalink_client(inet_client);
-	L2_ARP_impl arp_client(inet_client, 10, 10000);
-	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
-	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-	inet_client.domaininit();
-	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-
-	inet_client.connect();
-
-	sockaddr_in clientService;
-	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_addr("10.100.102.4");
-	clientService.sin_port = htons(9000);
-
-	netlab::L5_socket_impl* ConnectSocket = new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_client);
-	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-
-	//std::string request = "GET / HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n";
-
-	std::string request = "POST / HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nContent-Length: 5\r\n\r\nHello";
-
-	ConnectSocket->send(request, request.size(), request.size(), 0);
-
-	std::string buffer;
-	int bytes_received = 0;
-	std::string received_request;
-
-	while ((bytes_received = ConnectSocket->recv(buffer, sizeof(buffer), 0, 0)) > 0) {
-		buffer[bytes_received] = '\0';
-		received_request += buffer;
-	}
-
-	// Create the request object
-	HTTPRequest HTTP_request;
-	HTTP_request.parse_request(received_request);
-
-	std::string sendBuff = HTTP_request.to_string();
-	size_t size = sendBuff.size();
-
-}
-
-void http_playground_inet_os() {
-
-	//WSADATA wsaData;
-	//int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	//SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-	//connect(s, (SOCKADDR*)&service, sizeof(service));
-
-	inet_os inet_server = inet_os();
-	NIC nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true,
-		"(arp and ether src bb:bb:bb:bb:bb:bb) or (tcp port 8888 and not ether src aa:aa:aa:aa:aa:aa)");
-	L2_impl datalink_server(inet_server);
-	L2_ARP_impl arp_server(inet_server, 10, 10000);
-	inet_server.inetsw(new L3_impl(inet_server, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_server.inetsw(new L4_TCP_impl(inet_server), protosw::SWPROTO_TCP);
-	inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-	inet_server.domaininit();
-	arp_server.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac()); // Inserting my address
-
-	inet_os inet_client = inet_os();
-	NIC nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "");
-	L2_impl datalink_client(inet_client);
-	L2_ARP_impl arp_client(inet_client, 10, 10000);
-	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
-	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-	inet_client.domaininit();
-	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-
-	/* Spawning both sniffers, 0U means continue forever */
-	inet_server.connect(0U);
-	inet_client.connect(0U);
-
-	sockaddr_in serverService;
-	serverService.sin_family = AF_INET;
-	serverService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-	serverService.sin_port = htons(8888);
-
-	sockaddr_in clientService;
-	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-	clientService.sin_port = htons(8888);
-
-	netlab::L5_socket_impl* ListenSocket(new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_server));
-
-	ListenSocket->bind((SOCKADDR*)&serverService, sizeof(serverService));
-
-	ListenSocket->listen(5);
-
-	netlab::L5_socket_impl* ConnectSocket = new netlab::L5_socket_impl(AF_INET, SOCK_STREAM, IPPROTO_TCP, inet_client);
-	ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-
-	netlab::L5_socket_impl* AcceptSocket = nullptr;
-
-	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
-
-	//std::string request = "GET / HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n";
-
-	std::string request = "POST / HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nContent-Length: 5\r\n\r\nHello";
-
-	netlab::L5_socket_impl* connectSocket = ConnectSocket;
-	std::thread([connectSocket, request]()
-		{
-			connectSocket->send(request, request.size(), 1024);
-		}).detach();
-
-	std::string buffer;
-	int bytes_received = 0;
-	std::string received_request;
-
-	std::thread([AcceptSocket, &received_request, &buffer, &bytes_received]()
-		{
-			while ((bytes_received = AcceptSocket->recv(buffer, sizeof(buffer), 0, 0)) > 0) {
-				buffer[bytes_received] = '\0';
-				received_request += buffer;
-			}
-		}).detach();
-
-		// Create the request object
-		HTTPRequest HTTP_request;
-		HTTP_request.parse_request(received_request);
-
-		std::string sendBuff = HTTP_request.to_string();
-		size_t size = sendBuff.size();
-
-		std::this_thread::sleep_for(std::chrono::seconds(4));
-
-		std::ofstream file("response.html");
-		if (file.is_open()) {
-			file << received_request;
-			file.close();
-		}
-
-}
-
-void http_playground_client_server() {
-
-	inet_os inet_server = inet_os();
-	NIC nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true,
-		"(arp and ether src bb:bb:bb:bb:bb:bb) or (tcp port 8888 and not ether src aa:aa:aa:aa:aa:aa)");
-	L2_impl datalink_server(inet_server);
-	L2_ARP_impl arp_server(inet_server, 10, 10000);
-	inet_server.inetsw(new L3_impl(inet_server, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_server.inetsw(new L4_TCP_impl(inet_server), protosw::SWPROTO_TCP);
-	inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-	inet_server.domaininit();
-	arp_server.insertPermanent(nic_server.ip_addr().s_addr, nic_server.mac()); // Inserting my address
-
-	inet_os inet_client = inet_os();
-	NIC nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "");
-	L2_impl datalink_client(inet_client);
-	L2_ARP_impl arp_client(inet_client, 10, 10000);
-	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_client.inetsw(new tcp_reno(inet_client), protosw::SWPROTO_TCP);
-	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-	inet_client.domaininit();
-	arp_client.insertPermanent(nic_client.ip_addr().s_addr, nic_client.mac());
-
-	/* Spawning both sniffers, 0U means continue forever */
-	inet_server.connect(0U);
-	inet_client.connect(0U);
-
-	sockaddr_in serverService;
-	serverService.sin_family = AF_INET;
-	serverService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-	serverService.sin_port = htons(8888);
-
-	sockaddr_in clientService;
-	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-	clientService.sin_port = htons(8888);
-
-	//netlab::HTTPServer http_server(inet_server, HTTP);
-	//netlab::HTTPClient http_client(inet_client, HTTP);
-
-	//http_server.socket->bind((SOCKADDR*)&serverService, sizeof(serverService));
-	//http_server.socket->listen(5);
-
-	//http_client.socket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-
-	//http_server.client_socket = http_server.socket->accept(nullptr, 0);
-
-	//std::string post_request = "POST /search?query=example&sort=asc HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nContent-Length: 0\r\n\r\nparam1=value1&param2=value2&query=anotherExample&sort=desc&param3=value3&param4=value4";
-	//std::string get_request = "GET /msg.txt?query=example&sort=asc&page=2 HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n";
-
-	//std:: string get_request_uri = "/msg.txt?query=example&sort=asc&page=2";
-	//std::string get_request_version = "HTTP/1.1";
-	//HTTPHeaders get_headers = {
-	//	{"Host", "www.google.com"},
-	//	{"Connection", "close"},
-	//	{"Content-Length", "0"}
-	//};
-	//QueryParams get_params = {
-	//	{"param1", "value1"},
-	//	{"param2", "value2"},
-	//	{"query", "anotherExample"},
-	//	{"sort", "desc"},
-	//	{"param3", "value3"},
-	//	{"param4", "value4"}
-	//};
-
-	//std::string post_request_uri = "/search?query=example&sort=asc";
-	//std::string post_request_version = "HTTP/1.1";
-	//std::string post_body = "Hello";
-	//HTTPHeaders post_headers = {
-	//	{"Host", "www.google.com"},
-	//	{"Connection", "close"},
-	//	{"Content-Length", std::to_string(post_body.size())}
-	//};
-	//QueryParams post_params = {
-	//	{"param1", "value1"},
-	//	{"param2", "value2"},
-	//	{"query", "anotherExample"},
-	//	{"sort", "desc"},
-	//	{"param3", "value3"},
-	//	{"param4", "value4"}
-	//};
-	//QueryParams post_body_params = {
-	//	{"param1", "value1"},
-	//	{"param2", "value2"},
-	//	{"query", "anotherExample"},
-	//	{"sort", "desc"},
-	//	{"param3", "value3"},
-	//	{"param4", "value4"}
-	//};
-
-	//int getRequestResult = http_client.get(get_request_uri, get_request_version, get_headers, get_params);
-	////int postRequestResult = http_client.post(post_request_uri, post_request_version, post_headers, post_params, post_body, post_body_params);
-
-	//std::string buffer;
-	//int bytes_received = 0;
-	//std::string received_request;
-	//// GET 131
-	//// POST 129
-	//bytes_received = http_server.client_socket->recv(received_request, 131, 0, 0);
-
-	//// Create the request object
-	//HTTPRequest HTTP_request;
-	//HTTP_request.parse_request(received_request);
-
-	//// Compare HTTP_request and HTTP_request2
-	//if (HTTP_request.to_string() != received_request) {
-	//	std::cout << "Error: HTTP_request and HTTP_request2 are not equal" << std::endl;
-	//}
-
-	//int postResponseResult = http_server.handle_request(HTTP_request);
-
-	//std::this_thread::sleep_for(std::chrono::seconds(4));
-
-	//std::string buffer2;
-	//
-	//// GET 151
-	//// POST 141
-	//http_client.socket->recv(buffer2, 151, 0, 0);
-
-	//HTTPResponse HTTP_response2(buffer2);
-
-	//http_client.handle_response(HTTP_response2, HTTP_request.request_path);
-
-	//if (HTTP_request.get_header_value("Connection", 0) == "close") {
-	//	http_client.socket->shutdown(SD_SEND);
-	//	http_server.client_socket->shutdown(SD_SEND);
-	//}
-
-	//std::ofstream file("response.html");
-	//if (file.is_open()) {
-	//	file << received_request;
-	//	file.close();
-	//}
-}
 
 
 void test1() 
@@ -1399,7 +1117,7 @@ void tls_playground3()
 	/* Client is declared similarly: */
 	inet_os inet_client = inet_os();
 
-	NIC nic_client(inet_client, "10.100.102.13", "a8:6d:aa:68:39:a4", nullptr, nullptr, true, "ip src 10.100.102.13 or arp ");
+	NIC nic_client(inet_client, "192.168.1.225", "60:6c:66:62:1c:4f", nullptr, nullptr, true, "ip src 192.168.1.66 or arp ");
 
 
 	L2_impl datalink_client(inet_client);
@@ -1553,10 +1271,7 @@ void tls_playground()
 	AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
 	netlab::tls_socket* accept_tls_scoket = (new netlab::tls_socket(inet_server, AcceptSocket, true));
-	std::thread([accept_tls_scoket]() {
-		accept_tls_scoket->handshake();
-	}).detach();
-	//accept_tls_scoket->handshake();
+	accept_tls_scoket->handshake();
 
 	std::string send_msg("hello world!, this is my first tls implemtation");
 	send_msg.push_back('\n');
@@ -3034,13 +2749,11 @@ void main()
 		"[9] Application Use Case (with drop)" << std::endl <<
 		"[10] Cwnd Fall Test" << std::endl;
 
-	//cout << "TLS Playground" << endl;
-	//tls_playground();
-	cout << "HTTP Playground" << endl;
-	http_playground_client_server();
-	//cout << "test2" << endl;
-	//tls_playground2();
-	//cout << "test3" << endl;
+	cout << "test1" << endl;
+	tls_playground();
+	cout << "test2" << endl;
+	tls_playground2();
+	cout << "test3" << endl;
 	//tls_playground3();
 	return;
 

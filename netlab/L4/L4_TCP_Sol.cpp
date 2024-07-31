@@ -341,13 +341,10 @@ inline void L4_TCP::tcpiphdr::insque(struct L4_TCP::tcpiphdr &head)
 
 inline void L4_TCP::tcpiphdr::remque()
 {
-	if (ti_next()) {
-		auto prev = ti_prev();
-		ti_next()->ti_prev(prev);
-	}	
+	if (ti_next())
+		ti_next()->ti_prev(ti_prev());
 	if (ti_prev()) {
-		auto next = ti_next();
-		ti_prev()->ti_next(next);
+		ti_prev()->ti_next(ti_next());
 		ti_prev(nullptr);
 	}
 }
@@ -2522,7 +2519,7 @@ void L4_TCP_impl::pr_input(const struct pr_input_args &args)
 	ti->ti_win() = ntohs(ti->ti_win());
 	ti->ti_urp() = ntohs(ti->ti_urp());
 
-
+//#define NETLAB_L4_TCP_DEBUG
 #ifdef NETLAB_L4_TCP_DEBUG
 		print(ti->ti_t, htons(checksum));
 #endif
@@ -2823,8 +2820,10 @@ findpcb:
 			*	is set to the acknowledgment field and the received mbuf chain is released. (Since the
 			*	length is 0, there should be just a single mbuf containing the headers.)
 			*/
+			//so->so_snd.sb_mutex.lock();
 			so->so_snd.sbdrops(ti->ti_ack() - tp->snd_una);
 			tp->snd_una = ti->ti_ack();
+			//so->so_snd.sb_mutex.unlock();
 			/*
 			*	Stop retransmit timer:
 			*	If the received segment acknowledges all outstanding data (snd_una equals
