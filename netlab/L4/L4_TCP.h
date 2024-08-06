@@ -848,7 +848,7 @@ protected:
 	void tcp_canceltimers();
 
 	void log_snd_cwnd(u_long snd_cwnd);
-
+	void log_info(std::string info); // for debug
 
 	struct	tcpiphdr *seg_next;	/*!< sequencing queue next */
 	struct	tcpiphdr *seg_prev;	/*!< sequencing queue prev */
@@ -929,18 +929,18 @@ protected:
 	char	*t_tuba_pcb;		/*!< next level down pcb for TCP over z */
 
 	class tcpcb_logger {
+
 		friend class L4_TCP::tcpcb;
 	public:
+
 		~tcpcb_logger()	{ log.close(); }
 	protected:
+
 		typedef std::chrono::duration<double> seconds;
 		tcpcb_logger();
-		tcpcb_logger(const tcpcb_logger&)
-		{
-			//tcpcb_logger();
-		}
 		
 		void update(u_long snd_cwnd);
+		void update(std::string info);
 
 		std::ofstream log;
 		std::chrono::time_point<std::chrono::high_resolution_clock> start;

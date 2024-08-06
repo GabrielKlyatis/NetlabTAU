@@ -15,8 +15,11 @@ void tcp_reno::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 	*	in sequence, and the duplicate ACK is dropped. (This is shown by segments 67,
 	*	69, and 71 in Figure 21.7 of Volume 1.)
 	*/
+	std::cout << "RENO: tcp_dupacks_handler" << std::endl;
+	tp->log_info("RENO: tcp_dupacks_handler");
 	if (tp->t_dupacks > tcprexmtthresh)
 	{
+		tp->log_info("RENO: tcp_dupacks_handler - even more dups");
 		tp->log_snd_cwnd(tp->snd_cwnd += tp->t_maxseg);
 		(void)tcp_output(*tp);
 		return drop(tp, dropsocket);
@@ -76,6 +79,9 @@ void tcp_reno::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 
 void tcp_reno::tcp_rto_timer_handler(tcpcb* tp)
 {
+	std::cout << "RENO: tcp_rto_timer_handler" << std::endl;
+	tp->log_info("RENO: tcp_rto_timer_handler");
+
 	// apply fast recovery
 	TCPT_RANGESET(tp->t_rxtcur, static_cast<int>(tp->TCP_REXMTVAL() * tcp_backoff(tp->t_rxtshift)),
 		tp->t_rttmin, static_cast<int>(TCPTV_REXMTMAX));

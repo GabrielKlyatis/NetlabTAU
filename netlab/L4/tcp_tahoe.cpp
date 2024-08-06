@@ -16,6 +16,7 @@ void tcp_tahoe::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 	*	in sequence, and the duplicate ACK is dropped. (This is shown by segments 67,
 	*	69, and 71 in Figure 21.7 of Volume 1.)
 	*/
+	std::cout << "TAHOE: tcp_dupacks_handler" << std::endl;
 	if (tp->t_dupacks > tcprexmtthresh)
 	{
 		tp->log_snd_cwnd(tp->snd_cwnd += tp->t_maxseg);

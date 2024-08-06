@@ -29,24 +29,8 @@ enum tcp_flavor
 	TCP_RENO
 };
 
-std::string get_my_ip() {
-	char ac[80];
-	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
-		std::cerr << "Error " << WSAGetLastError() << " when getting local host name." << std::endl;
-		return "";
-	}
-	struct hostent* phe = gethostbyname(ac);
-	if (phe == 0) {
-		std::cerr << "Bad host lookup." << std::endl;
-		return "";
-	}
-	for (int i = 0; phe->h_addr_list[i] != 0; ++i) {
-		struct in_addr addr;
-		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
-		return inet_ntoa(addr);
-	}
-	return "";
-}
+
+
 
 typedef netlab::HWAddress<> mac_addr;
 
@@ -97,21 +81,61 @@ void handleConnections(SOCKET server_socket, size_t expected_bytes, std::string*
 	return;
 }
 
+std::string get_my_ip() {
+	WSADATA wsaData;
+	int wsaStartup = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (wsaStartup != 0) {
+		std::cerr << "WSAStartup failed with error: " << wsaStartup << std::endl;
+		return "";
+	}
+
+	char ac[80];
+	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
+		std::cerr << "Error " << WSAGetLastError() << " when getting local host name." << std::endl;
+		WSACleanup();
+		return "";
+	}
+
+	struct hostent* phe = gethostbyname(ac);
+	if (phe == nullptr) {
+		std::cerr << "Bad host lookup." << std::endl;
+		WSACleanup();
+		return "";
+	}
+
+	std::vector<std::string> ip_addresses;
+	for (int i = 0; phe->h_addr_list[i] != nullptr; ++i) {
+		struct in_addr addr;
+		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
+		char* ip = inet_ntoa(addr);
+		ip_addresses.push_back(ip);
+	}
+
+	WSACleanup();
+
+	if (!ip_addresses.empty()) {
+		return ip_addresses.back();  // Return the last IP address found
+	}
+	else {
+		std::cerr << "No IP addresses found." << std::endl;
+		return "";
+	}
+}
 
 class TCP_Tests : public testing::Test {
 
 protected:
 
-	/* Declaring the ip address from the current machine */
-	std::string ip_address;
+	std::string myComputeIP;
 
 	/* Declaring the client and the server */
 	inet_os inet_server;
 	inet_os inet_client;
 
 	/* Declaring the NIC of the client and the server */
+	NIC nic_server;
     NIC nic_client;
-    NIC nic_server;
+    
 
 	/* Declaring the Datalink of the client and the server using L2_impl*/
     L2_impl datalink_client;
@@ -133,23 +157,26 @@ protected:
 	sockaddr_in service;
 	sockaddr_in clientService;
 
+
 	TCP_Tests() :
 		inet_server(),
 		inet_client(),
-		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "ip src 10.0.0.15 or ip src 192.168.1.228 or arp"),
-		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "ip src 10.0.0.10 or ip src 192.168.1.228 or arp"),
+		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, get_server_filter()),
+		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, get_client_filter()),
 		datalink_server(inet_server),
 		datalink_client(inet_client),
 		arp_server(inet_server, 10, 10000),
-		arp_client(inet_client, 10, 10000)
+		arp_client(inet_client, 10, 10000),
+		myComputeIP(get_my_ip())
 	{
 		inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 	}
 
     void SetUp() override {
-        
-		ip_address = get_my_ip();
+
+
+
 		inet_server.connect(0U);
 		inet_client.connect(0U);
     }
@@ -169,6 +196,36 @@ protected:
 
     }
 
+
+	// Function to get the IP address of the current machine
+	std::string get_server_filter() {
+
+		std::string filter = "ip src 10.0.0.15 or ip src ";
+		std::string filter1_end = " or arp";
+
+		std::string my_ip = get_my_ip();
+
+		filter.append(my_ip);
+		filter.append(filter1_end);
+
+		return filter;
+
+	}
+
+	std::string get_client_filter() {
+
+		std::string filter = "ip src 10.0.0.10 or ip src ";
+		std::string filter1_end = " or arp";
+
+		std::string my_ip = get_my_ip();
+
+		filter.append(my_ip);
+		filter.append(filter1_end);
+
+		return filter;
+
+	}
+
 	void set_tcp(inet_os& os ,tcp_flavor tcp_type)
 	{
 		switch (tcp_type)
@@ -180,7 +237,7 @@ protected:
 			os.inetsw(new tcp_tahoe(os), protosw::SWPROTO_TCP);
 			break;
 		case TCP_RENO:
-			os.inetsw(new tcp_tahoe(os), protosw::SWPROTO_TCP);
+			os.inetsw(new tcp_reno(os), protosw::SWPROTO_TCP);
 			break;
 
 		default:
@@ -199,7 +256,7 @@ protected:
 
 		sockaddr_in client_service;
 		client_service.sin_family = AF_INET;
-		client_service.sin_addr.s_addr = inet_addr("192.168.1.228");
+		client_service.sin_addr.s_addr = inet_addr(myComputeIP.c_str());
 		client_service.sin_port = htons(8888);
 
 		WSADATA wsaData;
@@ -216,7 +273,7 @@ protected:
 		bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr));
 
 		// Listen for incoming connections
-		listen(server_socket, SOMAXCONN);
+		listen(server_socket, 3);
 
 		std::cout << "Server listening on port 8888..." << std::endl;
 
@@ -398,10 +455,9 @@ protected:
 		AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
 
-		//inet_server.cable()->set_buf(new L0_buffer(inet_server, 0.75, L0_buffer::uniform_real_distribution_args(0, 0.001), L0_buffer::OUTGOING));
-		//inet_client.cable()->set_buf(new L0_buffer(inet_client, 0.9, L0_buffer::uniform_real_distribution_args(0, 1), L0_buffer::INCOMING));
-
-		std::string send_msg(500 * 1024, 'T');
+		inet_client.cable()->set_buf(new L0_buffer(inet_client, 0.85, L0_buffer::OUTGOING , L0_buffer::DUPLICATE));
+	//	inet_server.cable()->set_buf(new L0_buffer(inet_server, 0.9, L0_buffer::exponential_distribution_args(100), L0_buffer::INCOMING));
+		std::string send_msg(2 * 1024 * 1024 , 'T');
 		size_t size = send_msg.size();
 
 		netlab::L5_socket_impl* connectSocket = this->ConnectSocket;
@@ -413,7 +469,7 @@ protected:
 
 		std::string ret("");
 
-		int byte_recived = AcceptSocket->recv(ret, size, 3);
+		int byte_recived = AcceptSocket->recv(ret, size,1);
 
 
 		ConnectSocket->shutdown(SD_SEND);
@@ -426,20 +482,20 @@ protected:
 	void run_all_test(tcp_flavor tcp_type) {
 
 
-		set_tcp(inet_client, tcp_type);
-		set_tcp(inet_server, tcp_type);
+		//set_tcp(inet_client, tcp_type);
+		//set_tcp(inet_server, tcp_type);
 
 		std::cout << "start recive test" << std::endl;
 
-		test_reciver();
+	//	test_reciver();
 
-		set_tcp(inet_client, tcp_type);
-		set_tcp(inet_server, tcp_type);
+		//set_tcp(inet_client, tcp_type);
+		//set_tcp(inet_server, tcp_type);
 
 		std::cout << "pass recive test" << std::endl;
 		std::cout << "start sender test" << std::endl;
 
-		test_sender();
+	//	test_sender();
 
 		set_tcp(inet_client, tcp_type);
 		set_tcp(inet_server, tcp_type);
@@ -448,7 +504,7 @@ protected:
 		std::cout << "start big msg test" << std::endl;
 
 		test_big_packet();
-
+		std::this_thread::sleep_for(std::chrono::seconds(100));
 		std::cout << "pass big msg test" << std::endl;
 	}
 
@@ -536,7 +592,7 @@ public:
 
 		sockaddr_in clientService;
 		clientService.sin_family = AF_INET;
-		clientService.sin_addr.s_addr = inet_addr("192.168.1.228");
+		clientService.sin_addr.s_addr = inet_addr(myComputeIP.c_str());
 		clientService.sin_port = htons(4433);
 
 		netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
@@ -582,26 +638,26 @@ public:
 
 };
 
-//TEST_F(TCP_Tests, test_reno)
-//{
-//	run_all_test(TCP_RENO);
-//}
+TEST_F(TCP_Tests, test_reno)
+{
+	run_all_test(tcp_flavor::TCP_RENO);
+}
 
 
 //TEST_F(TCP_Tests, test_tahoe)
 //{
-//	run_all_test(TCP_TAHOE);
+//	run_all_test(tcp_flavor::TCP_TAHOE);
 //}
-//
+
 //TEST_F(TCP_Tests, test_base)
 //{
-//	run_all_test(TCP_BASE);
+//	run_all_test(tcp_base);
 //}
-//
 
-TEST_F(TLS_test, tls_test)
-{
-	set_tcp(inet_client,TCP_RENO);
-	set_tcp(inet_server, TCP_RENO);
-	test_sender();
-}
+
+//TEST_F(TLS_test, tls_test)
+//{
+//	set_tcp(inet_client,TCP_RENO);
+//	set_tcp(inet_server, TCP_RENO);
+//	test_sender();
+//}

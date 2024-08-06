@@ -118,7 +118,7 @@ TEST_F(UDPTests, test_sender) {
 	// Set up the server address structure
 	struct sockaddr_in systen_server_service;
 	systen_server_service.sin_family = AF_INET;
-	systen_server_service.sin_addr.s_addr = inet_addr("192.168.1.228");
+	systen_server_service.sin_addr.s_addr = inet_addr("10.100.102.13");
 	systen_server_service.sin_port = htons(9999);       // Port number
 
 	// Set up the server address structure
@@ -136,7 +136,7 @@ TEST_F(UDPTests, test_sender) {
 	// Set up the client address structure
 	sockaddr_in system_client_service;
 	system_client_service.sin_family = AF_INET;
-	system_client_service.sin_addr.s_addr = inet_addr("192.168.1.228");
+	system_client_service.sin_addr.s_addr = inet_addr("10.100.102.13");
 	system_client_service.sin_port = htons(9999);
 
 	// Set up the client address structure

@@ -965,7 +965,7 @@ void server_hello_serialization_test() {
 
 	handshakeProtocol.handshake.configureHandshakeBody(msg_type);
 
-	handshakeProtocol.handshake.body.certificate.addCertificate(cartificate);
+	handshakeProtocol.handshake.body.certificate->addCertificate(cartificate);
 
 	handshakeProtocol.updateHandshakeProtocol(msg_type);
 
@@ -1032,14 +1032,14 @@ void server_hello_serialization_test() {
 	// Insert last 46 bytes of premaster_secret to handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.data()
 	premaster_secret[0] = 0x03;
 	premaster_secret[1] = 0x03;
-	memcpy(handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.data(),
+	memcpy(handshakeProtocol.handshake.body.clientKeyExchange->client_exchange_keys.encryptedPreMasterSecret.pre_master_secret.random.data(),
 				premaster_secret + 2, 46);
 
 	// encrypt the premaster secret using the public key
 	uint8_t encrypted_premaster_secret[256];
 	int rt = RSA_public_encrypt(48, premaster_secret, encrypted_premaster_secret, p_rsa, RSA_PKCS1_PADDING);
 
-	memcpy(handshakeProtocol.handshake.body.clientKeyExchange.client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.data(),
+	memcpy(handshakeProtocol.handshake.body.clientKeyExchange->client_exchange_keys.encryptedPreMasterSecret.encrypted_pre_master_secret.data(),
 				encrypted_premaster_secret, 256);
 
 	handshakeProtocol.updateHandshakeProtocol(msg_type);

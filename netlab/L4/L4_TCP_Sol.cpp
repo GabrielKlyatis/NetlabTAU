@@ -54,7 +54,7 @@ L4_TCP::tcpcb::tcpcb(inet_os &inet)
 	t_rttmin(0), max_sndwnd(0), t_oobflags(0), t_iobc(0), t_softerror(0),
 	snd_scale(0), rcv_scale(0), request_r_scale(0), requested_s_scale(0),
 	ts_recent(0), ts_recent_age(0), last_ack_sent(0), t_tuba_pcb(nullptr),
-	log(tcpcb_logger()) { }
+	log() { }
 
 L4_TCP::tcpcb::tcpcb(socket &so, inpcb_impl &head)
 	: inpcb_impl(so, head), seg_next(nullptr), seg_prev(nullptr), t_state(0),
@@ -66,7 +66,7 @@ L4_TCP::tcpcb::tcpcb(socket &so, inpcb_impl &head)
 	t_rttmin(0), max_sndwnd(0), t_oobflags(0), t_iobc(0), t_softerror(0),
 	snd_scale(0), rcv_scale(0), request_r_scale(0), requested_s_scale(0),
 	ts_recent(0), ts_recent_age(0), last_ack_sent(0), t_tuba_pcb(nullptr),
-	log(tcpcb_logger()){ }
+	log(){ }
 
 /*!
     \fn	L4_TCP::tcpcb::~tcpcb()
@@ -92,19 +92,29 @@ void L4_TCP::tcpcb::log_snd_cwnd(u_long snd_cwnd) {
 	log.update(snd_cwnd);
 }
 
+void L4_TCP::tcpcb::log_info(std::string info) {
+
+	log.update(info);
+}
+
 int L4_TCP::tcpcb::tcpcb_logger::log_number(0);
 
 L4_TCP::tcpcb::tcpcb_logger::tcpcb_logger()
 	: log(std::ofstream(std::string("log/connection_") + std::to_string(log_number++) + std::string(".txt"), std::ios_base::out | std::ios_base::trunc)),
 	start(std::chrono::high_resolution_clock::now()) 
 {
-  
+	std::cout << "Logging to: " << std::to_string(log_number - 1) << std::endl;
 }
 
 void L4_TCP::tcpcb::tcpcb_logger::update(u_long snd_cwnd)
 {
 	log << std::chrono::duration_cast<seconds>(std::chrono::high_resolution_clock::now() - start).count()
 		<< "\t" << std::to_string(snd_cwnd) << std::endl;
+}
+
+void L4_TCP::tcpcb::tcpcb_logger::update(std::string info)
+{
+	log << info << std::endl;
 }
 
 inline bool L4_TCP::tcpcb::TCPS_HAVERCVDSYN() const { return t_state >= TCPS_SYN_RECEIVED; }
@@ -3961,6 +3971,7 @@ findpcb:
 	case L4_TCP::tcpcb::TCPS_TIME_WAIT:
 
 		if (L4_TCP::tcpcb::SEQ_LEQ(ti->ti_ack(), tp->snd_una)) {
+			//std::cout << "asdfasdfasdfasdfasdfasd" << std::endl;
 			if (ti->ti_len() == 0 && tiwin == tp->snd_wnd) {
 
 				/*
@@ -3987,8 +3998,8 @@ findpcb:
 				* to keep a constant cwnd packets in the
 				* network.
 				*/
-				if (tp->t_timer[TCPT_REXMT] == 0 ||	ti->ti_ack() != tp->snd_una)
-					tp->t_dupacks = 0;
+			/*	if (tp->t_timer[TCPT_REXMT] == 0 ||	ti->ti_ack() != tp->snd_una) //TODO uncoment
+					tp->t_dupacks = 0;*/
 
 				/*	
 				 *	Number of consecutive duplicate ACKs reaches threshold of 3:
@@ -3999,7 +4010,8 @@ findpcb:
 				 *	in this piece of code that the fast recovery algorithm does not set the congestion window
 				 *	to one segment, as was done with the timeout.
 				 */
-				else if (++tp->t_dupacks == tcprexmtthresh) {
+				std::cout << "t_dupacks = " << std::to_string(tp->t_dupacks + 1)<< std::endl;
+				if (++tp->t_dupacks >= tcprexmtthresh) {
 					tcp_dupacks_handler(tp, ti->ti_ack());
 				}
 
@@ -4171,9 +4183,9 @@ findpcb:
 		* Otherwise open linearly: maxseg per window
 		* (maxseg * (maxseg / cwnd) per packet).
 		*/
-		{
-			tcp_congestion_conrol_handler(tp);
-		}
+		
+		tcp_congestion_conrol_handler(tp);
+		
 
 		/*	
 		 *	The next part of tcp_input removes the acknowledged data from the send buffer.
@@ -4186,7 +4198,7 @@ findpcb:
 		 *	FIN occupies 1 byte in the sequence number space.
 		 */
 		int ourfinisacked;
-		//so->so_snd.sb_mutex.lock();
+
 		auto dropped = so->so_snd.sbdrops(acked);
 		tp->snd_wnd -= dropped;
 		ourfinisacked = acked > dropped;

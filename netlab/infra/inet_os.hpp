@@ -36,7 +36,7 @@ public:
 	    \param	slowtimo	The slow timer mostly for the TCP.
 	    \param	fasttimo	The fast timer mostly for the TCP.
 	*/
-	inet_os(const int slowtimo = 500, const int fasttimo = 200)
+	inet_os(const int slowtimo = 2000, const int fasttimo = 670)
 		: slowtimo(slowtimo), fasttimo(fasttimo), _fasttimo_on(false), _slowtimo_on(false),
 		_cable(nullptr), _nic(nullptr), _datalink(nullptr), _arp(nullptr), _inetdomain(nullptr),
 		_router(nullptr)

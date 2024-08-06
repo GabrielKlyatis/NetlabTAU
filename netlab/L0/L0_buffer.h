@@ -55,6 +55,12 @@ public:
 		BOTH
 	};
 
+	enum BUFF_TYPE
+	{
+		DROP_DELAY,
+		DUPLICATE,
+	};
+
 	/*!
 	\fn	L3_impl::L3_impl(class inet_os &inet, const short &pr_type = 0, const short &pr_protocol = 0, const short &pr_flags = 0);
 
@@ -66,14 +72,17 @@ public:
 	\param	pr_flags		The protocol flags.
 	*/
 	
-	L0_buffer(class inet_os &inet, double reliability, DIRECTION d = INCOMING);
+
+	L0_buffer(class inet_os& inet, double reliability, distribution dist_delay, DIRECTION d = INCOMING, BUFF_TYPE type = DROP_DELAY);
+
+	L0_buffer(class inet_os &inet, double reliability, DIRECTION d = INCOMING, BUFF_TYPE type = DROP_DELAY);
 
 	struct exponential_distribution_args 
 	{
 		exponential_distribution_args(double lambda = 1.0) : lambda(lambda) { }
 		double lambda; 
 	};
-	L0_buffer(class inet_os &inet, double reliability, const exponential_distribution_args &args, DIRECTION d = INCOMING);
+	L0_buffer(class inet_os &inet, double reliability, const exponential_distribution_args &args, DIRECTION d = INCOMING, BUFF_TYPE type = DROP_DELAY);
 	
 	struct uniform_real_distribution_args 
 	{ 
@@ -81,21 +90,21 @@ public:
 		double a;
 		double b;
 	};
-	L0_buffer(class inet_os &inet, double reliability, const uniform_real_distribution_args &args, DIRECTION d = INCOMING);
+	L0_buffer(class inet_os &inet, double reliability, const uniform_real_distribution_args &args, DIRECTION d = INCOMING, BUFF_TYPE type = DROP_DELAY);
 	
 	struct chi_squared_distribution_args 
 	{ 
 		chi_squared_distribution_args(double n = 1.0) : n(n) { }
 		double n; 
 	};
-	L0_buffer(class inet_os &inet, double reliability, const chi_squared_distribution_args &args, DIRECTION d = INCOMING);
+	L0_buffer(class inet_os &inet, double reliability, const chi_squared_distribution_args &args, DIRECTION d = INCOMING, BUFF_TYPE type = DROP_DELAY);
 
 	struct constant_args
 	{
 		constant_args(double c = 1.0) : c(c) { }
 		double c;
 	};
-	L0_buffer(class inet_os &inet, double reliability, const constant_args &args, DIRECTION d = INCOMING);
+	L0_buffer(class inet_os &inet, double reliability, const constant_args &args, DIRECTION d = INCOMING, BUFF_TYPE type = DROP_DELAY);
 
 	~L0_buffer();
 
@@ -133,7 +142,8 @@ private:
 
 	virtual void leread(class std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it);
 
-	void process();
+	void process_drop_delay();
+
 	std::exponential_distribution<> exp_delay;
 	std::chi_squared_distribution<> chi_squared_delay;
 	std::uniform_real_distribution<> uniform_real_delay;
@@ -148,6 +158,7 @@ private:
 	NIC_Cable &cable;
 
 	DIRECTION d;
+	BUFF_TYPE buff_type;
 };
 
 

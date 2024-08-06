@@ -15,9 +15,15 @@
 #include <ws2tcpip.h>
 #include <iostream>
 
+
+#include "BaseTest.h"
+
 #pragma comment(lib, "ws2_32.lib")
 
 using namespace netlab;
+			
+
+
 
 class HTTP_Tests : public ::testing::Test {
 protected:
@@ -68,6 +74,7 @@ protected:
 		arp_client(inet_client, 10, 10000)
 	{
 
+
 		inet_server.inetsw(new L4_TCP_impl(inet_server), protosw::SWPROTO_TCP);
 		inet_client.inetsw(new L4_TCP_impl(inet_client), protosw::SWPROTO_TCP);
 
@@ -82,8 +89,6 @@ protected:
 	}
 
 	void SetUp() override {
-
-		//ip_address = get_my_ip();
 		inet_server.connect(0U);
 		inet_client.connect(0U);
 
