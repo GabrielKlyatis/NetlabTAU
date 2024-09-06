@@ -1103,7 +1103,7 @@ namespace netlab
 		/*	
 		 *	Find protocol switch table:
 		 *	If proto is nonzero, pffindproto looks for the specific protocol requested by the
-		 *	process. If pro to is 0, pf find type looks for a protocol within the specified domain
+		 *	process. If proto is 0, pf find type looks for a protocol within the specified domain
 		 *	with the semantics specified by type. Both functions return a pointer to a protosw
 		 *	structure of the matching protocol or a null pointer (Section 7.6).
 		 */
