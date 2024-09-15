@@ -9,6 +9,10 @@
 #include <thread>
 #include <chrono>
 
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iostream>
+
 #include "pch.h"
 
 typedef netlab::HWAddress<> mac_addr;
@@ -55,11 +59,11 @@ public:
 	sockaddr_in clientService;
 
 
-	test_base() :
+	test_base(std::string client_filter, std::string server_filter) :
 		inet_server(),
 		inet_client(),
-		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, ""),
-		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, ""),
+		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, server_filter),
+		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, client_filter),
 		datalink_server(inet_server),
 		datalink_client(inet_client),
 		arp_server(inet_server, 10, 10000),
@@ -75,14 +79,22 @@ public:
 		inet_client.connect(0U);
 	}
 
-	void TearDown() override
-	{
+	void TearDown() override {
+
+
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+
 		inet_client.stop_fasttimo();
 		inet_client.stop_slowtimo();
 
 		inet_server.stop_fasttimo();
 		inet_server.stop_slowtimo();
 
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+
 	}
 
+
+	//virtual std::string get_server_filter() = 0;
+	//virtual std::string get_clinet_filter() = 0;
 };
