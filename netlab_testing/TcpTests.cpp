@@ -434,90 +434,59 @@ void configure_context(SSL_CTX* ctx) {
 class TLS_test : public TCP_Tests {
 
 public:
-	void test_sender() override
-	{/*
-		WSADATA wsaData;
-		WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-		int sockfd, newsockfd;
-		struct sockaddr_in addr;
-		int addr_len = sizeof(addr);
-
-		init_openssl();
-		SSL_CTX* ctx = create_context();
-
-		configure_context(ctx);
-
-
-
-		sockfd = socket(AF_INET, SOCK_STREAM, 0);
-		if (sockfd < 0) {
-			perror("Unable to create socket");
-			exit(EXIT_FAILURE);
-		}
-
-		addr.sin_family = AF_INET;
-		addr.sin_port = htons(4433);
-		addr.sin_addr.s_addr = INADDR_ANY;
-
-		if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-			perror("Unable to bind");
-			exit(EXIT_FAILURE);
-		}
-
-		if (listen(sockfd, 1) < 0) {
-			perror("Unable to listen");
-			exit(EXIT_FAILURE);
-		}*/
-
-		
-
-
+	virtual void test_big_packet()
+	{
 		sockaddr_in clientService;
 		clientService.sin_family = AF_INET;
-		clientService.sin_addr.s_addr = inet_addr("192.168.1.73");
+		clientService.sin_addr.s_addr = inet_addr("10.0.0.10");
 		clientService.sin_port = htons(4433);
 
+		netlab::tls_socket* ListenSocket = (new netlab::tls_socket(inet_server));
+		sockaddr_in service2;
+		service2.sin_family = AF_INET;
+		service2.sin_addr.s_addr = INADDR_ANY;
+		service2.sin_port = htons(4433);
+
+		ListenSocket->bind((SOCKADDR*)&service2, sizeof(service2));
+		ListenSocket->listen(5);
+
 		netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
-		ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-
-
-		std::cout << "AA" << std::endl;
-
-	/*	std::thread([ConnectSocket, clientService]()
-		{
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+		std::thread([ConnectSocket, clientService]()
+			{
 				ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-		}).detach();
-*/
+			}).detach();
+		//ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+		std::this_thread::sleep_for(std::chrono::seconds(1));
 
-		//std::this_thread::sleep_for(std::chrono::seconds(1));
-		//newsockfd = accept(sockfd, (struct sockaddr*)&addr, &addr_len);
-		//if (newsockfd < 0) {
-		//	perror("Unable to accept");
-		//	exit(EXIT_FAILURE);
-		//}
+		netlab::L5_socket* AcceptSocket = nullptr;
+		AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
-		//SSL* ssl = SSL_new(ctx);
-		//SSL_set_fd(ssl, newsockfd);
+		netlab::tls_socket* accept_tls_scoket = (new netlab::tls_socket(inet_server, AcceptSocket, true));
+		accept_tls_scoket->handshake();
 
-		//if (SSL_accept(ssl) <= 0) {
-		//	ERR_print_errors_fp(stderr);
-		//}
-		//
-		//char buffer[1024] = { 0 };
-		//int bytes = SSL_read(ssl, buffer, sizeof(buffer));
+		std::string send_msg("hello world!, this is my first tls implemtation");
+		send_msg.push_back('\n');
 
 
+		ConnectSocket->send(send_msg, 100, 1, 0);
 
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		std::string rcv_msg;
+		accept_tls_scoket->recv(rcv_msg, 200, 96, 0);
 
 
 
+		ASSERT_EQ(send_msg, rcv_msg);
+		//cout << rcv_msg << endl;
 
-		//SSL_shutdown(ssl);
-		//SSL_free(ssl);
-		//closesocket(newsockfd);
-		//
+		//ConnectSocket->shutdown(SD_SEND);
+		//ListenSocket->shutdown(SD_RECEIVE);
+
 	}
+
 
 };
 
@@ -537,10 +506,10 @@ TEST_F(TCP_Tests, test_reno)
 //	run_all_test(TCP_BASE);
 //}
 //
-//
-//TEST_F(TLS_test, tls_test)
-//{
-//	set_tcp(inet_client,TCP_RENO);
-//	set_tcp(inet_server, TCP_RENO);
-//	test_sender();
-//}
+
+TEST_F(TLS_test, tls_test)
+{
+	set_tcp(inet_client,TCP_RENO);
+	set_tcp(inet_server, TCP_RENO);
+	test_big_packet();
+}
