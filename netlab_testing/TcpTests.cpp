@@ -31,24 +31,6 @@ enum tcp_flavor
 	TCP_RENO
 };
 
-std::string get_my_ip() {
-	char ac[80];
-	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
-		std::cerr << "Error " << WSAGetLastError() << " when getting local host name." << std::endl;
-		return "";
-	}
-	struct hostent* phe = gethostbyname(ac);
-	if (phe == 0) {
-		std::cerr << "Bad host lookup." << std::endl;
-		return "";
-	}
-	for (int i = 0; phe->h_addr_list[i] != 0; ++i) {
-		struct in_addr addr;
-		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
-		return inet_ntoa(addr);
-	}
-	return "";
-}
 
 typedef netlab::HWAddress<> mac_addr;
 
@@ -119,7 +101,7 @@ protected:
 	sockaddr_in service;
 	sockaddr_in clientService;
 
-	TCP_Tests() : test_base("ip src 10.0.0.10 or ip src 192.168.1.73 or arp", "ip src 10.0.0.15 or ip src 192.168.1.73 or arp")
+	TCP_Tests() : test_base("ip src 10.0.0.10" , "ip src 10.0.0.15")
 	{
 		inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
@@ -156,7 +138,7 @@ protected:
 
 		sockaddr_in client_service;
 		client_service.sin_family = AF_INET;
-		client_service.sin_addr.s_addr = inet_addr("192.168.1.73");
+		client_service.sin_addr.s_addr = inet_addr(my_ip.c_str());
 		client_service.sin_port = htons(8888);
 
 		WSADATA wsaData;
@@ -321,7 +303,7 @@ protected:
 
 		ASSERT_EQ(byte_recived, size);
 		ASSERT_EQ(ret2, send_msg);
-		ASSERT_EQ(ret, ret2);
+		ASSERT_EQ(ret, ret2); 
 	}
 
 	virtual void test_big_packet()
@@ -541,7 +523,7 @@ public:
 
 TEST_F(TCP_Tests, test_reno)
 {
-	//run_all_test(TCP_RENO);
+	run_all_test(TCP_RENO);
 }
 
 

@@ -13,6 +13,8 @@
 #include <ws2tcpip.h>
 #include <iostream>
 
+
+#pragma comment(lib, "Ws2_32.lib")
 #include "pch.h"
 
 typedef netlab::HWAddress<> mac_addr;
@@ -58,12 +60,14 @@ public:
 	sockaddr_in service;
 	sockaddr_in clientService;
 
+	std::string my_ip;
+	
 
-	test_base(std::string client_filter, std::string server_filter) :
+	test_base(std::string client_filter, std::string server_filter) : my_ip(get_my_ip()),
 		inet_server(),
 		inet_client(),
-		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, server_filter),
-		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, client_filter),
+		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, (server_filter == "") ? "" : server_filter + test_base::get_default_flilter()),
+		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, (client_filter == "") ? "" : client_filter + test_base::get_default_flilter()),
 		datalink_server(inet_server),
 		datalink_client(inet_client),
 		arp_server(inet_server, 10, 10000),
@@ -71,6 +75,8 @@ public:
 	{
 		inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
+
+
 	}
 
 	void SetUp() override
@@ -95,6 +101,62 @@ public:
 	}
 
 
+	static std::string get_my_ip() {
+		WSADATA wsaData;
+		char ac[80];
+
+		// Initialize Winsock
+		if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+			std::cerr << "WSAStartup failed: " << WSAGetLastError() << std::endl;
+			return "";
+		}
+
+		// Get the host name
+		if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
+			std::cerr << "Error " << WSAGetLastError() << " when getting local host name." << std::endl;
+			WSACleanup();
+			return "";
+		}
+
+		// Get address information using getaddrinfo()
+		struct addrinfo hints, * res = nullptr;
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET;  // Use AF_INET for IPv4 addresses
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
+
+		if (getaddrinfo(ac, nullptr, &hints, &res) != 0) {
+			std::cerr << "getaddrinfo failed: " << WSAGetLastError() << std::endl;
+			WSACleanup();
+			return "";
+		}
+
+		// Loop through the results and convert the first IPv4 address to a string
+		for (struct addrinfo* ptr = res; ptr != nullptr; ptr = ptr->ai_next) {
+			if (ptr->ai_family == AF_INET) {  // Only use IPv4 addresses
+				struct sockaddr_in* sockaddr_ipv4 = (struct sockaddr_in*)ptr->ai_addr;
+				char ipstr[INET_ADDRSTRLEN] = { 0 };
+				inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, ipstr, sizeof(ipstr));
+
+				freeaddrinfo(res);  // Clean up
+				WSACleanup();       // Clean up Winsock
+				return std::string(ipstr);  // Return the first IP address found
+			}
+		}
+
+		// Cleanup
+		freeaddrinfo(res);
+		WSACleanup();
+
+		return "";
+	}
+	static std::string get_default_flilter()
+	{
+		std::string filter = " or ip src " + get_my_ip() + " or arp";
+		return filter;
+	}
+
 	//virtual std::string get_server_filter() = 0;
 	//virtual std::string get_clinet_filter() = 0;
 };
+
