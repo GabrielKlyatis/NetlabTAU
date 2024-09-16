@@ -5,32 +5,24 @@
 #include <cstdlib>
 #include <pthread.h>
 
-#include "BaseTest.h"
+
 #include "pch.h"
+
+
+#include "BaseTest.hpp"
+
 
 bool system_socket_test = true;
 
-class UDPTests : public testing::Test {
+class UDPTests : public test_base {
 
 protected:
 
-	/* Declaring the client, the server and the system */
-	inet_os inet_server;
-	inet_os inet_client;
 	inet_os system_inet;
 
-	/* Declaring the NIC of the client, the server and the system*/
-	NIC nic_client;
-	NIC nic_server;
+
 	NIC system_nic;
 
-	/* Declaring the Datalink of the client and the server using L2_impl*/
-	L2_impl datalink_client;
-	L2_impl datalink_server;
-
-	/* Declaring the ARP of the client and the server using L2_impl*/
-	L2_ARP_impl arp_server;
-	L2_ARP_impl arp_client;
 
 	// Create a SOCKET for listening for incoming connection requests.
 	netlab::L5_socket_impl* ServerSocket;
@@ -41,23 +33,13 @@ protected:
 	// IP address, and port for the socket that is being bound (SERVER)/and port of the server to be connected to (CLIENT).
 	sockaddr_in service;
 
-	UDPTests()
-		: inet_server(),
-		inet_client(),
-		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, ""),
-		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, ""),
-		system_nic(system_inet, nullptr, "", nullptr, nullptr, true, ""),
-		datalink_server(inet_server),
-		datalink_client(inet_client),
-		arp_server(inet_server, 10, 10000),
-		arp_client(inet_client, 10, 10000)
+	UDPTests() : test_base("",""),
+		system_nic(system_inet, nullptr, "", nullptr, nullptr, true, "")
 	{
 
 	}
 
 	void SetUp() override {
-
-		
 		// Setting up the server.
 		inet_server.inetsw(new L3_impl(inet_server, 0, 0, 0), protosw::SWPROTO_IP);				 
 		inet_server.inetsw(new L4_UDP_Impl(inet_server), protosw::SWPROTO_UDP);				
@@ -77,15 +59,6 @@ protected:
 		inet_server.connect(0U);
 	}
 
-	void TearDown() override {
-
-		std::this_thread::sleep_for(std::chrono::seconds(5));
-		inet_client.stop_fasttimo();
-		inet_client.stop_slowtimo();
-
-		inet_server.stop_fasttimo();
-		inet_server.stop_slowtimo();
-	}
 };
 
 TEST_F(UDPTests, test_sender) {
@@ -118,7 +91,7 @@ TEST_F(UDPTests, test_sender) {
 	// Set up the server address structure
 	struct sockaddr_in systen_server_service;
 	systen_server_service.sin_family = AF_INET;
-	systen_server_service.sin_addr.s_addr = inet_addr("192.168.1.228");
+	systen_server_service.sin_addr.s_addr = inet_addr(my_ip.c_str());
 	systen_server_service.sin_port = htons(9999);       // Port number
 
 	// Set up the server address structure
@@ -136,7 +109,7 @@ TEST_F(UDPTests, test_sender) {
 	// Set up the client address structure
 	sockaddr_in system_client_service;
 	system_client_service.sin_family = AF_INET;
-	system_client_service.sin_addr.s_addr = inet_addr("192.168.1.228");
+	system_client_service.sin_addr.s_addr = inet_addr(my_ip.c_str());
 	system_client_service.sin_port = htons(9999);
 
 	// Set up the client address structure

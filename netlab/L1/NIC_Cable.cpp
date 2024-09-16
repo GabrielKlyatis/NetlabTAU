@@ -130,7 +130,8 @@ void NIC_Cable::send_l2_helper(const std::shared_ptr<std::vector<byte>> &m, cons
 	open_l2_socket(iface);
 	pcap_t* handle(pcap_handles[iface]);
 	if (pcap_sendpacket(handle, m->data(), m->end() - it) != 0)
-		throw std::runtime_error("Failed to send packet: " + std::string(pcap_geterr(handle)));
+		return;
+		//throw std::runtime_error("Failed to send packet: " + std::string(pcap_geterr(handle)));
 }
 void NIC_Cable::send_l2(byte* buffer, const size_t &bufferSize, const netlab::NetworkInterface &iface) 
 {
