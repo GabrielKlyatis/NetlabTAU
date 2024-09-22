@@ -14,7 +14,7 @@ protected:
 
 	void tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq) override;
 
-	void tcp_rto_timer_handler(tcpcb* tp) override;
+	void tcp_congestion_conrol_handler(tcpcb* tp) override;
 
 };
 

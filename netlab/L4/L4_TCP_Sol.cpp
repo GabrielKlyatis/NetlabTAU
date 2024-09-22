@@ -2820,10 +2820,9 @@ findpcb:
 			*	is set to the acknowledgment field and the received mbuf chain is released. (Since the
 			*	length is 0, there should be just a single mbuf containing the headers.)
 			*/
-			//so->so_snd.sb_mutex.lock();
 			so->so_snd.sbdrops(ti->ti_ack() - tp->snd_una);
 			tp->snd_una = ti->ti_ack();
-			//so->so_snd.sb_mutex.unlock();
+
 			/*
 			*	Stop retransmit timer:
 			*	If the received segment acknowledges all outstanding data (snd_una equals
@@ -2908,7 +2907,6 @@ findpcb:
 			* Drop TCP, IP headers and TCP options then add data
 			* to socket buffer.
 			*/
-			//std::lock_guard<std::mutex> lock(so->so_rcv.sb_mutex);
 			auto view = boost::make_iterator_range(it + (sizeof(struct L4_TCP::tcpiphdr) + off - sizeof(struct L4_TCP::tcphdr)), m->end());
 			so->so_rcv.sbappends(view);
 			so->sorwakeup();
@@ -4040,23 +4038,6 @@ findpcb:
 		}
 
 		/*	
-		 *	Adjust congestion window:
-		 *	If the number of consecutive duplicate ACKs exceeds the threshold of 3, this is the
-		 *	first nonduplicate ACK after a string of four or more duplicate ACKs. The fast recovery
-		 *	algorithm is complete. Since the congestion window was incremented by one segment
-		 *	for every consecutive duplicate after the third, if it now exceeds the slow start threshold,
-		 *	it is set back to the slow start threshold. The counter of consecutive duplicate ACKs is
-		 *	set to 0.
-		 *	
-		* If the congestion window was inflated to account
-		* for the other side's cached packets, retract it.
-		*/
-		if (tp->t_dupacks > tcprexmtthresh && tp->snd_cwnd > tp->snd_ssthresh)
-			tp->log_snd_cwnd(tp->snd_cwnd = tp->snd_ssthresh);
-		
-		tp->t_dupacks = 0;
-
-		/*	
 		 *	Check for out-of-range ACK:
 		 *	Recall the definition of an acceptable ACK,
 		 *		snd_una < acknowledgment field <= snd_max
@@ -4171,9 +4152,8 @@ findpcb:
 		* Otherwise open linearly: maxseg per window
 		* (maxseg * (maxseg / cwnd) per packet).
 		*/
-		{
-			tcp_congestion_conrol_handler(tp);
-		}
+		tcp_congestion_conrol_handler(tp);
+		
 
 		/*	
 		 *	The next part of tcp_input removes the acknowledged data from the send buffer.
