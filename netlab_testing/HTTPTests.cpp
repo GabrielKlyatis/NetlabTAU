@@ -226,20 +226,6 @@ TEST_F(HTTP_Tests, HTTP_POST_inet_os) {
 
 	http_client->handle_response(HTTP_response, HTTP_request.request_path);
 
-	/*if (HTTP_request.get_header_value("Connection", 0) == "close") {
-		http_client.socket->shutdown(SD_SEND);
-		http_server.client_socket->shutdown(SD_SEND);
-	}*/
-
-	// Close the socket
-	
-
-	/*http_client->socket->shutdown(SD_BOTH);
-	
-	http_server->client_socket->shutdown(SD_BOTH);
-
-	http_server->socket->shutdown(SD_RECEIVE);*/
-
 	std::cout << "HTTP POST inet_os Test Passed" << std::endl;
 }
 
@@ -289,28 +275,6 @@ TEST_F(HTTP_Tests, HTTPS_GET_inet_os) {
 	ASSERT_EQ(HTTP_response.to_string(), received_response);
 
 	http_client->handle_response(HTTP_response, HTTP_request.request_path);
-
-	/*if (HTTP_request.get_header_value("Connection", 0) == "close") {
-		http_client->socket->shutdown(SD_SEND);
-		http_server->client_socket->shutdown(SD_SEND);
-	}*/
-
-	// Close the socket
-
-	//http_client->socket->shutdown(SD_SEND);
-
-	//std::this_thread::sleep_for(std::chrono::seconds(3));
-
-	//http_server->client_socket->shutdown(SD_RECEIVE);
-	//http_server->client_socket->shutdown(SD_SEND);
-
-	//std::this_thread::sleep_for(std::chrono::seconds(1));
-
-	//http_client->socket->shutdown(SD_RECEIVE);
-	//
-	////http_server->socket->shutdown(SD_RECEIVE);
-
-	//std::this_thread::sleep_for(std::chrono::seconds(10));
 
 	std::cout << "HTTP GET inet_os Test Passed" << std::endl;
 }
