@@ -2,44 +2,18 @@
 #include "../netlab/L5/HTTP/HTTPServer_Impl.hpp"
 #include "../netlab/L5/HTTP/HTTPClient_Impl.hpp"
 
-#include <iostream>
-#include <iomanip>
-#include <vector>
-#include <string>
-#include <cstdlib>
-#include <pthread.h>
-#include <thread>
-#include <chrono>
-
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <iostream>
 
 #pragma comment(lib, "ws2_32.lib")
 
+#include "BaseTest.hpp"
+
 using namespace netlab;
 
-class HTTP_Tests : public ::testing::Test {
+class HTTP_Tests : public test_base {
 protected:
 
 	/* Declaring the ip address from the current machine */
 	std::string ip_address;
-
-	/* Declaring the client and the server */
-	inet_os inet_server;
-	inet_os inet_client;
-
-	/* Declaring the NIC of the client and the server */
-	NIC nic_client;
-	NIC nic_server;
-
-	/* Declaring the Datalink of the client and the server using L2_impl*/
-	L2_impl datalink_client;
-	L2_impl datalink_server;
-
-	/* Declaring the ARP of the client and the server using L2_impl*/
-	L2_ARP_impl arp_server;
-	L2_ARP_impl arp_client;
 
 	// Create a SOCKET for listening for incoming connection requests.
 	netlab::L5_socket_impl* ListenSocket;
@@ -71,9 +45,6 @@ protected:
 		inet_server.inetsw(new L4_TCP_impl(inet_server), protosw::SWPROTO_TCP);
 		inet_client.inetsw(new L4_TCP_impl(inet_client), protosw::SWPROTO_TCP);
 
-		inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-
 		inet_server.domaininit();
 		inet_client.domaininit();
 
@@ -83,9 +54,7 @@ protected:
 
 	void SetUp() override {
 
-		//ip_address = get_my_ip();
-		inet_server.connect(0U);
-		inet_client.connect(0U);
+		test_base::SetUp();
 
 		http_server = new HTTPServer_Impl();
 		http_client = new HTTPClient_Impl();
@@ -258,7 +227,7 @@ TEST_F(HTTP_Tests, HTTPS_GET_inet_os) {
 
 	std::string received_request;
 
-	http_server->client_socket->recv(received_request, 200, 1, 0);
+	http_server->client_socket->recv(received_request, 200, 1, 0); 
 	//ASSERT_EQ(received_request, get_request);
 
 	// Create the request object

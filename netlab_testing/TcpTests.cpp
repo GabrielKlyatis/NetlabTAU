@@ -20,6 +20,8 @@
 #pragma comment(lib, "libssl.lib")
 #pragma comment(lib, "libcrypto.lib")
 
+#include "BaseTest.hpp"
+
 using namespace std;
 
 enum tcp_flavor
@@ -29,24 +31,6 @@ enum tcp_flavor
 	TCP_RENO
 };
 
-std::string get_my_ip() {
-	char ac[80];
-	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
-		std::cerr << "Error " << WSAGetLastError() << " when getting local host name." << std::endl;
-		return "";
-	}
-	struct hostent* phe = gethostbyname(ac);
-	if (phe == 0) {
-		std::cerr << "Bad host lookup." << std::endl;
-		return "";
-	}
-	for (int i = 0; phe->h_addr_list[i] != 0; ++i) {
-		struct in_addr addr;
-		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
-		return inet_ntoa(addr);
-	}
-	return "";
-}
 
 typedef netlab::HWAddress<> mac_addr;
 
@@ -98,28 +82,12 @@ void handleConnections(SOCKET server_socket, size_t expected_bytes, std::string*
 }
 
 
-class TCP_Tests : public testing::Test {
+class TCP_Tests : public test_base {
 
 protected:
 
 	/* Declaring the ip address from the current machine */
 	std::string ip_address;
-
-	/* Declaring the client and the server */
-	inet_os inet_server;
-	inet_os inet_client;
-
-	/* Declaring the NIC of the client and the server */
-    NIC nic_client;
-    NIC nic_server;
-
-	/* Declaring the Datalink of the client and the server using L2_impl*/
-    L2_impl datalink_client;
-    L2_impl datalink_server;
-
-	/* Declaring the ARP of the client and the server using L2_impl*/
-    L2_ARP_impl arp_server;
-    L2_ARP_impl arp_client;
 	
 	// Create a SOCKET for listening for incoming connection requests.
     netlab::L5_socket_impl* ListenSocket;
@@ -133,42 +101,13 @@ protected:
 	sockaddr_in service;
 	sockaddr_in clientService;
 
-	TCP_Tests() :
-		inet_server(),
-		inet_client(),
-		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "ip src 10.0.0.15 or ip src 192.168.1.228 or arp"),
-		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "ip src 10.0.0.10 or ip src 192.168.1.228 or arp"),
-		datalink_server(inet_server),
-		datalink_client(inet_client),
-		arp_server(inet_server, 10, 10000),
-		arp_client(inet_client, 10, 10000)
+	TCP_Tests() : test_base("ip src 10.0.0.10" , "ip src 10.0.0.15")
 	{
 		inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 	}
 
-    void SetUp() override {
-        
-		ip_address = get_my_ip();
-		inet_server.connect(0U);
-		inet_client.connect(0U);
-    }
-
-    void TearDown() override {
-
-
-		std::this_thread::sleep_for(std::chrono::seconds(2));
-		
-		inet_client.stop_fasttimo();
-		inet_client.stop_slowtimo();
-
-		inet_server.stop_fasttimo();
-		inet_server.stop_slowtimo();
-
-		std::this_thread::sleep_for(std::chrono::seconds(5));
-
-    }
-
+ 
 	void set_tcp(inet_os& os ,tcp_flavor tcp_type)
 	{
 		switch (tcp_type)
@@ -199,7 +138,7 @@ protected:
 
 		sockaddr_in client_service;
 		client_service.sin_family = AF_INET;
-		client_service.sin_addr.s_addr = inet_addr("192.168.1.228");
+		client_service.sin_addr.s_addr = inet_addr(my_ip.c_str());
 		client_service.sin_port = htons(8888);
 
 		WSADATA wsaData;
@@ -364,7 +303,7 @@ protected:
 
 		ASSERT_EQ(byte_recived, size);
 		ASSERT_EQ(ret2, send_msg);
-		ASSERT_EQ(ret, ret2);
+		ASSERT_EQ(ret, ret2); 
 	}
 
 	virtual void test_big_packet()
@@ -430,7 +369,7 @@ protected:
 		set_tcp(inet_server, tcp_type);
 
 		std::cout << "start recive test" << std::endl;
-
+		  
 		test_reciver();
 
 		set_tcp(inet_client, tcp_type);
@@ -495,97 +434,66 @@ void configure_context(SSL_CTX* ctx) {
 class TLS_test : public TCP_Tests {
 
 public:
-	void test_sender() override
-	{/*
-		WSADATA wsaData;
-		WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-		int sockfd, newsockfd;
-		struct sockaddr_in addr;
-		int addr_len = sizeof(addr);
-
-		init_openssl();
-		SSL_CTX* ctx = create_context();
-
-		configure_context(ctx);
-
-
-
-		sockfd = socket(AF_INET, SOCK_STREAM, 0);
-		if (sockfd < 0) {
-			perror("Unable to create socket");
-			exit(EXIT_FAILURE);
-		}
-
-		addr.sin_family = AF_INET;
-		addr.sin_port = htons(4433);
-		addr.sin_addr.s_addr = INADDR_ANY;
-
-		if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-			perror("Unable to bind");
-			exit(EXIT_FAILURE);
-		}
-
-		if (listen(sockfd, 1) < 0) {
-			perror("Unable to listen");
-			exit(EXIT_FAILURE);
-		}*/
-
-		
-
-
+	virtual void test_big_packet()
+	{
 		sockaddr_in clientService;
 		clientService.sin_family = AF_INET;
-		clientService.sin_addr.s_addr = inet_addr("192.168.1.228");
+		clientService.sin_addr.s_addr = inet_addr("10.0.0.10");
 		clientService.sin_port = htons(4433);
 
+		netlab::tls_socket* ListenSocket = (new netlab::tls_socket(inet_server));
+		sockaddr_in service2;
+		service2.sin_family = AF_INET;
+		service2.sin_addr.s_addr = INADDR_ANY;
+		service2.sin_port = htons(4433);
+
+		ListenSocket->bind((SOCKADDR*)&service2, sizeof(service2));
+		ListenSocket->listen(5);
+
 		netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
-		ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-
-
-		std::cout << "AA" << std::endl;
-
-	/*	std::thread([ConnectSocket, clientService]()
-		{
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+		std::thread([ConnectSocket, clientService]()
+			{
 				ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-		}).detach();
-*/
+			}).detach();
+		//ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+		std::this_thread::sleep_for(std::chrono::seconds(1));
 
-		//std::this_thread::sleep_for(std::chrono::seconds(1));
-		//newsockfd = accept(sockfd, (struct sockaddr*)&addr, &addr_len);
-		//if (newsockfd < 0) {
-		//	perror("Unable to accept");
-		//	exit(EXIT_FAILURE);
-		//}
+		netlab::L5_socket* AcceptSocket = nullptr;
+		AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
-		//SSL* ssl = SSL_new(ctx);
-		//SSL_set_fd(ssl, newsockfd);
+		netlab::tls_socket* accept_tls_scoket = (new netlab::tls_socket(inet_server, AcceptSocket, true));
+		accept_tls_scoket->handshake();
 
-		//if (SSL_accept(ssl) <= 0) {
-		//	ERR_print_errors_fp(stderr);
-		//}
-		//
-		//char buffer[1024] = { 0 };
-		//int bytes = SSL_read(ssl, buffer, sizeof(buffer));
+		std::string send_msg("hello world!, this is my first tls implemtation");
+		send_msg.push_back('\n');
 
 
+		ConnectSocket->send(send_msg, 100, 1, 0);
 
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		std::string rcv_msg;
+		accept_tls_scoket->recv(rcv_msg, 200, 96, 0);
 
 
 
+		ASSERT_EQ(send_msg, rcv_msg);
+		//cout << rcv_msg << endl;
 
-		//SSL_shutdown(ssl);
-		//SSL_free(ssl);
-		//closesocket(newsockfd);
-		//
+		//ConnectSocket->shutdown(SD_SEND);
+		//ListenSocket->shutdown(SD_RECEIVE);
+
 	}
+
 
 };
 
-//TEST_F(TCP_Tests, test_reno)
-//{
-//	run_all_test(TCP_RENO);
-//}
+TEST_F(TCP_Tests, test_reno)
+{
+	run_all_test(TCP_RENO);
+}
 
 
 //TEST_F(TCP_Tests, test_tahoe)
@@ -603,5 +511,5 @@ TEST_F(TLS_test, tls_test)
 {
 	set_tcp(inet_client,TCP_RENO);
 	set_tcp(inet_server, TCP_RENO);
-	test_sender();
+	test_big_packet();
 }
