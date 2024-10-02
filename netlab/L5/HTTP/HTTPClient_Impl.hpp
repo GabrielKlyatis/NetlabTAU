@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HTTPClient.hpp"
+#include "HTTPServer_Impl.hpp"
 
 namespace netlab {
 
@@ -16,8 +17,7 @@ namespace netlab {
 		void set_HTTP_procotol(HTTPProtocol protocol, inet_os& inet_client) override;
 
 		// Establish connection
-		//void connect_to_server(std::string server_address);
-		//void HTTPClient::connect_to_server(u_long server_address);
+		void connect_to_server(inet_os& inet_server, HTTPServer_Impl* http_server);
 
 		// Client Methods
 		int get(std::string& uri, std::string& request_version, HTTPHeaders& headers, QueryParams& params) override;

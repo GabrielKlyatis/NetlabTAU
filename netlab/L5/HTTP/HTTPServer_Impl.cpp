@@ -25,13 +25,26 @@ void HTTPServer_Impl::set_HTTP_procotol(HTTPProtocol http_protocol, inet_os& ine
 	}
 }
 
-//void HTTPServer_Impl::accept_connection() {
-//
-//	client_socket = socket->accept(nullptr, 0);
-//	if (protocol == HTTPProtocol::HTTPS) {
-//		((tls_socket*)client_socket)->handshake();
-//	}
-//}
+void HTTPServer_Impl::listen_for_connection() {
+
+	sockaddr_in serverService;
+	serverService.sin_family = AF_INET;
+	serverService.sin_addr.s_addr = INADDR_ANY;
+	serverService.sin_port = protocol == HTTPProtocol::HTTP ? htons(SERVER_PORT) : htons(SERVER_PORT_HTTPS);
+
+	socket->bind((SOCKADDR*)&serverService, sizeof(serverService));
+	socket->listen(5);
+}
+
+void HTTPServer_Impl::accept_connection(inet_os& inet_server) {
+
+	client_socket = socket->accept(nullptr, 0);
+	if (protocol == HTTPProtocol::HTTPS) {
+		netlab::tls_socket* tls_sock = (new netlab::tls_socket(inet_server, client_socket, true));
+		tls_sock->handshake();
+		client_socket = tls_sock;
+	}
+}
 
 // Check if the server has the requested resource
 bool HTTPServer_Impl::has_resource(std::string& request_path) {
@@ -88,6 +101,7 @@ int HTTPServer_Impl::create_resource(std::string& request_path, std::string& dat
 int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 
 	int res = RESULT_SUCCESS;
+	bool close_connection = false;
 	HTTPResponse HTTP_response;
 
 	// Update the response date header
@@ -132,7 +146,8 @@ int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 		break;
 	}
 	// Send the response
-	send_response(HTTP_response);
+	close_connection = HTTP_response.get_header_value("Connection", 0) == "close";
+	send_response(HTTP_response, close_connection);
 	if (res != RESULT_SUCCESS) {
 		std::cerr << "Failed to handle the request." << std::endl;
 		res = RESULT_FAILURE;
@@ -141,12 +156,16 @@ int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 }
 
 // Send the response to the client
-void HTTPServer_Impl::send_response(HTTPResponse& HTTP_response) {
+void HTTPServer_Impl::send_response(HTTPResponse& HTTP_response, bool close_connection) {
 
 	// Serialize the response
 	std::string response_string = HTTP_response.to_string();
 	size_t size = response_string.size();
 
-	// Send the response to the client
+	// Send the response to the client and close the connection if needed
 	client_socket->send(response_string, size, 0, 0);
+	/*if (close_connection) {
+		client_socket->shutdown(SD_SEND);
+		client_socket->shutdown(SD_RECEIVE);
+	}*/
 }

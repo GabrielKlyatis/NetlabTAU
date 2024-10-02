@@ -1,4 +1,5 @@
 #include "HTTPClient_Impl.hpp"
+#include "../../L1/NIC.h"
 
 using namespace netlab;
 
@@ -22,46 +23,25 @@ void HTTPClient_Impl::set_HTTP_procotol(HTTPProtocol http_protocol, inet_os& ine
 	}
 }
 
-//void HTTPClient::connect_to_server(std::string server_address) {
-//
-//	sockaddr_in serverService;
-//	serverService.sin_family = AF_INET;
-//	serverService.sin_addr.s_addr = inet_addr(server_address.c_str());
-//	serverService.sin_port = htons(SERVER_PORT);
-//
-//	sockaddr_in clientService;
-//	clientService.sin_family = AF_INET;
-//	clientService.sin_addr.s_addr = inet_addr(server_address.c_str());
-//	clientService.sin_port = htons(SERVER_PORT);
-//
-//	socket->bind((SOCKADDR*)&serverService, sizeof(serverService));
-//	socket->listen(5);
-//
-//	socket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-//}
-//
-//void HTTPClient::connect_to_server(u_long server_address) {
-//	
-//	sockaddr_in serverService;
-//	serverService.sin_family = AF_INET;
-//	serverService.sin_addr.s_addr = server_address;
-//	serverService.sin_port = htons(SERVER_PORT);
-//
-//	sockaddr_in clientService;
-//	clientService.sin_family = AF_INET;
-//	clientService.sin_addr.s_addr = server_address;
-//	clientService.sin_port = htons(SERVER_PORT);
-//
-//	socket->bind((SOCKADDR*)&serverService, sizeof(serverService));
-//	socket->listen(5);
-//
-//	socket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-//}
+void HTTPClient_Impl::connect_to_server(inet_os& inet_server, HTTPServer_Impl* http_server) {
+
+	sockaddr_in clientService;
+	clientService.sin_family = AF_INET;
+	clientService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
+	clientService.sin_port = protocol == HTTPProtocol::HTTP ? htons(SERVER_PORT) : htons(SERVER_PORT_HTTPS);
+
+	netlab::L5_socket* connectSocket = socket;
+	std::thread([connectSocket, clientService]()
+		{
+			connectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
+		}).detach();
+}
 
 // Send a GET request
 int HTTPClient_Impl::get(std::string& uri, std::string& request_version, HTTPHeaders& headers, QueryParams& params) {
 
 	int res = RESULT_SUCCESS;
+	bool close_connection = false;
 	HTTPRequest http_request;
 
 	http_request.request_method = "GET"; // Request method
@@ -98,6 +78,7 @@ int HTTPClient_Impl::post(std::string& uri, std::string& request_version, HTTPHe
 	std::string& body, QueryParams& body_params) {
 
 	int res = RESULT_SUCCESS;
+	bool close_connection = false;
 	HTTPRequest http_request;
 
 	http_request.request_method = "POST"; // Request method
@@ -160,6 +141,11 @@ int HTTPClient_Impl::handle_response(HTTPResponse& HTTP_response, std::string& r
 	else {
 		std::cerr << "HTTP CLIENT: Request was not successful." << std::endl;
 		res = RESULT_FAILURE;
+	}
+	// Close the connection if needed
+	if (HTTP_response.get_header_value("Connection", 0) == "close") {
+		socket->shutdown(SD_RECEIVE);
+		socket->shutdown(SD_SEND);
 	}
 	return res;
 }
