@@ -7,8 +7,6 @@
 
 </div>
 
-# NetlabTAU Project
-
 This project is part of the **Advanced Computer Communications Lab** at **Tel-Aviv University**. It aims to improve the infrastructure of network protocol testing by refining the current implementation and integrating new protocols across various system layers. The following document provides a detailed guide on how to install, configure, test, and debug the project.
 
 ## Table of Contents
@@ -58,6 +56,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
    - Edit the **Include Directories** section for WpdPack, pthread, Boost, OpenSSL, and GoogleTest.
      ![netlab Dependencies](./manual_prints/Setup/netlab_vcc+.PNG)
      - The exact paths in our configuration for each of the libraries:
+       
         ```
         - C:\googletest1.14.0\googletest\include
         - C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
@@ -66,6 +65,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
         - C:\Projects\OpenSSL-Win32\include
         ```
    - If NetlabTAU is an executable project, go to **Linker > Input** and add the paths for the required libraries (e.g., `wpcap.lib`, `pthreadVC2.lib`, etc.).
+     
        ```
         – wpcap.lib
         – pthreadVC2.lib
@@ -77,6 +77,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
     ![netlab Linker](./manual_prints/Setup/netlab_exe_linker.PNG)
 
   - The exact paths in our configuration for each of the files:
+    
        ```
         - Debug\Sniffer.lib
         - C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
@@ -93,6 +94,7 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
   ![netlab testing Dependencies](./manual_prints/Setup/netlab_testing_vcc.PNG)
 
   - The exact paths in our configuration for each of the libraries:
+    
       ```
       - C:\googletest1.14.0\googletest\include
       - C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
@@ -116,6 +118,7 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
   ![netlab testing Linker](./manual_prints/Setup/netlab_testing_linker.PNG)
 
   - The exact paths in our configuration for each of the files:
+    
       ```
       - ..\netlab\Debug\Sniffer.lib
       - ..\netlab\Debug\NetlabTAU.lib
@@ -374,6 +377,28 @@ All in all, option 1 is clearly easier, but option 2 can be explored and develop
 complex testing system when we compare students’ implementations against each other.
 
 ## Notes
+
+**TLS Debugging**
+
+The end result of TLS is encrypted data, and therefore, we will see garbled packets in Wireshark. To
+make Wireshark decrypt the packets, you will need to set the RSA key. To enable this feature, follow these
+steps:
+
+    • Open wireshark and go to Edit → Preferences
+    • Choose the RSA keys tab and click on Add new keyfile
+
+   ![Notes TLS](./manual_prints/Setup/rsa_key.PNG)
+
+    • Navigate to the OpenSSL directory and choose the .key / .pem file
+
+   ![Notes TLS key](./manual_prints/Setup/choose_Da_key.PNG)
+
+After you complete this, Wireshark will do the following:
+
+    Decrypt packets – each packet can be viewed as either encrypted or decrypted.
+    TLS log – Wireshark will generate a log for each session. In this log, you can see all the TLS
+    information, such as the client/server random values, pre-master secret, master secret, etc.
+
 
 ## Contributors
 
