@@ -194,7 +194,6 @@ linked (e.g., via Visual Studio). Then, proceed to build your project.
 3. Run the tests using either Visual Studio or the Command Line
 
   To run all tests:
-
      ```
      ./netlab_testing
      ```
