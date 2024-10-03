@@ -1,7 +1,7 @@
 
 <div align="center">
 
-<img src="UniversityLogo.jpeg" alt="Network Communications Lab Logo" width="150"/>
+![Network Communications Lab Logo](UniversityLogo.jpeg)
 
 # NetlabTAU Project
 
