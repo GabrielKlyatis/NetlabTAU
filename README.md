@@ -55,6 +55,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
 2. Right-click the **NetlabTAU** project in "Solution Explorer" and choose **Properties**:
    - Edit the **Include Directories** section for WpdPack, pthread, Boost, OpenSSL, and GoogleTest.
      ![netlab Dependencies](./manual_prints/Setup/netlab_vcc+.PNG)
+     
      - The exact paths in our configuration for each of the libraries:
        
         ```
@@ -78,17 +79,17 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
        
     ![netlab Linker](./manual_prints/Setup/netlab_exe_linker.PNG)
 
-  - The exact paths in our configuration for each of the files:
-    
-       ```
-        Debug\Sniffer.lib
-        C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
-        C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib
-        Iphlpapi.lib
-        ws2 32.lib
-        C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib
-        C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
-       ```
+    - The exact paths in our configuration for each of the files:
+      
+         ```
+          Debug\Sniffer.lib
+          C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
+          C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib
+          Iphlpapi.lib
+          ws2 32.lib
+          C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib
+          C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
+         ```
 
 4. Finally, under ”Solution Explorer”, right-click the **netlab testing** project and choose ”Properties”.
 Go to ”VC++ Directories” and edit the ”Include Directories” section - Insert the paths for the previously installed dependencies of WpdPack, pthread, Boost, OpenSSL and GoogleTest.
