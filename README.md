@@ -194,9 +194,10 @@ linked (e.g., via Visual Studio). Then, proceed to build your project.
 3. Run the tests using either Visual Studio or the Command Line
 
   To run all tests:
-     ```
-     ./netlab_testing
-     ```
+  
+   ```
+   ./netlab_testing
+   ```
      
   If you want to run a specific test, use the ```--gtest``` filter flag. The syntax is: ```TestSuite.TestName```.
   You can also use the wildcard * to run all tests under a specific test suite, for example:
