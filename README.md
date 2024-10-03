@@ -64,6 +64,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
         - C:\Projects\boost 1 83 0
         - C:\Projects\OpenSSL-Win32\include
         ```
+        
    - If NetlabTAU is an executable project, go to **Linker > Input** and add the paths for the required libraries (e.g., `wpcap.lib`, `pthreadVC2.lib`, etc.).
      
        ```
@@ -74,6 +75,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
         – libssl.lib
         – libcrypto.lib
        ```
+       
     ![netlab Linker](./manual_prints/Setup/netlab_exe_linker.PNG)
 
   - The exact paths in our configuration for each of the files:
@@ -102,6 +104,7 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
       - C:\Projects\boost 1 83 0
       - C:\Projects\OpenSSL-Win32\include
       ```
+      
 5. Go to ”Linker”, ”Input” and edit the ”Additional Dependencies” section - Insert the paths for:
 
   ```
@@ -226,15 +229,19 @@ To run tests within Visual Studio:
 1. Open Visual Studio and choose ”Open a project or solution”:
    
    ![VS Open Solution/Project](./manual_prints/Testing/open_proj.PNG)
+   
 3. Navigate to your project directory and choose the .sln or .proj file:
    
    ![VS .sln .proj](./manual_prints/Testing/files.PNG)
+   
 5. Ensure that your tests are built correctly. Go to Test → Run All Tests or use the Test Explorer window to select and run individual tests:
    
    ![VS run all tests](./manual_prints/Testing/runtests.png)
+   
 7. It's also possible to debug specific tests by right-clicking on them in the Test Explorer and selecting Debug Selected Tests:
    
    ![VS run specific test](./manual_prints/Testing/select_test.PNG)
+   
 9. Test results will be displayed in the Test Explorer, where you can view the pass/fail status for each test, along with any additional related output.
     
    ![VS test to run](./manual_prints/Testing/testtorun.PNG)
