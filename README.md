@@ -369,19 +369,19 @@ only interacts with the socket API.
 **Option 1** To minimize the TA’s workload, we can have each student name their implementation
 (class) the same as our implementation, which aligns with the test. To do so, follow these steps:
 
-  • Remove our implementation from the project to avoid conflicts (due to the same name).
-  • Embed the student implementation (one at a time) in the correct directory.
-  • Build the testing project.
-  • Run the test and review the results.
-  • Repeat.
+  - Remove our implementation from the project to avoid conflicts (due to the same name).
+  - Embed the student implementation (one at a time) in the correct directory.
+  - Build the testing project.
+  - Run the test and review the results.
+  - Repeat.
 
 **Option 2** Now, each implementation has its own unique name. Then, we can do the following:
 
-  • Embed the student’s implementation (no name conflict) in the correct directory.
-  • Redefine the socket in the test to be the correct implementation.
-  • Build the testing project.
-  • Run the test and review the results.
-  • Repeat.
+  - Embed the student’s implementation (no name conflict) in the correct directory.
+  - Redefine the socket in the test to be the correct implementation.
+  - Build the testing project.
+  - Run the test and review the results.
+  - Repeat.
     
 All in all, option 1 is clearly easier, but option 2 can be explored and developed into a more
 complex testing system when we compare students’ implementations against each other.
