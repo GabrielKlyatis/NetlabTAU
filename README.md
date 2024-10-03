@@ -54,6 +54,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
    
 2. Right-click the **NetlabTAU** project in "Solution Explorer" and choose **Properties**:
    - Edit the **Include Directories** section for WpdPack, pthread, Boost, OpenSSL, and GoogleTest.
+     
      ![netlab Dependencies](./manual_prints/Setup/netlab_vcc+.PNG)
      
      - The exact paths in our configuration for each of the libraries:
