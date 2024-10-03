@@ -253,7 +253,7 @@ stack.
 
 For example:
 
-```
+```cpp
 class TCP_Tests : public test_base {
 protected:
 /* Declaring the IP address from the current machine */
@@ -286,7 +286,7 @@ protosw::SWPROTO_IP_RAW
 
 Alternatively:
 
-```
+```cpp
 class TLS_test : public TCP_Tests {
 protected:
 void SetUp() override {
