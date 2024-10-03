@@ -134,16 +134,16 @@ Tools are a must to understand and handle the project:
 
 - **Visual Studio’s Debugger**: A powerful integrated tool that allows you to set breakpoints, inspect
 variables, and step through code execution. It simplifies debugging C++ projects by providing a
-clear view of the program’s state during runtime. Comes with the IDE ([Beginner's Tutorial](https://learn.microsoft.com/en-us/visualstudio/debugger/debugger-feature-tour?view=vs-2022))
+clear view of the program’s state during runtime. Comes with the IDE ([Beginner's Tutorial](https://learn.microsoft.com/en-us/visualstudio/debugger/debugger-feature-tour?view=vs-2022)).
 
 - **Wireshark version 4.2.2**: A widely used network protocol analyzer that captures and displays
 real-time data traffic. This is invaluable for debugging networking protocols and verifying commu-
-nication flows within the project. You can get it [here](https://www.wireshark.org/download.html)
+nication flows within the project. You can get it [here](https://www.wireshark.org/download.html).
 
 - **Postman**: A widely used API testing tool that allows users to send HTTP requests and
 analyze responses. It helps developers inspect HTTP traffic by providing detailed views of requests,
 responses, headers, and status codes. This makes it ideal for testing and debugging APIs, as well
-as monitoring client-server interactions. You can get it [here](https://www.postman.com/downloads/)
+as monitoring client-server interactions. You can get it [here](https://www.postman.com/downloads/).
 
 ---
 
@@ -151,7 +151,14 @@ as monitoring client-server interactions. You can get it [here](https://www.post
 
 ### General
 
-The testing framework for this project is based on **GoogleTest (GTest)**, which simplifies writing unit tests for C++ projects. The tests are encapsulated within test fixtures to ensure modular and maintainable code.
+The testing framework for this project has been developed in a separate repository named netlab-testing,
+ensuring that all testing efforts are modular and easily maintainable. At the core of our testing strategy
+is GoogleTest (GTest), a robust and widely adopted framework for writing C++ tests. GTest not only
+simplifies the process of writing unit tests but also integrates seamlessly with modern development tools,
+enabling automated test execution and result analysis. By leveraging this powerful framework, we ensure
+that our code remains reliable, maintainable, and easy to refactor as the project evolves.
+
+More on the GoogleTest framework can be found in the [official documentation](https://google.github.io/googletest/)
 
 ### Setting Up GoogleTest
 
