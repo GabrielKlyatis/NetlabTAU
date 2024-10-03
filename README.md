@@ -135,9 +135,11 @@ Tools are a must to understand and handle the project:
 - **Visual Studio’s Debugger**: A powerful integrated tool that allows you to set breakpoints, inspect
 variables, and step through code execution. It simplifies debugging C++ projects by providing a
 clear view of the program’s state during runtime. Comes with the IDE ([Beginner's Tutorial](https://learn.microsoft.com/en-us/visualstudio/debugger/debugger-feature-tour?view=vs-2022))
+
 - **Wireshark version 4.2.2**: A widely used network protocol analyzer that captures and displays
 real-time data traffic. This is invaluable for debugging networking protocols and verifying commu-
 nication flows within the project. You can get it [here](https://www.wireshark.org/download.html)
+
 - **Postman**: A widely used API testing tool that allows users to send HTTP requests and
 analyze responses. It helps developers inspect HTTP traffic by providing detailed views of requests,
 responses, headers, and status codes. This makes it ideal for testing and debugging APIs, as well
