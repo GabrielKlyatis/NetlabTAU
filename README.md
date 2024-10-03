@@ -76,7 +76,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
        ```
     ![netlab Linker](./manual_prints/Setup/netlab_exe_linker.PNG)
 
-    The exact paths in our configuration for each of the files:
+  - The exact paths in our configuration for each of the files:
        ```
         - Debug\Sniffer.lib
         - C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
@@ -92,7 +92,7 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
 
   ![netlab testing Dependencies](./manual_prints/Setup/netlab_testing_vcc.PNG)
 
-  The exact paths in our configuration for each of the libraries:
+  - The exact paths in our configuration for each of the libraries:
       ```
       - C:\googletest1.14.0\googletest\include
       - C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
@@ -115,7 +115,7 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
   
   ![netlab testing Linker](./manual_prints/Setup/netlab_testing_linker.PNG)
 
-  The exact paths in our configuration for each of the files:
+  - The exact paths in our configuration for each of the files:
       ```
       - ..\netlab\Debug\Sniffer.lib
       - ..\netlab\Debug\NetlabTAU.lib
