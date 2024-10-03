@@ -321,24 +321,27 @@ All the tests compare the result against the implementation of the TCP/IP stack 
 operating system.
 
 • UDP Tests
+
     – test sender - Tests the implementation as the sender side.
     – test reciver - Tests the implementation as the receiver side.
     – test bigpacket - Tests for IP fragmentation and reconstruction.
     
 • TCP Tests
+
     – test sender - Tests the implementation as the sender side.
     – test reciver - Tests the implementation as the receiver side.
-    – test bigpacket - Tests the TCP re-transmit and congestion control by moving 10MB
-between 2 sockets.
+    – test bigpacket - Tests the TCP re-transmit and congestion control by moving 10MB between 2 sockets.
 
 To simulate a real environment we’ve add receiver/sender buffers to add delay, and to
 drop and duplicate packets.
 
 • TLS Tests
+
     – test client - Tests the implementation as the client side.
     – test server - Tests the implementation as the server side.
     
 • HTTP Tests - each test implemented for both HTTP and HTTPS.
+
     – test client - Tests the implementation as the client side.
     – test server - Tests the implementation as the server side.
 
