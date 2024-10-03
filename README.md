@@ -109,13 +109,19 @@ Or to run all tests under the TCP Tests suite:
 
 Other Useful flags:
 
-```--gtest repeat=[COUNT]```
-  Runs the test suite multiple times. 
-  ```--gtest shuffle``` 
-  Runs the tests in a random order.
+```
+--gtest repeat=[COUNT]
+```
+Runs the test suite multiple times. 
+```
+--gtest shuffle
+``` 
+Runs the tests in a random order.
   
 For example, the following command runs all TCP Tests tests 100 times in random order:
-```./netlab_testing --gtest_filter=tcpTest.* --gtest_repeat=100 --gtest_shuffle```
+```
+./netlab_testing --gtest_filter=tcpTest.* --gtest_repeat=100 --gtest_shuffle
+```
 
 ## Contributors
 
