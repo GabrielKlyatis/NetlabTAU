@@ -1,7 +1,7 @@
 
 # NetlabTAU Project
 
-<img src="logo.tiff" alt="Network Communications Lab Logo" width="150"/>
+![Network Communications Lab Logo](.logo.png)
 
 This project is part of the **Advanced Computer Communications Lab** at **Tel-Aviv University**. It aims to enhance the lab infrastructure by refining the current implementation and integrating new protocols across various system layers.
 
@@ -64,8 +64,8 @@ For more details on adding new tests or test fixtures, refer to the [manual](./N
 
 ## Contributors
 
-- **Gabriel Klyatis** - ID: 313259285
-- **Niv Shani** - ID: 208825547
+- **Gabriel Klyatis**
+- **Niv Shani**
 - **Supervisors**: Prof. Boaz Patt-Shamir, Dr. Tom Mahler
 
 ## License
