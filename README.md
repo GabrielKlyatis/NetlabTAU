@@ -97,7 +97,7 @@ linked (e.g., via Visual Studio). Then, proceed to build your project.
      ```
      ./netlab_testing
      ```
-  If you want to run a specific test, use the --gtest filter flag. The syntax is: TestSuite.TestName.
+  If you want to run a specific test, use the ```--gtest``` filter flag. The syntax is: ```TestSuite.TestName```.
   You can also use the wildcard * to run all tests under a specific test suite, for example:
      ```
      ./netlab_testing --gtest_filter=tcpTest.sender_test
@@ -109,13 +109,14 @@ Or to run all tests under the TCP Tests suite:
 
 Other Useful flags:
 
-```
---gtest repeat=[COUNT]:
-```
-  Runs the test suite multiple times. ```--gtest shuffle```: Runs the
-  tests in random order.
+```--gtest repeat=[COUNT]```
+  Runs the test suite multiple times. 
+  ```--gtest shuffle``` 
+  Runs the tests in a random order.
+  
 For example, the following command runs all TCP Tests tests 100 times in random order:
-./netlab_testing --gtest_filter=tcpTest.* --gtest_repeat=100 --gtest_shuffle
+```./netlab_testing --gtest_filter=tcpTest.* --gtest_repeat=100 --gtest_shuffle```
+
 ## Contributors
 
 - **Gabriel Klyatis**
