@@ -52,6 +52,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      ![Sniffer Dependencies](./manual_prints/Setup/sniffer_config.PNG)
    - Insert the paths for the installed dependencies (WpdPack, Boost, pthread, OpenSSL, and GoogleTest).
    - Set the **Configuration Type** to static library (`.lib`).
+     ![Sniffer Configuration Type](./manual_prints/Setup/sniffer_compiling.PNG)
    
 2. Right-click the **NetlabTAU** project in "Solution Explorer" and choose **Properties**:
    - Edit the **Include Directories** section for WpdPack, pthread, Boost, OpenSSL, and GoogleTest.
