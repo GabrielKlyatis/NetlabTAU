@@ -3985,8 +3985,8 @@ findpcb:
 				* to keep a constant cwnd packets in the
 				* network.
 				*/
-				if (tp->t_timer[TCPT_REXMT] == 0 ||	ti->ti_ack() != tp->snd_una)
-					tp->t_dupacks = 0;
+			/*	if (tp->t_timer[TCPT_REXMT] == 0 ||	ti->ti_ack() != tp->snd_una)
+					tp->t_dupacks = 0;*/
 
 				/*	
 				 *	Number of consecutive duplicate ACKs reaches threshold of 3:
@@ -3997,7 +3997,7 @@ findpcb:
 				 *	in this piece of code that the fast recovery algorithm does not set the congestion window
 				 *	to one segment, as was done with the timeout.
 				 */
-				else if (++tp->t_dupacks == tcprexmtthresh) {
+				if (++tp->t_dupacks == tcprexmtthresh) {
 					tcp_dupacks_handler(tp, ti->ti_ack());
 				}
 

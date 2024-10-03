@@ -5,7 +5,7 @@ tcp_reno::tcp_reno(inet_os& inet) : tcp_tahoe(inet) {}
 
 void tcp_reno::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 {
-	int dropsocket = 0;
+	int dropsocket = 0; 
 
 	/*
 	*	Number of consecutive duplicate ACKs exceeds threshold of 3:
@@ -18,6 +18,7 @@ void tcp_reno::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 	// Fast Recovery: Increment congestion window for each duplicate ACK beyond 3
 	if (tp->t_dupacks > tcprexmtthresh)
 	{
+		std::cout << " more then 3 dup acks" << std::endl;
 		tp->log_snd_cwnd(tp->snd_cwnd += tp->t_maxseg);
 		(void)tcp_output(*tp); // Send new segments
 		return drop(tp, dropsocket);
@@ -26,7 +27,7 @@ void tcp_reno::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 	// Enter fast retransmit and recovery on 3 duplicate ACKs
 	if (tp->t_dupacks == tcprexmtthresh)
 	{
-
+		std::cout << " 3 dup acks" << std::endl;
 		u_int win(std::min(tp->snd_wnd, tp->snd_cwnd) / 2 / tp->t_maxseg);
 		if (win < 2)
 			win = 2;

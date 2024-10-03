@@ -55,6 +55,8 @@ void tcp_tahoe::tcp_congestion_conrol_handler(tcpcb* tp)
 
 void tcp_tahoe::tcp_rto_timer_handler(tcpcb* tp)
 {
+	std::cout << " timeout" << std::endl;
+
 	// calculates and sets a new retransmission timeout (RTO) 
 	TCPT_RANGESET(tp->t_rxtcur, static_cast<int>(tp->TCP_REXMTVAL() * tcp_backoff(tp->t_rxtshift)),
 		tp->t_rttmin, static_cast<int>(TCPTV_REXMTMAX));

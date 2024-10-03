@@ -49,16 +49,17 @@ void L0_buffer::send_l2_helper(const std::shared_ptr<std::vector<byte>> &m, cons
 	if (d == OUTGOING || d == BOTH) {
 		if (buff_type == DROP_DELAY)
 			process_drop_delay();
+
 		else if (reliability < uniform_real_reli(gen)) { // we dont care performance here, so maybe add tiny delay
-			std::cout << "output DUP DUP DUP" << std::endl;
+			//std::cout << "output DUP DUP DUP" << std::endl;
 			cable.send_l2_helper(m, it, iface);
-			std::this_thread::sleep_for(std::chrono::microseconds(10));
+			std::this_thread::sleep_for(std::chrono::microseconds(30));
 			cable.send_l2_helper(m, it, iface);
-			std::this_thread::sleep_for(std::chrono::microseconds(10));
+			std::this_thread::sleep_for(std::chrono::microseconds(30));
 			cable.send_l2_helper(m, it, iface);
-			std::this_thread::sleep_for(std::chrono::microseconds(10));
+			std::this_thread::sleep_for(std::chrono::microseconds(30));
 			cable.send_l2_helper(m, it, iface);
-			std::this_thread::sleep_for(std::chrono::microseconds(10));
+			std::this_thread::sleep_for(std::chrono::microseconds(30));
 		}
 			
 	}
@@ -72,13 +73,13 @@ void L0_buffer::leread(class std::shared_ptr<std::vector<byte>> &m, std::vector<
 		if (buff_type == DROP_DELAY)
 			process_drop_delay();
 		else if (reliability < uniform_real_reli(gen)) { // we dont care performance here, so maybe add tiny delay
-			std::cout << "input DUP DUP DUP" << std::endl;
+			//std::cout << "input DUP DUP DUP" << std::endl;
 			cable.inet.nic()->leread(m, it);
-			std::this_thread::sleep_for(std::chrono::microseconds(100));
+			std::this_thread::sleep_for(std::chrono::microseconds(15));
 			cable.inet.nic()->leread(m, it);
-			std::this_thread::sleep_for(std::chrono::microseconds(100));
+			std::this_thread::sleep_for(std::chrono::microseconds(15));
 			cable.inet.nic()->leread(m, it);
-			std::this_thread::sleep_for(std::chrono::microseconds(100));
+			std::this_thread::sleep_for(std::chrono::microseconds(15));
 		}
 	}
 	cable.inet.nic()->leread(m, it); 
