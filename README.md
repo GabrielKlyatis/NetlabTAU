@@ -163,17 +163,23 @@ More on the GoogleTest framework can be found in the [official documentation](ht
 ### Setting Up GoogleTest
 
 1. Download and install [GoogleTest](https://github.com/google/googletest).
-2. Ensure that GoogleTest is linked to the project.
-3. Compile the tests using Visual Studio or the command line.
+2. Setup [GoogleTest in Visual Studio](https://learn.microsoft.com/en-us/visualstudio/test/how-to-use-google-test-for-cpp?view=vs-2022).
+3. Setup netlab testing’s project environment, as described above.
 
 ### Testing Approach
 
-Each test follows a structured interface using the `setUp()` and `tearDown()` methods. The testing stages include:
-- **Constructor**: Initializes the test components.
-- **setUp()**: Configures the network components.
-- **Test Execution**: Sends and receives data.
-- **tearDown()**: Terminates the components and connections.
+In our testing approach using Google Test (GTest), each test is encapsulated within a test fixture object,
+which follows a structured interface: ```setUp()``` and ```tearDown()```. For consistency and modularity, we have
+designed every protocol test as a test fixture. The flow of each test is broken down into four key stages:
 
+- **Constructor**: Initializes the test components (such as the TCP/IP stack layers and network inter-
+face controllers). This is executed only once per test.
+- **setUp()**: Configures two inet os instances (client and server), spawns packet sniffers, and initializes
+the network domain.
+- **Test Execution**: Sends and receives data, performing comparative tests between regular OS sockets
+and inet os sockets.
+- **tearDown()**: Terminates the sniffers and ensures the connection closes cleanly.
+  
 ### How to Use
 
 1. Ensure that you have GoogleTest installed and properly linked to your project.
@@ -209,6 +215,21 @@ For example, the following command runs all TCP Tests tests 100 times in random 
 ```
 ./netlab_testing --gtest_filter=tcpTest.* --gtest_repeat=100 --gtest_shuffle
 ```
+
+## Using Visual Studio
+
+To run tests within Visual Studio:
+
+1. Open Visual Studio and choose ”Open a project or solution”:
+   ![VS Open Solution/Project](./manual_prints/Testing/open_proj.PNG)
+2. Navigate to your project directory and choose the .sln or .proj file:
+   ![VS .sln .proj](./manual_prints/Testing/files.PNG)
+3. Ensure that your tests are built correctly. Go to Test → Run All Tests or use the Test Explorer window to select and run individual tests:
+   ![VS run all tests](./manual_prints/Testing/runtests.PNG)
+4. It's also possible to debug specific tests by right-clicking on them in the Test Explorer and selecting Debug Selected Tests:
+   ![VS run specific test](./manual_prints/Testing/select_test.PNG)
+5. Test results will be displayed in the Test Explorer, where you can view the pass/fail status for each test, along with any additional related output.
+   ![VS test to run](./manual_prints/Testing/testtorun.PNG)
 
 ## Contributors
 
