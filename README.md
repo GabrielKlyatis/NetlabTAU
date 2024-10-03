@@ -236,6 +236,71 @@ To run tests within Visual Studio:
     
    ![VS test to run](./manual_prints/Testing/testtorun.PNG)
 
+## How to Add Tests
+
+As you develop and upgrade the NetlabTAU project, you will likely need to add tests for existing
+features or create new test fixtures for newly implemented protocols.
+
+**Adding a Test Fixture:**
+To add a test fixture for a new protocol, follow these steps:
+
+- Create a new file in the ‘netlab testing‘ project. Naming conventions like ‘ProtocolTest.hpp‘
+and ‘ProtocolTest.cpp‘ are recommended.
+- Define the new test fixture. Test fixture are C++ objects and can be inherited. Locate
+a similar existing text fixture and inherit from it. If no suitable feature exists, consider
+inheriting from ‘test base‘, an abstract text fixture that encompasses most of the TCP/IP
+stack.
+
+For example:
+
+```
+class TCP_Tests : public test_base {
+protected:
+/* Declaring the IP address from the current machine */
+std::string ip_address;
+// Create a SOCKET for listening for incoming connection requests.
+netlab::L5_socket_impl* ListenSocket;
+// Create a SOCKET for connecting to server.
+netlab::L5_socket_impl* ConnectSocket;
+// Create a SOCKET for accepting incoming requests.
+netlab::L5_socket_impl* AcceptSocket;
+// The sockaddr_in structure specifies the address family,
+// IP address, and port for the socket that is being bound (SERVER)
+// and port of the server to be connected to (CLIENT).
+sockaddr_in service;
+sockaddr_in clientService;
+TCP_Tests() : test_base("ip src 10.0.0.10", "ip src 10.0.0.15") {
+inet_server.inetsw(
+new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW,
+protosw::PR_ATOMIC | protosw::PR_ADDR),
+protosw::SWPROTO_IP_RAW
+);
+inet_client.inetsw(
+new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW,
+protosw::PR_ATOMIC | protosw::PR_ADDR),
+protosw::SWPROTO_IP_RAW
+);
+}
+};
+```
+
+Alternatively:
+
+```
+class TLS_test : public TCP_Tests {
+protected:
+void SetUp() override {
+// Initialize any necessary objects or states.
+}
+void TearDown() override {
+// Clean up any resources that were used during the test.
+}
+// Clean up any resources that were used during the test.
+};
+```
+
+
+
 ## Contributors
 
 - **Gabriel Klyatis**
