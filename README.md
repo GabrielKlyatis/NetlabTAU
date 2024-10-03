@@ -346,6 +346,35 @@ drop and duplicate packets.
     test client - Tests the implementation as the client side.
     test server - Tests the implementation as the server side.
 
+## How to Check the Implementation of Students
+
+We developed two methods to check student implementations using the netlab testing infrastruc-
+ture. Let’s take a lab assignment about TLS sockets as an example. Each student writes their own
+implementation of TLS that inherits from the socket interface. Thus, the test will work because it
+only interacts with the socket API.
+
+**Option 1** To minimize the TA’s workload, we can have each student name their implementation
+(class) the same as our implementation, which aligns with the test. To do so, follow these steps:
+
+    • Remove our implementation from the project to avoid conflicts (due to the same name).
+    • Embed the student implementation (one at a time) in the correct directory.
+    • Build the testing project.
+    • Run the test and review the results.
+    • Repeat.
+
+**Option 2** Now, each implementation has its own unique name. Then, we can do the following:
+
+    • Embed the student’s implementation (no name conflict) in the correct directory.
+    • Redefine the socket in the test to be the correct implementation.
+    • Build the testing project.
+    • Run the test and review the results.
+    • Repeat.
+    
+All in all, option 1 is clearly easier, but option 2 can be explored and developed into a more
+complex testing system when we compare students’ implementations against each other.
+
+## Notes
+
 ## Contributors
 
 - **Gabriel Klyatis**
