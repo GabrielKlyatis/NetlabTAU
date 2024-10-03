@@ -356,7 +356,7 @@ drop and duplicate packets.
   - test_client - Tests the implementation as the client side.
   - test_server - Tests the implementation as the server side.
     
-• HTTP Tests - each test implemented for both HTTP and HTTPS.
+• HTTP Tests
 
   - HTTP_GET_inet_os - Tests the implementation for a GET request.
   - HTTP_POST_inet_os - Tests the implementation for a POST request.
