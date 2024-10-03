@@ -335,29 +335,30 @@ operating system.
 
 • UDP Tests
     
-    test sender - Tests the implementation as the sender side.
-    test reciver - Tests the implementation as the receiver side.
-    test bigpacket - Tests for IP fragmentation and reconstruction.
+  - test_sender - Tests the implementation as the sender side.
+  - test_reciver - Tests the implementation as the receiver side.
+  - test_big_packet - Tests for IP fragmentation and reconstruction.
     
     
 • TCP Tests
 
-    test sender - Tests the implementation as the sender side.
-    test reciver - Tests the implementation as the receiver side.
-    test bigpacket - Tests the TCP re-transmit and congestion control by moving 10MB between 2 sockets.
+  - test_sender - Tests the implementation as the sender side.
+  - test_reciver - Tests the implementation as the receiver side.
+  - test_big_packet - Tests the TCP re-transmit and congestion control by moving 10MB between 2 sockets.
 
 To simulate a real environment we’ve add receiver/sender buffers to add delay, and to
 drop and duplicate packets.
 
 • TLS Tests
 
-    test client - Tests the implementation as the client side.
-    test server - Tests the implementation as the server side.
+  - test_client - Tests the implementation as the client side.
+  - test_server - Tests the implementation as the server side.
     
 • HTTP Tests - each test implemented for both HTTP and HTTPS.
 
-    test client - Tests the implementation as the client side.
-    test server - Tests the implementation as the server side.
+  - HTTP_GET_inet_os - Tests the implementation for a GET request.
+  - HTTP_POST_inet_os - Tests the implementation for a POST request.
+  - HTTPS_GET_inet_os - Tests the implementation for a GET request over TLS.
 
 ## How to Check the Implementation of Students
 
