@@ -378,7 +378,7 @@ complex testing system when we compare students’ implementations against each 
 
 ## Notes
 
-## TLS Debugging
+### TLS Debugging
 
 The end result of TLS is encrypted data, and therefore, we will see garbled packets in Wireshark. To
 make Wireshark decrypt the packets, you will need to set the RSA key. To enable this feature, follow these
@@ -400,7 +400,7 @@ After you complete this, Wireshark will do the following:
   2. TLS log – Wireshark will generate a log for each session. In this log, you can see all the TLS
     information, such as the client/server random values, pre-master secret, master secret, etc.
 
-## L0_Buffer
+### L0_Buffer
 
 The L0 buffers act as intermediaries between the network and our NIC, simulating the effects of a real
 network. We can define the buffer for input, output, or both directions of traffic, and the buffer func-
