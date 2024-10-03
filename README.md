@@ -59,11 +59,11 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      ![netlab Dependencies](./manual_prints/Setup/netlab_vcc+.PNG)
      The exact paths in our configuration for each of the libraries:
         ```
-        C:\googletest1.14.0\googletest\include
-        C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
-        C:\Projects\WpdPack 4 1 2\WpdPack\Include
-        C:\Projects\boost 1 83 0
-        C:\Projects\OpenSSL-Win32\include
+        - C:\googletest1.14.0\googletest\include
+        - C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
+        - C:\Projects\WpdPack 4 1 2\WpdPack\Include
+        - C:\Projects\boost 1 83 0
+        - C:\Projects\OpenSSL-Win32\include
         ```
    - If NetlabTAU is an executable project, go to **Linker > Input** and add the paths for the required libraries (e.g., `wpcap.lib`, `pthreadVC2.lib`, etc.).
        ```
@@ -78,13 +78,13 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
 
     The exact paths in our configuration for each of the files:
        ```
-        Debug\Sniffer.lib
-        C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
-        C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib
-        Iphlpapi.lib
-        ws2 32.lib
-        C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib
-        C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
+        - Debug\Sniffer.lib
+        - C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
+        - C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib
+        - Iphlpapi.lib
+        - ws2 32.lib
+        - C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib
+        - C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
        ```
 
 4. Finally, under ”Solution Explorer”, right-click the **netlab testing** project and choose ”Properties”.
@@ -94,11 +94,11 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
 
   The exact paths in our configuration for each of the libraries:
       ```
-      C:\googletest1.14.0\googletest\include
-      C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
-      C:\Projects\WpdPack 4 1 2\WpdPack\Include
-      C:\Projects\boost 1 83 0
-      C:\Projects\OpenSSL-Win32\include
+      - C:\googletest1.14.0\googletest\include
+      - C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
+      - C:\Projects\WpdPack 4 1 2\WpdPack\Include
+      - C:\Projects\boost 1 83 0
+      - C:\Projects\OpenSSL-Win32\include
       ```
 5. Go to ”Linker”, ”Input” and edit the ”Additional Dependencies” section - Insert the paths for:
 
