@@ -89,11 +89,33 @@ Each test follows a structured interface using the `setUp()` and `tearDown()` me
 
 ### How to Use
 
-1. Compile and run the tests using Visual Studio or the command line.
-2. To run all tests:
-   ```bash
-   ./netlab_testing
+1. Ensure that you have GoogleTest installed and properly linked to your project.
+2. Compile the tests - to compile tests with GoogleTest, make sure the appropriate include directories and libraries are
+linked (e.g., via Visual Studio). Then, proceed to build your project.
+3. Run the tests using either Visual Studio or the Command Line
+  To run all tests:
+     ```bash
+     ./netlab_testing
+     ```
+  If you want to run a specific test, use the --gtest filter flag. The syntax is: TestSuite.TestName.
+  You can also use the wildcard * to run all tests under a specific test suite, for example:
+     ```bash
+     ./netlab_testing --gtest_filter=tcpTest.sender_test
+     ```
+Or to run all tests under the TCP Tests suite:
+  ```bash
+  ./netlab_testing --gtest_filter=TCP_Tests.*
+  ```
 
+Other Useful flags:
+
+```bash
+--gtest repeat=[COUNT]:
+```
+  Runs the test suite multiple times. ```bash --gtest shuffle```: Runs the
+  tests in random order.
+For example, the following command runs all TCP Tests tests 100 times in random order:
+./netlab_testing --gtest_filter=tcpTest.* --gtest_repeat=100 --gtest_shuffle
 ## Contributors
 
 - **Gabriel Klyatis**
