@@ -66,11 +66,67 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
         C:\Projects\OpenSSL-Win32\include
         ```
    - If NetlabTAU is an executable project, go to **Linker > Input** and add the paths for the required libraries (e.g., `wpcap.lib`, `pthreadVC2.lib`, etc.).
+       ```
+        – wpcap.lib
+        – pthreadVC2.lib
+        – Iphlpapi.lib
+        – ws2 32.lib
+        – libssl.lib
+        – libcrypto.lib
+       ```
     ![netlab Linker](./manual_prints/Setup/netlab_exe_linker.PNG)
-     
-3. Configure the **netlab testing** project in a similar manner by including the necessary libraries.
 
+    The exact paths in our configuration for each of the files:
+       ```
+        Debug\Sniffer.lib
+        C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
+        C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib
+        Iphlpapi.lib
+        ws2 32.lib
+        C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib
+        C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
+       ```
 
+4. Finally, under ”Solution Explorer”, right-click the **netlab testing** project and choose ”Properties”.
+Go to ”VC++ Directories” and edit the ”Include Directories” section - Insert the paths for the previously installed dependencies of WpdPack, pthread, Boost, OpenSSL and GoogleTest.
+
+  ![netlab testing Dependencies](./manual_prints/Setup/netlab_testing_vcc.PNG)
+
+  The exact paths in our configuration for each of the libraries:
+      ```
+      C:\googletest1.14.0\googletest\include
+      C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
+      C:\Projects\WpdPack 4 1 2\WpdPack\Include
+      C:\Projects\boost 1 83 0
+      C:\Projects\OpenSSL-Win32\include
+      ```
+5. Go to ”Linker”, ”Input” and edit the ”Additional Dependencies” section - Insert the paths for:
+
+  ```
+      – Sniffer.lib
+      – NetlabTAU.lib
+      – wpcap.lib
+      – pthreadVC2.lib
+      – Iphlpapi.lib
+      – ws2 32.lib
+      – libssl.lib
+      – libcrypto.lib
+  ```
+  
+  ![netlab testing Linker](./manual_prints/Setup/netlab_testing_linker.PNG)
+
+  The exact paths in our configuration for each of the files:
+      ```
+      ..\netlab\Debug\Sniffer.lib
+      ..\netlab\Debug\NetlabTAU.lib
+      C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
+      C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib
+      Iphlpapi.lib
+      ws2 32.lib
+      C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib
+      C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
+      ```
+  
 ### Debug Tools
 
 To aid in debugging the project, the following tools are recommended:
