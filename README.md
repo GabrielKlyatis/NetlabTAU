@@ -49,6 +49,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
 
 1. Under "Solution Explorer", right-click the **Sniffer** project and choose **Properties**:
    - Go to **VC++ Directories** and edit the **Include Directories** section.
+     ![Sniffer Dependencies](manual_prints/Setup/sniffer_config.png)
    - Insert the paths for the installed dependencies (WpdPack, Boost, pthread, OpenSSL, and GoogleTest).
    - Set the **Configuration Type** to static library (`.lib`).
    
