@@ -117,14 +117,14 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
 
   The exact paths in our configuration for each of the files:
       ```
-      ..\netlab\Debug\Sniffer.lib
-      ..\netlab\Debug\NetlabTAU.lib
-      C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
-      C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib
-      Iphlpapi.lib
-      ws2 32.lib
-      C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib
-      C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
+      - ..\netlab\Debug\Sniffer.lib
+      - ..\netlab\Debug\NetlabTAU.lib
+      - C:\Projects\WpdPack 4 1 2\WpdPack\Lib\wpcap.lib
+      - C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib
+      - Iphlpapi.lib
+      - ws2 32.lib
+      - C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib
+      - C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
       ```
   
 ### Debug Tools
