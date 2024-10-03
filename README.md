@@ -7,64 +7,92 @@
 
 </div>
 
-This project is part of the **Advanced Computer Communications Lab** at **Tel-Aviv University**. It aims to enhance the lab infrastructure by refining the current implementation and integrating new protocols across various system layers.
+# NetlabTAU Project
+
+This project is part of the **Advanced Computer Communications Lab** at **Tel-Aviv University**. It aims to improve the infrastructure of network protocol testing by refining the current implementation and integrating new protocols across various system layers. The following document provides a detailed guide on how to install, configure, test, and debug the project.
 
 ## Table of Contents
-- [Installation](#installation)
-- [Project Configuration](#project-configuration)
-- [Debug Tools](#debug-tools)
-- [Tests](#tests)
-- [Contributors](#contributors)
-- [License](#license)
 
-## Installation
-To get started with the NetlabTAU project, follow these installation instructions:
+- [Setup](#setup)
+  - [Installation](#installation)
+  - [Project Configuration](#project-configuration)
+  - [Debug Tools](#debug-tools)
+- [Tests](#tests)
+  - [General](#general)
+  - [Setting Up GoogleTest](#setting-up-googletest)
+  - [Testing Approach](#testing-approach)
+  - [How to Use](#how-to-use)
+  - [How to Add Tests](#how-to-add-tests)
+  - [Implemented Tests Overview](#implemented-tests-overview)
+  - [How to Check the Implementation of Students](#how-to-check-the-implementation-of-students)
+- [Notes](#notes)
+  - [TLS Debugging](#tls-debugging)
+  - [L0 Buffer](#l0-buffer)
+  - [HTTP](#http)
+
+---
+
+## Setup
+
+### Installation
 
 1. Install **Microsoft Visual Studio 2022**.
-2. Clone the [NetlabTAU repository](https://github.com/GabrielKlyatis/NetlabTAU).
-3. Download and install the following dependencies:
-   - [Boost](https://www.boost.org/users/download/)
-   - [pthreads-win32](https://sourceware.org/pthreads-win32/)
-   - [WinPcap Developer’s Pack](https://www.winpcap.org/devel.htm)
-   - [OpenSSL (version 3.0+)](https://slproweb.com/products/Win32OpenSSL.html)
-   - [GoogleTest framework](https://github.com/google/googletest)
+2. Clone the [NetlabTAU](https://github.com/GabrielKlyatis/NetlabTAU) project repository onto your machine.
+3. Download and install the latest versions of the following:
+   - [Boost](https://www.boost.org/users/download/) version 1.83.
+   - [pthreads-win32](https://sourceware.org/pthreads-win32/).
+   - [WinPcap Developer’s Pack](https://www.winpcap.org/devel.htm) version 4.1.2.
+   - [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html) version 3.0+ (Win32/Win64 based on your system).
+   - [GoogleTest framework](https://github.com/google/googletest).
 
-For detailed instructions on setting up these dependencies, refer to the `Setup` section in the [manual](./NetlabTAU_Manual.pdf).
+### Project Configuration
 
-## Project Configuration
+1. Under "Solution Explorer", right-click the **Sniffer** project and choose **Properties**:
+   - Go to **VC++ Directories** and edit the **Include Directories** section.
+   - Insert the paths for the installed dependencies (WpdPack, Boost, pthread, OpenSSL, and GoogleTest).
+   - Set the **Configuration Type** to static library (`.lib`).
+   
+2. Right-click the **NetlabTAU** project in "Solution Explorer" and choose **Properties**:
+   - Edit the **Include Directories** section for WpdPack, pthread, Boost, OpenSSL, and GoogleTest.
+   - If NetlabTAU is an executable project, go to **Linker > Input** and add the paths for the required libraries (e.g., `wpcap.lib`, `pthreadVC2.lib`, etc.).
 
-Once the required dependencies are installed, follow these steps to configure the project:
+3. Configure the **netlab testing** project in a similar manner by including the necessary libraries.
 
-1. Right-click the **Sniffer** project in Visual Studio and choose **Properties**.
-   - Edit the **Include Directories** section in **VC++ Directories** to include paths to dependencies.
-   - Set **Configuration Type** to static library (`.lib`).
-2. Right-click the **NetlabTAU** project and configure it based on your system setup as either a static library or executable.
-   - Include directories for dependencies such as WpdPack, pthread, Boost, OpenSSL, and GoogleTest.
-3. Link the required libraries (e.g., `wpcap.lib`, `pthreadVC2.lib`, `libssl.lib`).
+### Debug Tools
 
-Refer to the full setup guide in the [manual](./NetlabTAU_Manual.pdf) for additional details.
+To aid in debugging the project, the following tools are recommended:
+- **Visual Studio’s Debugger**: Integrated debugging tool for setting breakpoints, inspecting variables, etc.
+- **Wireshark**: Network protocol analyzer to capture and analyze traffic.
+- **Postman**: API testing tool to inspect HTTP traffic.
 
-## Debug Tools
-
-The following debugging tools are recommended for this project:
-- **Visual Studio Debugger** – Integrated debugging tool within Visual Studio.
-- **Wireshark** – A network protocol analyzer to capture and analyze real-time traffic.
-- **Postman** – An API testing tool for inspecting HTTP traffic.
-
-Download links and further instructions can be found in the [manual](./NetlabTAU_Manual.pdf).
+---
 
 ## Tests
 
-We use **GoogleTest (GTest)** to implement unit tests for this project. The test suite is modular and easily maintainable.
+### General
 
-To run the tests:
-- Install GoogleTest and ensure it is linked to the project.
-- Build and run tests through Visual Studio or command line:
-  ```bash
-  ./netlab_testing --gtest_filter=TestSuite.TestName
-  ```
+The testing framework for this project is based on **GoogleTest (GTest)**, which simplifies writing unit tests for C++ projects. The tests are encapsulated within test fixtures to ensure modular and maintainable code.
 
-For more details on adding new tests or test fixtures, refer to the [manual](./NetlabTAU_Manual.pdf).
+### Setting Up GoogleTest
+
+1. Download and install [GoogleTest](https://github.com/google/googletest).
+2. Ensure that GoogleTest is linked to the project.
+3. Compile the tests using Visual Studio or the command line.
+
+### Testing Approach
+
+Each test follows a structured interface using the `setUp()` and `tearDown()` methods. The testing stages include:
+- **Constructor**: Initializes the test components.
+- **setUp()**: Configures the network components.
+- **Test Execution**: Sends and receives data.
+- **tearDown()**: Terminates the components and connections.
+
+### How to Use
+
+1. Compile and run the tests using Visual Studio or the command line.
+2. To run all tests:
+   ```bash
+   ./netlab_testing
 
 ## Contributors
 
