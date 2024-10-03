@@ -221,14 +221,19 @@ For example, the following command runs all TCP Tests tests 100 times in random 
 To run tests within Visual Studio:
 
 1. Open Visual Studio and choose ”Open a project or solution”:
+   
    ![VS Open Solution/Project](./manual_prints/Testing/open_proj.PNG)
-2. Navigate to your project directory and choose the .sln or .proj file:
+3. Navigate to your project directory and choose the .sln or .proj file:
+   
    ![VS .sln .proj](./manual_prints/Testing/files.PNG)
-3. Ensure that your tests are built correctly. Go to Test → Run All Tests or use the Test Explorer window to select and run individual tests:
-   ![VS run all tests](./manual_prints/Testing/runtests.PNG)
-4. It's also possible to debug specific tests by right-clicking on them in the Test Explorer and selecting Debug Selected Tests:
+5. Ensure that your tests are built correctly. Go to Test → Run All Tests or use the Test Explorer window to select and run individual tests:
+   
+   ![VS run all tests](./manual_prints/Testing/runtests.png)
+7. It's also possible to debug specific tests by right-clicking on them in the Test Explorer and selecting Debug Selected Tests:
+   
    ![VS run specific test](./manual_prints/Testing/select_test.PNG)
-5. Test results will be displayed in the Test Explorer, where you can view the pass/fail status for each test, along with any additional related output.
+9. Test results will be displayed in the Test Explorer, where you can view the pass/fail status for each test, along with any additional related output.
+    
    ![VS test to run](./manual_prints/Testing/testtorun.PNG)
 
 ## Contributors
