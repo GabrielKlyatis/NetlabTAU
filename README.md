@@ -378,27 +378,39 @@ complex testing system when we compare students’ implementations against each 
 
 ## Notes
 
-**TLS Debugging**
+## TLS Debugging
 
 The end result of TLS is encrypted data, and therefore, we will see garbled packets in Wireshark. To
 make Wireshark decrypt the packets, you will need to set the RSA key. To enable this feature, follow these
 steps:
 
-    • Open wireshark and go to Edit → Preferences
-    • Choose the RSA keys tab and click on Add new keyfile
+  1. Open wireshark and go to Edit → Preferences
+  2. Choose the RSA keys tab and click on Add new keyfile
 
    ![Notes TLS](./manual_prints/Setup/rsa_key.PNG)
 
-    • Navigate to the OpenSSL directory and choose the .key / .pem file
+  3. Navigate to the OpenSSL directory and choose the .key / .pem file
 
    ![Notes TLS key](./manual_prints/Setup/choose_Da_key.PNG)
 
 After you complete this, Wireshark will do the following:
 
-    Decrypt packets – each packet can be viewed as either encrypted or decrypted.
-    TLS log – Wireshark will generate a log for each session. In this log, you can see all the TLS
+  1. Decrypt packets – each packet can be viewed as either encrypted or decrypted.
+  
+  2. TLS log – Wireshark will generate a log for each session. In this log, you can see all the TLS
     information, such as the client/server random values, pre-master secret, master secret, etc.
 
+## L0_Buffer
+
+The L0 buffers act as intermediaries between the network and our NIC, simulating the effects of a real
+network. We can define the buffer for input, output, or both directions of traffic, and the buffer func-
+tionalities include:
+
+  - Delaying packets.
+  - Dropping packets.
+  - Duplicating packets.
+
+We can use these buffers, for example, to test TCP reliability, retransmission, and more.
 
 ## Contributors
 
