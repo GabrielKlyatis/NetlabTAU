@@ -1,6 +1,11 @@
 
+<div align="center">
+
 <img src="logo.png" alt="Network Communications Lab Logo" width="150"/>
+
 # NetlabTAU Project
+
+</div>
 
 This project is part of the **Advanced Computer Communications Lab** at **Tel-Aviv University**. It aims to enhance the lab infrastructure by refining the current implementation and integrating new protocols across various system layers.
 
