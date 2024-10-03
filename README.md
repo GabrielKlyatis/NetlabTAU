@@ -412,6 +412,14 @@ tionalities include:
 
 We can use these buffers, for example, to test TCP reliability, retransmission, and more.
 
+### HTTP
+
+The HTTP implementation currently supports only a single server. The server stores its available resources
+in a folder called Server filesystem. The client, which requests resources from the server, stores its obtained
+resources in a folder called Client HD, emulating the behavior of real HTTP. To successfully use the
+GET method to obtain a specific resource from the server, the Server filesystem folder must be updated
+accordingly.
+
 ## Contributors
 
 - **Gabriel Klyatis**
