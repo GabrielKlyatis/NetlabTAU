@@ -106,7 +106,7 @@ protected:
 		inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 	}
-};
+
  
 	void set_tcp(inet_os& os ,tcp_flavor tcp_type)
 	{
@@ -127,6 +127,7 @@ protected:
 		}
 
 		os.domaininit();
+
 	}
 
 	
