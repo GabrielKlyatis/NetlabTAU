@@ -66,7 +66,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      ```
      git clone https://github.com/google/googletest.git
      ```
-     **Note - Google recommends for GoogleTest to be installed from the latest commit in their GitHub repository - if you choose to do so, the version will be different from the one that we've used in the project, and the dependencies would have to be adjusted accordingly (e.g. ```C:\googletest1.15.0\googletest``` instead of the path you'll see below). If you simply get the framework from the libraries the we added to this repository, you will be fine without changing anything else.**
+     **Note - Google recommends that GoogleTest to be installed from the latest commit in their GitHub repository - if you choose to do so, the version will be different from the one that we've used in the project. The dependencies would have to be adjusted accordingly (e.g. ```C:\googletest1.15.0\googletest``` instead of the path you'll see below). If you get the framework from the libraries that we added to this repository, you will be fine without changing anything else.**
 
   
   **We recommend that the installations will be packed in the following locations:**
