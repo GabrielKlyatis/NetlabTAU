@@ -41,7 +41,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
    git clone https://github.com/GabrielKlyatis/NetlabTAU.git
    ```
    
-4. Download and install the latest versions of the following:
+3. Download and install the following:
    - [Boost Website](https://www.boost.org/users/download/)
      
      The project uses specifically Boost v1.83
