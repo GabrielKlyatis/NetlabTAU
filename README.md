@@ -36,7 +36,10 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
 
 1. Install **Microsoft Visual Studio 2022**.
 2. Clone the [NetlabTAU](https://github.com/GabrielKlyatis/NetlabTAU) project repository onto your machine.
-3. Download and install the latest versions of the following:
+   ```
+   git clone https://github.com/GabrielKlyatis/NetlabTAU.git
+   ```
+4. Download and install the latest versions of the following:
    - [Boost](https://www.boost.org/users/download/) version 1.83.
    - [pthreads-win32](https://sourceware.org/pthreads-win32/).
    - [WinPcap Developer’s Pack](https://www.winpcap.org/devel.htm) version 4.1.2.
