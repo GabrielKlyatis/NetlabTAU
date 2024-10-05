@@ -31,59 +31,6 @@ std::vector<std::string> split_lines(const std::string& str) {
 	return lines;
 }
 
-std::string HTTPResponse::status_message(StatusCode status_code) {
-	switch (status_code) {
-		// 1xx Informational
-	case StatusCode::Continue: return "Continue";
-	case StatusCode::SwitchingProtocols: return "Switching Protocol";
-	case StatusCode::Processing: return "Processing";
-	case StatusCode::EarlyHints: return "Early Hints";
-		// 2xx Success
-	case StatusCode::OK: return "OK";
-	case StatusCode::Created: return "Created";
-	case StatusCode::Accepted: return "Accepted";
-	case StatusCode::NonAuthoritativeInformation: return "Non-Authoritative Information";
-	case StatusCode::NoContent: return "No Content";
-	case StatusCode::ResetContent: return "Reset Content";
-	case StatusCode::PartialContent: return "Partial Content";
-	case StatusCode::MultiStatus: return "Multi-Status";
-	case StatusCode::AlreadyReported: return "Already Reported";
-	case StatusCode::IMUsed: return "IM Used";
-		// 3xx Redirection
-	case StatusCode::MultipleChoices: return "Multiple Choices";
-	case StatusCode::MovedPermanently: return "Moved Permanently";
-	case StatusCode::Found: return "Found";
-	case StatusCode::SeeOther: return "See Other";
-	case StatusCode::NotModified: return "Not Modified";
-	case StatusCode::UseProxy: return "Use Proxy";
-	case StatusCode::Unused: return "unused";
-	case StatusCode::TemporaryRedirect: return "Temporary Redirect";
-	case StatusCode::PermanentRedirect: return "Permanent Redirect";
-		// 4xx Client Error
-	case StatusCode::BadRequest: return "Bad Request";
-	case StatusCode::Unauthorized: return "Unauthorized";
-	case StatusCode::PaymentRequired: return "Payment Required";
-	case StatusCode::Forbidden: return "Forbidden";
-	case StatusCode::NotFound: return "Not Found";
-	case StatusCode::MethodNotAllowed: return "Method Not Allowed";
-	case StatusCode::NotAcceptable: return "Not Acceptable";
-		// 5xx Server Error
-	case StatusCode::NotImplemented: return "Not Implemented";
-	case StatusCode::BadGateway: return "Bad Gateway";
-	case StatusCode::ServiceUnavailable: return "Service Unavailable";
-	case StatusCode::GatewayTimeout: return "Gateway Timeout";
-	case StatusCode::HTTPVersionNotSupported: return "HTTP Version Not Supported";
-	case StatusCode::VariantAlsoNegotiates: return "Variant Also Negotiates";
-	case StatusCode::InsufficientStorage: return "Insufficient Storage";
-	case StatusCode::LoopDetected: return "Loop Detected";
-	case StatusCode::NotExtended: return "Not Extended";
-	case StatusCode::NetworkAuthenticationRequired: return "Network Authentication Required";
-
-	default:
-	case StatusCode::InternalServerError: return "Internal Server Error";
-	}
-}
-
 std::string netlab::get_content_type(std::string& resource_path) {
 
 	std::string resource_extension = resource_path.substr(resource_path.find_last_of('.') + 1);
@@ -366,13 +313,66 @@ std::string HTTPRequest::to_string() {
 /*											Response					                      */
 /**********************************************************************************************/
 
-	// Constructor
+// Constructor
 HTTPResponse::HTTPResponse() : version("HTTP/1.1"), status_code(StatusCode::OK),
 reason(status_message(status_code)), headers(default_response_headers),
 headers_order(default_response_headers_order), body("") {}
 
 HTTPResponse::HTTPResponse(const std::string& response_string) {
 	parse_response(response_string);
+}
+
+std::string HTTPResponse::status_message(StatusCode status_code) {
+	switch (status_code) {
+		// 1xx Informational
+	case StatusCode::Continue: return "Continue";
+	case StatusCode::SwitchingProtocols: return "Switching Protocol";
+	case StatusCode::Processing: return "Processing";
+	case StatusCode::EarlyHints: return "Early Hints";
+		// 2xx Success
+	case StatusCode::OK: return "OK";
+	case StatusCode::Created: return "Created";
+	case StatusCode::Accepted: return "Accepted";
+	case StatusCode::NonAuthoritativeInformation: return "Non-Authoritative Information";
+	case StatusCode::NoContent: return "No Content";
+	case StatusCode::ResetContent: return "Reset Content";
+	case StatusCode::PartialContent: return "Partial Content";
+	case StatusCode::MultiStatus: return "Multi-Status";
+	case StatusCode::AlreadyReported: return "Already Reported";
+	case StatusCode::IMUsed: return "IM Used";
+		// 3xx Redirection
+	case StatusCode::MultipleChoices: return "Multiple Choices";
+	case StatusCode::MovedPermanently: return "Moved Permanently";
+	case StatusCode::Found: return "Found";
+	case StatusCode::SeeOther: return "See Other";
+	case StatusCode::NotModified: return "Not Modified";
+	case StatusCode::UseProxy: return "Use Proxy";
+	case StatusCode::Unused: return "unused";
+	case StatusCode::TemporaryRedirect: return "Temporary Redirect";
+	case StatusCode::PermanentRedirect: return "Permanent Redirect";
+		// 4xx Client Error
+	case StatusCode::BadRequest: return "Bad Request";
+	case StatusCode::Unauthorized: return "Unauthorized";
+	case StatusCode::PaymentRequired: return "Payment Required";
+	case StatusCode::Forbidden: return "Forbidden";
+	case StatusCode::NotFound: return "Not Found";
+	case StatusCode::MethodNotAllowed: return "Method Not Allowed";
+	case StatusCode::NotAcceptable: return "Not Acceptable";
+		// 5xx Server Error
+	case StatusCode::NotImplemented: return "Not Implemented";
+	case StatusCode::BadGateway: return "Bad Gateway";
+	case StatusCode::ServiceUnavailable: return "Service Unavailable";
+	case StatusCode::GatewayTimeout: return "Gateway Timeout";
+	case StatusCode::HTTPVersionNotSupported: return "HTTP Version Not Supported";
+	case StatusCode::VariantAlsoNegotiates: return "Variant Also Negotiates";
+	case StatusCode::InsufficientStorage: return "Insufficient Storage";
+	case StatusCode::LoopDetected: return "Loop Detected";
+	case StatusCode::NotExtended: return "Not Extended";
+	case StatusCode::NetworkAuthenticationRequired: return "Network Authentication Required";
+
+	default:
+	case StatusCode::InternalServerError: return "Internal Server Error";
+	}
 }
 
 // HTTPHeaders
@@ -498,4 +498,3 @@ std::string HTTPResponse::to_string() {
 	response_string += body;
 	return response_string;
 }
-

@@ -123,7 +123,7 @@ namespace netlab
 		catch (const std::runtime_error &e)
 		{
 			std::lock_guard<std::mutex> lock(inet.print_mutex);
-			std::cout << "[@] Warning! Not using windows socket because " << e.what() << std::endl;
+			//std::cout << "[@] Warning! Not using windows socket because " << e.what() << std::endl;
 		}
 		socreate(af, sd, type, protocol);
 	}
@@ -141,7 +141,7 @@ namespace netlab
 		catch (const std::runtime_error &e)
 		{
 			std::lock_guard<std::mutex> lock(print_mutex());
-			std::cout << "[@] Warning! Not using windows bind because " << e.what() << std::endl;
+			//std::cout << "[@] Warning! Not using windows bind because " << e.what() << std::endl;
 		}
 		sobind(sd, name, name_len);
 	}

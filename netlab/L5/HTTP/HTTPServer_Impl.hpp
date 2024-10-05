@@ -17,7 +17,8 @@ namespace netlab {
 		void set_HTTP_procotol(HTTPProtocol protocol, inet_os& inet_server) override;
 
 		// Establish connection
-		//void accept_connection();
+		void listen_for_connection();
+		void accept_connection(inet_os& inet_server);
 
 		// Server Methods
 		bool has_resource(std::string& request_path);
@@ -25,7 +26,7 @@ namespace netlab {
 		int remove_resource(std::string& request_path);
 
 		int handle_request(HTTPRequest& request) override;
-		void send_response(HTTPResponse& response);
+		void send_response(HTTPResponse& response, bool close_connection);
 		
 		// Server Members
 		HTTPProtocol protocol;

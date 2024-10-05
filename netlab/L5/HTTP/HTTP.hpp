@@ -23,6 +23,7 @@ namespace netlab {
 /************************************************************************/
 
 #define SERVER_PORT 8888
+#define SERVER_PORT_HTTPS 4433
 #define CLIENT_PORT 5000
 #define RESULT_NOT_DEFINED -1
 #define RESULT_SUCCESS 0

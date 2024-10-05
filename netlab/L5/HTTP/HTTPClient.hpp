@@ -18,7 +18,7 @@ namespace netlab {
 		// Client Methods
 		virtual int get(std::string& uri, std::string& request_version, HTTPHeaders& headers, QueryParams& params) = 0;
 		virtual int post(std::string& uri, std::string& request_version, HTTPHeaders& headers,
-			QueryParams& params, std::string& body, QueryParams& body_params) = 0;
+		QueryParams& params, std::string& body, QueryParams& body_params) = 0;
 
 		virtual int handle_response(HTTPResponse& HTTP_response, std::string& requested_resource) = 0;
 
