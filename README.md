@@ -67,14 +67,16 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      git clone https://github.com/google/googletest.git
      ```
 
+  **Note - Google recommends for GoogleTest to be installed from the latest commit in their GitHub repository - if you choose to do so, the version will be different from the one that we've used in the project, and the dependencies would have to be adjusted accordingly. If you simply get the framework from the libraries the we added to this repository, you will be fine without changing anything else.**
+
   **We recommend that the installations will be packed in the following locations:**
 
   ```
-        C:\googletest1.14.0\googletest\include
-        C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
-        C:\Projects\WpdPack 4 1 2\WpdPack\Include
+        C:\googletest1.14.0\googletest
+        C:\Projects\pthreads-w32-2-9-release
+        C:\Projects\WpdPack 4 1 2
         C:\Projects\boost 1 83 0
-        C:\Projects\OpenSSL-Win32\include
+        C:\Projects\OpenSSL-Win32
   ```
         
 ### Project Configuration
