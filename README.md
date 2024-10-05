@@ -42,7 +42,12 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
    ```
    
 4. Download and install the latest versions of the following:
-   - [Boost](https://www.boost.org/users/download/) version 1.83.
+   - [Boost](https://www.boost.org/users/download/)
+     The project uses specifically Boost v1.83
+     [Boost v1.83](https://archives.boost.io/release/1.83.0/source/)
+
+     ![Network Communications Lab Logo](./manual_prints/Setup/boost.PNG)
+     
    - [pthreads-win32](https://sourceware.org/pthreads-win32/).
    - [WinPcap Developer’s Pack](https://www.winpcap.org/devel.htm) version 4.1.2.
    - [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html) version 3.0+ (Win32/Win64 based on your system).
