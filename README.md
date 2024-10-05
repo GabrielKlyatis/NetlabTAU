@@ -49,7 +49,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
 
      ![Network Communications Lab Logo](./manual_prints/Setup/boost.PNG)
      
-   - [pthreads-win32](https://sourceware.org/pthreads-win32/).
+   - [pthreads-win32 v2.9.1](https://sourceware.org/pthreads-win32/).
    - [WinPcap Developer’s Pack](https://www.winpcap.org/devel.htm) version 4.1.2.
    - [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html) version 3.0+ (Win32/Win64 based on your system).
    - [GoogleTest framework](https://github.com/google/googletest).
