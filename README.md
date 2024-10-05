@@ -47,12 +47,24 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      The project uses specifically
      [Boost v1.83](https://archives.boost.io/release/1.83.0/source/)
 
-     ![Network Communications Lab Logo](./manual_prints/Setup/boost.PNG)
+     ![Boost](./manual_prints/Setup/boost.PNG)
      
    - [pthreads-win32 v2.9.1](https://sourceware.org/pthreads-win32/).
+
+     ![pthreads](./manual_prints/Setup/pthreads.PNG)
+     
    - [WinPcap Developer’s Pack](https://www.winpcap.org/devel.htm) version 4.1.2.
+
+     ![WpdPack](./manual_prints/Setup/WpdPack.PNG)
+     
    - [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html) version 3.0+ (Win32/Win64 based on your system).
-   - [GoogleTest framework](https://github.com/google/googletest).
+
+
+   - Clone the [GoogleTest framework](https://github.com/google/googletest) repository.
+  
+     ```
+     git clone https://github.com/google/googletest.git
+     ```
 
 ### Project Configuration
 
