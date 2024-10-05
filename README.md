@@ -59,6 +59,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      
    - [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html) version 3.0+ (Win32/Win64 based on your system).
 
+     ![OpenSSL](./manual_prints/Setup/OpenSSL.PNG)
 
    - Clone the [GoogleTest framework](https://github.com/google/googletest) repository.
   
