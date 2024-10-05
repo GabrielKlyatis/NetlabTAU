@@ -30,16 +30,7 @@ protected:
 	netlab::HTTPServer_Impl* http_server;
 	netlab::HTTPClient_Impl* http_client;
 
-	HTTP_Tests() :
-		inet_server(),
-		inet_client(),
-		nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true,
-			"(arp and ether src bb:bb:bb:bb:bb:bb) or (tcp port (8888 or 4433) and not ether src aa:aa:aa:aa:aa:aa)"),
-		nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, ""),
-		datalink_server(inet_server),
-		datalink_client(inet_client),
-		arp_server(inet_server, 10, 10000),
-		arp_client(inet_client, 10, 10000)
+	HTTP_Tests() : test_base("", "(arp and ether src bb:bb:bb:bb:bb:bb) or (tcp port (8888 or 4433) and not ether src aa:aa:aa:aa:aa:aa)")
 	{
 
 		inet_server.inetsw(new L4_TCP_impl(inet_server), protosw::SWPROTO_TCP);
