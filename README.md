@@ -67,6 +67,16 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      git clone https://github.com/google/googletest.git
      ```
 
+  **We recommend that the installations will be packed in the following locations:**
+
+        ```
+        C:\googletest1.14.0\googletest\include
+        C:\Projects\pthreads-w32-2-9-release\Pre-built.2\include
+        C:\Projects\WpdPack 4 1 2\WpdPack\Include
+        C:\Projects\boost 1 83 0
+        C:\Projects\OpenSSL-Win32\include
+        ```
+        
 ### Project Configuration
 
 1. Under "Solution Explorer", right-click the **Sniffer** project and choose **Properties**:
@@ -81,7 +91,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      
      ![netlab Dependencies](./manual_prints/Setup/netlab_vcc+.PNG)
      
-     The exact paths in our configuration for each of the libraries:
+     As mentioned above, the exact paths in our configuration for each of the libraries:
        
         ```
         C:\googletest1.14.0\googletest\include
