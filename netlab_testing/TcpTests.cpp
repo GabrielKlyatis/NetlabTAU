@@ -88,20 +88,20 @@ protected:
 
 	/* Declaring the ip address from the current machine */
 	std::string ip_address;
-
+	
 	// Create a SOCKET for listening for incoming connection requests.
-	netlab::L5_socket_impl* ListenSocket;
+    netlab::L5_socket_impl* ListenSocket;
 	// Create a SOCKET for connecting to server.
-	netlab::L5_socket_impl* ConnectSocket;
+    netlab::L5_socket_impl* ConnectSocket;
 	// Create a SOCKET for accepting incoming requests.
-	netlab::L5_socket_impl* AcceptSocket;
+    netlab::L5_socket_impl* AcceptSocket;
 
 	// The sockaddr_in structure specifies the address family,
 	// IP address, and port for the socket that is being bound (SERVER)/and port of the server to be connected to (CLIENT).
 	sockaddr_in service;
 	sockaddr_in clientService;
 
-	TCP_Tests() : test_base("ip src 10.0.0.10", "ip src 10.0.0.15")
+	TCP_Tests() : test_base("ip src 10.0.0.10" , "ip src 10.0.0.15")
 	{
 		inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 		inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
@@ -119,7 +119,7 @@ protected:
 			os.inetsw(new tcp_tahoe(os), protosw::SWPROTO_TCP);
 			break;
 		case TCP_RENO:
-			os.inetsw(new tcp_reno(os), protosw::SWPROTO_TCP);
+			os.inetsw(new tcp_tahoe(os), protosw::SWPROTO_TCP);
 			break;
 
 		default:
@@ -127,7 +127,6 @@ protected:
 		}
 
 		os.domaininit();
-
 	}
 
 	
@@ -337,7 +336,7 @@ protected:
 		// Accept the connection.
 		AcceptSocket = ListenSocket->accept(nullptr, nullptr);
 
-		//inet_server.cable()->set_buf(new L0_buffer(inet_server, 0.6, L0_buffer::OUTGOING, L0_buffer::DUPLICATE));
+
 		//inet_server.cable()->set_buf(new L0_buffer(inet_server, 0.75, L0_buffer::uniform_real_distribution_args(0, 0.001), L0_buffer::OUTGOING));
 		//inet_client.cable()->set_buf(new L0_buffer(inet_client, 0.9, L0_buffer::uniform_real_distribution_args(0, 1), L0_buffer::INCOMING));
 
@@ -366,7 +365,7 @@ protected:
 	void run_all_test(tcp_flavor tcp_type) {
 
 
-		/*set_tcp(inet_client, tcp_type);
+		set_tcp(inet_client, tcp_type);
 		set_tcp(inet_server, tcp_type);
 
 		std::cout << "start recive test" << std::endl;
@@ -379,7 +378,7 @@ protected:
 		std::cout << "pass recive test" << std::endl;
 		std::cout << "start sender test" << std::endl;
 
-		test_sender();*/
+		test_sender();
 
 		set_tcp(inet_client, tcp_type);
 		set_tcp(inet_server, tcp_type);
@@ -497,20 +496,20 @@ TEST_F(TCP_Tests, test_reno)
 }
 
 
-TEST_F(TCP_Tests, test_tahoe)
-{
-	run_all_test(TCP_TAHOE);
-}
-
+//TEST_F(TCP_Tests, test_tahoe)
+//{
+//	run_all_test(TCP_TAHOE);
+//}
+//
 //TEST_F(TCP_Tests, test_base)
 //{
 //	run_all_test(TCP_BASE);
 //}
 //
-//
-//TEST_F(TLS_test, tls_test)
-//{
-//	set_tcp(inet_client,TCP_RENO);
-//	set_tcp(inet_server, TCP_RENO);
-//	test_big_packet();
-//}
+
+TEST_F(TLS_test, tls_test)
+{
+	set_tcp(inet_client,TCP_RENO);
+	set_tcp(inet_server, TCP_RENO);
+	test_big_packet();
+}

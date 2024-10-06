@@ -29,8 +29,8 @@ namespace netlab {
 #define RESULT_SUCCESS 0
 #define RESULT_FAILURE 1
 #define R_N_OFFSET 2
-#define SERVER_FILESYSTEM "C:/Users/gabri/OneDrive/Desktop/NetlabTAUProject/netlab/L5/HTTP/Server_filesystem"
-#define CLIENT_HARD_DRIVE "C:/Users/gabri/OneDrive/Desktop/NetlabTAUProject/netlab/L5/HTTP/Client_HD"
+#define SERVER_FILESYSTEM "../netlab/L5/HTTP/Server_filesystem" // Relative paths to the netlab_testing directory
+#define CLIENT_HARD_DRIVE "../netlab/L5/HTTP/Client_HD" 
 
 /************************************************************************/
 /*								aliases                                 */
@@ -47,7 +47,8 @@ namespace netlab {
 	{"Host", ""},
 	{"Connection", ""},
 	{"Content-Type", ""},
-	{"Content-Length", "0"}
+	{"Content-Length", "0"},
+	//{"Accept", ""}
 	};
 
 	const std::vector<std::string> default_request_headers_order = {
@@ -62,7 +63,8 @@ namespace netlab {
 	{"Date", ""},
 	{"Content-Type", ""},
 	{"Content-Length", "0"},
-	{"Connection", ""}
+	{"Connection", ""},
+	//{"Location", "" }
 	};
 
 	const std::vector<std::string> default_response_headers_order = {
@@ -70,7 +72,8 @@ namespace netlab {
 		"Date",
 		"Content-Type",
 		"Content-Length",
-		"Connection"
+		"Connection",
+		//"Location"
 	};
 
 /************************************************************************/
@@ -187,6 +190,7 @@ namespace netlab {
 	std::string get_current_time();
 	std::string get_content_type(std::string& resource_path);
 	std::string get_file_contents(const std::string& resource_path);
+	std::string url_decode(const std::string& str);
 
 /************************************************************************/
 /*                             structs                                  */
@@ -236,7 +240,14 @@ namespace netlab {
 
 		// Body
 		void insert_body_param(const std::string& key, const std::string& val);
-		void parse_body_query_params(std::string& unfiltered_body);
+
+		std::string serialize_urlencoded(const QueryParams& params);
+		std::string serialize_multipart(const QueryParams& params, const std::string& boundary);
+		std::string serialize_body(const QueryParams& params, const std::string& content_type);
+
+		void parse_urlencoded(std::string& unfiltered_body);
+		void parse_multipart(const std::string& body, const std::string& boundary);
+		void parse_body(const std::string& body, const std::string& content_type);
 
 		// Request
 		int parse_request(const std::string& request_string);
