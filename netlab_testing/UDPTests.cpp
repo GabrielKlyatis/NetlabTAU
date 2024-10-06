@@ -280,7 +280,12 @@ TEST_F(UDPTests, test_receiver_bigPacket) {
 	ClientSocket->bind((SOCKADDR*)&client_service, sizeof(client_service));
 	ServerSocket->bind((SOCKADDR*)&server_service, sizeof(server_service));
 
-	std::string send_msg(3000, 'T');
+	std::string send_msg;
+	for (int i = 0; i < 3500; i++)
+	{
+		send_msg += "hello world!";
+	}
+	
 	std::string received_message;
 	std::string system_received_message;
 	received_message.resize(send_msg.size());
@@ -301,7 +306,7 @@ TEST_F(UDPTests, test_receiver_bigPacket) {
 
 	ClientSocket->recvfrom(system_received_message, size, 0, 0, (SOCKADDR*)&client_service2, sizeof(client_service2));
 	ASSERT_EQ(system_received_message, send_msg);
-
+	std::cout << system_received_message << std::endl;
 	std::cout << "PASSED receiver big packet test" << std::endl;
 
 	ClientSocket->shutdown(SD_RECEIVE);
