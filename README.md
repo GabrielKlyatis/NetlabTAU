@@ -202,7 +202,7 @@ simplifies the process of writing unit tests but also integrates seamlessly with
 enabling automated test execution and result analysis. By leveraging this powerful framework, we ensure
 that our code remains reliable, maintainable, and easy to refactor as the project evolves.
 
-More on the GoogleTest framework can be found in the [official documentation](https://google.github.io/googletest/)
+More on the GoogleTest framework can be found in the [official documentation.](https://google.github.io/googletest/)
 
 ### Setting Up GoogleTest
 
