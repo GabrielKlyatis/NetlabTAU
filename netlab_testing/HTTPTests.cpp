@@ -30,7 +30,7 @@ std::string create_query_string(QueryParams& params) {
 
 std::string create_headers_string(HTTPHeaders& headers) {
     std::string headers_string;
-    std::vector<std::string> default_request_headers_order = {"Host", "Connection", "Content-Type", "Content-Length"};
+    std::vector<std::string> default_request_headers_order = {"Host" ,"User-Agent", "Connection", "Content-Type", "Content-Length"};
 
     for (const auto& header_name : default_request_headers_order) {
         auto it = headers.find(header_name);
@@ -48,49 +48,6 @@ std::string create_headers_string(HTTPHeaders& headers) {
     }
 
     return headers_string;
-}
-
-// Function to serialize data as application/x-www-form-urlencoded
-std::string serialize_urlencoded(const QueryParams& params) {
-	std::stringstream body_stream;
-	bool first = true;
-
-	for (const auto& param : params) {
-		if (!first) body_stream << "&";
-		body_stream << param.first << "=" << param.second;
-		first = false;
-	}
-
-	return body_stream.str();
-}
-
-// Function to serialize data as multipart/form-data
-std::string serialize_multipart(const QueryParams& params, const std::string& boundary) {
-	std::stringstream body_stream;
-
-	for (const auto& param : params) {
-		body_stream << "--" << boundary << "\r\n";
-		body_stream << "Content-Disposition: form-data; name=\"" << param.first << "\"\r\n\r\n";
-		body_stream << param.second << "\r\n";
-	}
-
-	body_stream << "--" << boundary << "--\r\n";  // Add closing boundary
-	return body_stream.str();
-}
-
-// Function to serialize the body
-std::string serialize_body(const QueryParams& params, const std::string& content_type) {
-	if (content_type == "application/x-www-form-urlencoded") {
-		return serialize_urlencoded(params);
-	}
-	else if (content_type == "multipart/form-data") {
-		std::string boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
-		return serialize_multipart(params, boundary);
-	}
-	else {
-		std::cerr << "Unsupported Content-Type: " << content_type << std::endl;
-		return "";
-	}
 }
 
 /************************************************************************/
@@ -181,6 +138,7 @@ TEST_F(HTTP_Tests, HTTP_GET_inet_os) {
 
 	HTTPHeaders get_headers = {
 		{"Host", "www.google.com"},
+		{"User-Agent", netlab::get_user_agent()},
 		{"Connection", "close"},
 		{"Content-Type", "text/plain"},
 	};
@@ -225,15 +183,15 @@ TEST_F(HTTP_Tests, HTTP_GET_inet_os) {
 	std::cout << "HTTP GET inet_os Test Passed" << std::endl;
 }
 
-TEST_F(HTTP_Tests, HTTP_POST_inet_os) {
+TEST_F(HTTP_Tests, HTTP_POST_1_inet_os) {
 
-	std::cout << "HTTP POST inet_os Test" << std::endl;
+	std::cout << "HTTP POST 1 inet_os Test" << std::endl;
 
 	set_HTTP_variant(HTTPProtocol::HTTP);
 	connect_to_server();
 
 	std::string post_request_method = "POST";
-	std::string post_request_uri = "/example"; // Full Request URI = Request path + Query String
+	std::string post_request_uri = "/example"; // Full Request URI = Request path + Query string
 	std::string post_request_version = "HTTP/1.1";
 
 	QueryParams post_params = {
@@ -261,8 +219,77 @@ TEST_F(HTTP_Tests, HTTP_POST_inet_os) {
 	// Headers
 	HTTPHeaders post_headers = {
 		{"Host", "www.example.com"},
+		{"User-Agent", netlab::get_user_agent()},
 		{"Connection", "close"},
 		{"Content-Type", "application/x-www-form-urlencoded"},
+		{"Content-Length", std::to_string(post_body.size())}
+	};
+
+	// Create the full request string
+	std::string post_request = post_request_method + " " + post_request_uri + create_query_string(post_params) + " " + post_request_version + "\r\n";
+	post_request += create_headers_string(post_headers) + "\r\n"; // Add headers
+	post_request += post_body; // Add serialized body
+
+	int postRequestResult = http_client->post(post_request_uri, post_request_version, post_headers, post_params, post_body, post_body_params);
+	ASSERT_EQ(postRequestResult, RESULT_SUCCESS);
+
+	std::string received_request;
+	int request_size = post_request.size();
+
+	http_server->client_socket->recv(received_request, request_size, 0, 0);
+	ASSERT_EQ(received_request, post_request);
+
+	// Create the request object
+	HTTPRequest HTTP_request;
+	HTTP_request.parse_request(received_request);
+	ASSERT_EQ(HTTP_request.to_string(), post_request);
+
+	int postResponseResult = http_server->handle_request(HTTP_request);
+	ASSERT_EQ(postResponseResult, RESULT_SUCCESS);
+
+	std::string received_response;
+	http_client->socket->recv(received_response, SB_SIZE_DEFAULT, 1, 0);
+	HTTPResponse HTTP_response(received_response);
+	ASSERT_EQ(HTTP_response.to_string(), received_response);
+
+	http_client->handle_response(HTTP_response, HTTP_request.request_path);
+
+	std::cout << "HTTP POST inet_os Test Passed" << std::endl;
+}
+
+TEST_F(HTTP_Tests, HTTP_POST_2_inet_os) {
+
+	std::cout << "HTTP POST 2 inet_os Test" << std::endl;
+
+	set_HTTP_variant(HTTPProtocol::HTTP);
+	connect_to_server();
+
+	std::string post_request_method = "POST";
+	std::string post_request_uri = "/example"; // Full Request URI = Request path + Query String
+	std::string post_request_version = "HTTP/1.1";
+
+	std::string content_type= "multipart/form-data" + std::string("; boundary=") + BOUNDARY;
+
+	QueryParams post_params = {
+	{"param1", "value1"},
+	{"param2", "value2"}
+	};
+
+	// Body params will be serialized as URL-encoded
+	QueryParams post_body_params = {
+		{"body_param1", "body_value1"},
+		{"body_param2", "body_value2"}
+	};
+
+	// Serialize the body
+	std::string post_body = serialize_body(post_body_params, content_type);
+
+	// Headers
+	HTTPHeaders post_headers = {
+		{"Host", "www.example.com"},
+		{"User-Agent", netlab::get_user_agent()},
+		{"Connection", "close"},
+		{"Content-Type",content_type},
 		{"Content-Length", std::to_string(post_body.size())}
 	};
 
@@ -310,6 +337,7 @@ TEST_F(HTTP_Tests, HTTPS_GET_inet_os) {
 
 	HTTPHeaders get_headers = {
 		{"Host", "www.google.com"},
+		{"User-Agent", netlab::get_user_agent()},
 		{"Connection", "close"},
 		{"Content-Type", "text/plain"},
 	};

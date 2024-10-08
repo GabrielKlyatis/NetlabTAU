@@ -14,7 +14,7 @@
 #include <regex>
 #include <fstream>
 #include <ctime>
-
+#include <Windows.h>
 
 namespace netlab {
 
@@ -31,6 +31,7 @@ namespace netlab {
 #define R_N_OFFSET 2
 #define SERVER_FILESYSTEM "../netlab/L5/HTTP/Server_filesystem" // Relative paths to the netlab_testing directory
 #define CLIENT_HARD_DRIVE "../netlab/L5/HTTP/Client_HD" 
+#define BOUNDARY "-----inet_os_boundry"
 
 /************************************************************************/
 /*								aliases                                 */
@@ -45,6 +46,7 @@ namespace netlab {
 
 	const HTTPHeaders default_request_headers = {
 	{"Host", ""},
+	{"User-Agent", ""},
 	{"Connection", ""},
 	{"Content-Type", ""},
 	{"Content-Length", "0"},
@@ -53,6 +55,7 @@ namespace netlab {
 
 	const std::vector<std::string> default_request_headers_order = {
 		"Host",
+		"User-Agent",
 		"Connection",
 		"Content-Type",
 		"Content-Length"
@@ -191,6 +194,13 @@ namespace netlab {
 	std::string get_content_type(std::string& resource_path);
 	std::string get_file_contents(const std::string& resource_path);
 	std::string url_decode(const std::string& str);
+	std::string get_user_agent();
+
+	// Body functions
+	std::string serialize_urlencoded(const QueryParams& params);
+	std::string serialize_multipart(const QueryParams& params, const std::string& boundary);
+	std::string serialize_body(const QueryParams& params, const std::string& content_type);
+	std::string extract_boundary(const std::string& content_type);
 
 /************************************************************************/
 /*                             structs                                  */
@@ -240,10 +250,6 @@ namespace netlab {
 
 		// Body
 		void insert_body_param(const std::string& key, const std::string& val);
-
-		std::string serialize_urlencoded(const QueryParams& params);
-		std::string serialize_multipart(const QueryParams& params, const std::string& boundary);
-		std::string serialize_body(const QueryParams& params, const std::string& content_type);
 
 		void parse_urlencoded(std::string& unfiltered_body);
 		void parse_multipart(const std::string& body, const std::string& boundary);

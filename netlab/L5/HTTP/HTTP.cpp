@@ -135,6 +135,88 @@ std::string netlab::url_decode(const std::string& str) {
 	return decoded;
 }
 
+std::string netlab::get_user_agent() {
+	HKEY hKey;
+	char value[255];
+	DWORD bufferSize = sizeof(value);
+	std::string user_agent = "Unknown";
+
+	// Open the registry key
+	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+		if (RegQueryValueExA(hKey, "User Agent", NULL, NULL, (LPBYTE)&value, &bufferSize) == ERROR_SUCCESS) {
+			user_agent = std::string(value);
+		}
+		RegCloseKey(hKey);
+	}
+
+	return user_agent;
+}
+
+// Function to serialize data as application/x-www-form-urlencoded
+std::string netlab::serialize_urlencoded(const QueryParams& params) {
+	std::stringstream body_stream;
+	bool first = true;
+
+	for (const auto& param : params) {
+		if (!first) body_stream << "&";
+		body_stream << param.first << "=" << param.second;
+		first = false;
+	}
+
+	return body_stream.str();
+}
+
+// Function to serialize data as multipart/form-data
+std::string netlab::serialize_multipart(const QueryParams& params, const std::string& boundary) {
+	std::stringstream body_stream;
+
+	for (const auto& param : params) {
+		body_stream << "--" << boundary << "\r\n";
+		body_stream << "Content-Disposition: form-data; name=\"" << param.first << "\"\r\n\r\n";
+		body_stream << param.second << "\r\n";
+	}
+
+	body_stream << "--" << boundary << "--\r\n";  // Add closing boundary
+	return body_stream.str();
+}
+
+// Function to serialize the body
+std::string netlab::serialize_body(const QueryParams& params, const std::string& content_type) {
+	if (content_type == "application/x-www-form-urlencoded") {
+		return serialize_urlencoded(params);
+	}
+	else if (content_type.find("multipart/form-data") != std::string::npos) {
+		// Try to extract the boundary from the content_type
+		std::string boundary = extract_boundary(content_type);
+
+		// If no boundary was provided, generate a default one
+		if (boundary.empty()) {
+			boundary = BOUNDARY;
+		}
+
+		// Pass the boundary to the serialization function
+		return serialize_multipart(params, boundary);
+	}
+	else {
+		std::cerr << "Unsupported Content-Type: " << content_type << std::endl;
+		return "";
+	}
+}
+
+std::string netlab::extract_boundary(const std::string & content_type) {
+	std::string boundary = "";
+	std::string boundary_prefix = "boundary=";
+
+	// Find the boundary in the content-type
+	std::size_t boundary_pos = content_type.find(boundary_prefix);
+	if (boundary_pos != std::string::npos) {
+		// Extract the boundary value
+		boundary = content_type.substr(boundary_pos + boundary_prefix.length());
+	}
+
+	return boundary;
+}
+
 /**********************************************************************************************/
 /*											Request								              */
 /**********************************************************************************************/
@@ -241,47 +323,10 @@ void HTTPRequest::parse_query_params(const std::string& query) {
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> POST <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< //
 
-// Function to serialize data as application/x-www-form-urlencoded
-std::string HTTPRequest::serialize_urlencoded(const QueryParams& params) {
-	std::stringstream body_stream;
-	bool first = true;
+// Body
 
-	for (const auto& param : params) {
-		if (!first) body_stream << "&";
-		body_stream << param.first << "=" << param.second;
-		first = false;
-	}
-
-	return body_stream.str();
-}
-
-// Function to serialize data as multipart/form-data
-std::string HTTPRequest::serialize_multipart(const QueryParams& params, const std::string& boundary) {
-	std::stringstream body_stream;
-
-	for (const auto& param : params) {
-		body_stream << "--" << boundary << "\r\n";
-		body_stream << "Content-Disposition: form-data; name=\"" << param.first << "\"\r\n\r\n";
-		body_stream << param.second << "\r\n";
-	}
-
-	body_stream << "--" << boundary << "--\r\n";  // Add closing boundary
-	return body_stream.str();
-}
-
-// Function to serialize the body
-std::string HTTPRequest::serialize_body(const QueryParams& params, const std::string& content_type) {
-	if (content_type == "application/x-www-form-urlencoded") {
-		return serialize_urlencoded(params);
-	}
-	else if (content_type == "multipart/form-data") {
-		std::string boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
-		return serialize_multipart(params, boundary);
-	}
-	else {
-		std::cerr << "Unsupported Content-Type: " << content_type << std::endl;
-		return "";
-	}
+void HTTPRequest::insert_body_param(const std::string& key, const std::string& val) {
+	body_params.emplace(key, val);
 }
 
 // Function to parse application/x-www-form-urlencoded
@@ -300,6 +345,7 @@ void HTTPRequest::parse_urlencoded(std::string& unfiltered_body) {
 		// Remove the matched key-value pair from the string
 		strippedBody = match.prefix().str() + match.suffix().str();
 	}
+	body = strippedBody;
 }
 
 // Function to parse multipart/form-data
@@ -359,7 +405,7 @@ void HTTPRequest::parse_body(const std::string& body, const std::string& content
 		std::string body_copy = body;  // Make a copy because regex modifies the string
 		parse_urlencoded(body_copy);
 	}
-	else if (content_type.find("multipart/form-data") != std::string::npos) {
+	else if (content_type.find("multipart/form-") != std::string::npos) {
 		// Extract boundary from content_type
 		size_t boundary_pos = content_type.find("boundary=");
 		if (boundary_pos != std::string::npos) {
@@ -373,27 +419,6 @@ void HTTPRequest::parse_body(const std::string& body, const std::string& content
 }
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> POST <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< //
-
-// Body
-void HTTPRequest::insert_body_param(const std::string& key, const std::string& val) {
-	body_params.emplace(key, val);
-}
-//void HTTPRequest::parse_body_query_params(std::string& unfiltered_body) {
-//	std::string strippedBody = unfiltered_body;
-//	std::regex keyValuePairRegex(R"((^|[&\s])([^&=]+)=([^&\s]*)(?=(&|\s|$)))");
-//	std::smatch match;
-//
-//	// Remove all key-value pairs
-//	while (std::regex_search(strippedBody, match, keyValuePairRegex)) {
-//		// Insert the URL-decoded key-value pair into the body_params map
-//		std::string key = url_decode(match[2].str());
-//		std::string value = url_decode(match[3].str());
-//		insert_body_param(key, value);
-//
-//		// Remove the matched key-value pair from the string
-//		strippedBody = match.prefix().str() + match.suffix().str();
-//	}
-//}
 
 // Request
 int HTTPRequest::parse_request(const std::string& request_string) {
@@ -501,15 +526,14 @@ std::string HTTPRequest::to_string() {
 		serialized_body = serialize_body(body_params, content_type);
 
 		// Add Content-Length header (must be after body is serialized)
-		request_string += "Content-Length: " + std::to_string(serialized_body.size()) + "\r\n";
-	}
-
-	// End of headers
-	request_string += "\r\n";
-
-	// Append the serialized body (if POST)
-	if (request_method == "POST") {
+		request_string += "Content-Length: " + std::to_string(serialized_body.size()) + "\r\n\r\n";
+		
+		// Add the serialized body
 		request_string += serialized_body;
+	}
+	else {
+		// End of headers
+		request_string += "\r\n";
 	}
 
 	return request_string;
