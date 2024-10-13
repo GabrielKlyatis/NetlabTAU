@@ -109,9 +109,6 @@ protected:
 		inet_server.stop_slowtimo();
 
 		std::this_thread::sleep_for(std::chrono::seconds(5));
-
-		/*delete http_server;
-		delete http_client;*/
 	}
 
 	void set_HTTP_variant(HTTPProtocol http_protocol) {
@@ -173,7 +170,7 @@ TEST_F(HTTP_Tests, HTTP_GET_inet_os) {
 	ASSERT_EQ(getResponseResult, RESULT_SUCCESS);
 
 	std::string received_response;
-	
+
 	http_client->socket->recv(received_response, SB_SIZE_DEFAULT, 1, 0);
 	HTTPResponse HTTP_response(received_response);
 	ASSERT_EQ(HTTP_response.to_string(), received_response);

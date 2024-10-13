@@ -6,9 +6,6 @@
 namespace netlab {
 
 	class HTTPClient {
-	protected:
-		// Constructor
-		HTTPClient() = default;
 	public:
 		// Destructor
 		~HTTPClient() = default;
@@ -22,6 +19,8 @@ namespace netlab {
 
 		virtual int handle_response(HTTPResponse& HTTP_response, std::string& requested_resource) = 0;
 
-		L5_socket* socket;
+	protected:
+		// Constructor
+		HTTPClient() = default;
 	};
 }

@@ -25,11 +25,13 @@ namespace netlab {
 			QueryParams& params, std::string& body, QueryParams& body_params) override;
 
 		int handle_response(HTTPResponse& HTTP_response, std::string& requested_resource) override;
-	/*protected:*/
+
+		L5_socket* socket;
+
+	private:
 		// Client Members
 		HTTPProtocol protocol;
 		uint16_t port;
-		L5_socket* socket;
 		std::vector<Resource> resources;
 		bool connection_closed;
 	};

@@ -21,18 +21,22 @@ namespace netlab {
 		void accept_connection(inet_os& inet_server);
 
 		// Server Methods
-		bool has_resource(std::string& request_path);
-		int create_resource(std::string& request_path, std::string& data);
-		int remove_resource(std::string& request_path);
-
 		int handle_request(HTTPRequest& request) override;
 		void send_response(HTTPResponse& response, bool close_connection);
 		
 		// Server Members
-		HTTPProtocol protocol;
-		uint16_t port;
 		L5_socket* socket;
 		L5_socket* client_socket;
+
+	private:
+		// Server Methods
+		bool has_resource(std::string& request_path);
+		int create_resource(std::string& request_path, std::string& data);
+		int remove_resource(std::string& request_path);
+
+		// Server Members
+		HTTPProtocol protocol;
+		uint16_t port;
 		std::vector<Resource> resources;
 		bool connection_closed;
 	};
