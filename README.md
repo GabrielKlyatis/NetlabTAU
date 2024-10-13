@@ -172,7 +172,7 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
       C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
       ```
 
-When done building the entire solution, add the **pthreadVC2.dll** file (can be found both in the repository files above and in the pthreads directory inside the x86 folder) to the **Debug** folder of the Sniffer, NetlabTAU and netlab_testing.
+When done building the entire solution, add the **pthreadVC2.dll** file (can be found both in the repository files above and in the pthreads directory inside ```Pre-built.2\dll\x86```) to the **Debug** folder of the Sniffer, NetlabTAU and netlab_testing.
   
 ### Debug Tools
 
