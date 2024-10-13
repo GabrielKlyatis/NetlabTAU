@@ -50,7 +50,6 @@ namespace netlab {
 	{"Connection", ""},
 	{"Content-Type", ""},
 	{"Content-Length", "0"},
-	//{"Accept", ""}
 	};
 
 	const std::vector<std::string> default_request_headers_order = {
@@ -67,7 +66,6 @@ namespace netlab {
 	{"Content-Type", ""},
 	{"Content-Length", "0"},
 	{"Connection", ""},
-	//{"Location", "" }
 	};
 
 	const std::vector<std::string> default_response_headers_order = {
@@ -76,7 +74,6 @@ namespace netlab {
 		"Content-Type",
 		"Content-Length",
 		"Connection",
-		//"Location"
 	};
 
 /************************************************************************/
@@ -196,7 +193,7 @@ namespace netlab {
 	std::string url_decode(const std::string& str);
 	std::string get_user_agent();
 
-	// Body functions
+	// Body functions (POST)
 	std::string serialize_urlencoded(const QueryParams& params);
 	std::string serialize_multipart(const QueryParams& params, const std::string& boundary);
 	std::string serialize_body(const QueryParams& params, const std::string& content_type);
@@ -250,7 +247,6 @@ namespace netlab {
 
 		// Body
 		void insert_body_param(const std::string& key, const std::string& val);
-
 		void parse_urlencoded(std::string& unfiltered_body);
 		void parse_multipart(const std::string& body, const std::string& boundary);
 		void parse_body(const std::string& body, const std::string& content_type);
@@ -270,7 +266,6 @@ namespace netlab {
 		HTTPHeaders headers; // Header Name, Header Value
 		std::vector<std::string> headers_order; // Order of Headers
 		std::string body; // Response Body
-		//std::string location; // Redirect Location
 
 		// Constructor
 		HTTPResponse();
@@ -287,11 +282,6 @@ namespace netlab {
 		void insert_header(const std::string& key, const std::string& val);
 		int parse_headers(const std::vector<std::string>& lines);
 		int update_connection_state(HTTPRequest& http_request);
-	
-		/*void set_redirect(const std::string& url, int status = StatusCode::Found);
-		void set_content(const char* s, size_t n, const std::string& content_type);
-		void set_content(const std::string& s, const std::string& content_type);
-		void set_content(std::string&& s, const std::string& content_type);*/
 
 		// Response
 		int parse_response(const std::string& response_string);

@@ -189,7 +189,7 @@ std::string netlab::serialize_body(const QueryParams& params, const std::string&
 		// Try to extract the boundary from the content_type
 		std::string boundary = extract_boundary(content_type);
 
-		// If no boundary was provided, generate a default one
+		// If no boundary was provided, generating a default one
 		if (boundary.empty()) {
 			boundary = BOUNDARY;
 		}
@@ -270,8 +270,8 @@ int HTTPRequest::parse_headers(const std::vector<std::string>& lines) {
 		if (pos != std::string::npos) {
 			std::string field_name = lines[i].substr(0, pos);
 			// Check if the header is supported
-			if (field_name == "Host" || field_name == "User-Agent" || field_name == "Accept" ||
-				field_name == "Content-Type" || field_name == "Content-Length" || field_name == "Connection") {
+			if (field_name == "Host" || field_name == "User-Agent" || field_name == "Content-Type" 
+				|| field_name == "Content-Length" || field_name == "Connection") {
 				std::string field_value = lines[i].substr(pos + 2); // Skip ": " (colon and space)
 				insert_header(field_name, field_value);
 				res = RESULT_SUCCESS;
@@ -649,7 +649,7 @@ int HTTPResponse::parse_headers(const std::vector<std::string>& lines) {
 			std::string field_name = lines[i].substr(0, pos);
 			// Check if the header is supported
 			if (field_name == "Date" || field_name == "Server" || field_name == "Content-Type" ||
-				field_name == "Content-Length" || field_name == "Connection" || field_name == "Location") {
+				field_name == "Content-Length" || field_name == "Connection") {
 				std::string field_value = lines[i].substr(pos + 2); // Skip ": " (colon and space)
 				insert_header(field_name, field_value);
 				res = RESULT_SUCCESS;
