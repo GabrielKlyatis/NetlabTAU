@@ -54,6 +54,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      ![pthreads](./manual_prints/Setup/pthreads.PNG)
      
    - [WinPcap Developer’s Pack](https://www.winpcap.org/devel.htm) version 4.1.2.
+     Install WinPcap rather than just including its include library to avoid missing winpcap.dll errors.
 
      ![WpdPack](./manual_prints/Setup/WpdPack.PNG)
      
@@ -170,6 +171,8 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
       C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib
       C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib
       ```
+
+When done building the entire solution, add the **pthreadVC2.dll** file (can be found both in the repository files above and in the pthreads directory inside the x86 folder) to the **Debug** folder of the Sniffer, NetlabTAU and netlab_testing.
   
 ### Debug Tools
 
