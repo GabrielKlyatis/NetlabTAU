@@ -173,6 +173,8 @@ Go to ”VC++ Directories” and edit the ”Include Directories” section - In
       ```
 
 When done building the entire solution, add the **pthreadVC2.dll** file (can be found both in the repository files above and in the pthreads directory inside ```Pre-built.2\dll\x86```) to the **Debug** folder of the Sniffer, NetlabTAU and netlab_testing projects.
+
+In addition, insert the ```msvcsr100.dll``` file that is provided with the repository of the project into ```C:\Windows\SysWOW64```.
   
 ### Debug Tools
 
