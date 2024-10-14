@@ -1,0 +1,9 @@
+-------inet_os_boundry
+Content-Disposition: form-data; name="body_param1"
+
+body_value1
+-------inet_os_boundry
+Content-Disposition: form-data; name="body_param2"
+
+body_value2
+-------inet_os_boundry--

@@ -6,9 +6,6 @@
 namespace netlab {
 
 	class HTTPServer {
-	protected:
-		// Constructor
-		HTTPServer() = default;
 	public:
 		// Destructor
 		~HTTPServer() = default;
@@ -19,7 +16,8 @@ namespace netlab {
 		// Server Methods
 		virtual int handle_request(HTTPRequest& request) = 0;
 
-		L5_socket* socket;
-		L5_socket* client_socket;
+	protected:
+		// Constructor
+		HTTPServer() = default;
 	};
 }

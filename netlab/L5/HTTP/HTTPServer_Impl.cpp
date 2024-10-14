@@ -113,12 +113,12 @@ int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 	switch (HTTP_method) {
 	case HTTPMethod::GET:
 		// Check if the server has the requested resource
-		if (has_resource(HTTP_request.request_path)) {
+		if (has_resource(HTTP_request.request_uri)) {
 			// Send a 200 OK response
 			HTTP_response.status_code = StatusCode::OK;
 			HTTP_response.reason = HTTPResponse::status_message(HTTP_response.status_code);
-			HTTP_response.set_header_value("Content-Type", get_content_type(HTTP_request.request_path));
-			HTTP_response.body = get_file_contents(HTTP_request.request_path);
+			HTTP_response.set_header_value("Content-Type", get_content_type(HTTP_request.request_uri));
+			HTTP_response.body = get_file_contents(HTTP_request.request_uri);
 			HTTP_response.set_header_value("Content-Length", std::to_string(HTTP_response.body.size()));
 		}
 		else {
@@ -129,7 +129,7 @@ int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 		break;
 	case HTTPMethod::POST:
 		// Create the resource
-		if (create_resource(HTTP_request.request_path, HTTP_request.body) == RESULT_SUCCESS) {
+		if (create_resource(HTTP_request.request_uri, HTTP_request.body) == RESULT_SUCCESS) {
 			// Send a 201 Created response
 			HTTP_response.status_code = StatusCode::Created;
 			HTTP_response.reason = HTTPResponse::status_message(HTTP_response.status_code);
@@ -164,8 +164,4 @@ void HTTPServer_Impl::send_response(HTTPResponse& HTTP_response, bool close_conn
 
 	// Send the response to the client and close the connection if needed
 	client_socket->send(response_string, size, 0, 0);
-	/*if (close_connection) {
-		client_socket->shutdown(SD_SEND);
-		client_socket->shutdown(SD_RECEIVE);
-	}*/
 }
