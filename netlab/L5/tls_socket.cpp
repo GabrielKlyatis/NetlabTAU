@@ -30,7 +30,7 @@
 
 #pragma warning(disable : 4996)
 
-#define MAX_MTU     1500
+#define MAX_MTU    5000
 
 
 using namespace netlab;
@@ -110,7 +110,7 @@ std::string secure_socket::encrypt(std::string& msg, bool server) {
 
     int lenn;
     int ciphertext_len_temp = 0;
-    std::vector<uint8_t> ciphertext(1000);  // Ensure the buffer is large enough
+    std::vector<uint8_t> ciphertext(MAX_MTU);  // Ensure the buffer is large enough
    
 
     if (EVP_EncryptInit_ex(ctx3, EVP_aes_128_cbc(), NULL, key, IV) != 1) {
@@ -149,10 +149,10 @@ std::string secure_socket::decrypt(std::string& msg, bool server) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     int lenn, lenn2;
 
-    std::vector<uint8_t> text(1000);
+    std::vector<uint8_t> text(MAX_MTU);
 
   
-    int s1 = EVP_CIPHER_CTX_reset(ctx);
+   // int s1 = EVP_CIPHER_CTX_reset(ctx);
     if (!ctx) return "";
 
     if (EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key, iv.data()) != 1) {
@@ -198,7 +198,7 @@ std::string secure_socket::decrypt(std::string& msg, bool server) {
     // Compute HMAC-SHA1
     unsigned char mac[MAC_KEY_SIZE];
     unsigned int mac_len;
-
+    std::string decrypted(text1.data(), text1.data() + text1.size());
   
     HMAC(EVP_sha1(), key_mac, MAC_KEY_SIZE, to_mac.data(), to_mac.size(), mac, &mac_len);
 
@@ -206,10 +206,10 @@ std::string secure_socket::decrypt(std::string& msg, bool server) {
     if (memcmp(mac, text.data() + dec_len, MAC_KEY_SIZE) != 0)
     {
         std::cout << "mac not match" << std::endl;
-        return "";
+        return decrypted;
     }
 
-    std::string decrypted(text1.data(), text1.data() + text1.size());
+ 
 
     EVP_CIPHER_CTX_free(ctx);
 
@@ -709,29 +709,28 @@ void tls_socket::send(std::string uio, size_t uio_resid, size_t chunk, int flags
     header.version = htons(TLS_VERSION_TLSv1_2);
     header.length = htons(encrypted_msg.size());
 
+    char* buff = (char*)&header;
 
-    char buff[RECORD_LAYER_DEFAULT_LENGTH];
-    memcpy(buff, &header, sizeof(tls_header));
     encrypted_msg.insert(encrypted_msg.begin(), buff, buff + sizeof(tls_header));
-
-
-
-    p_socket->send(encrypted_msg, encrypted_msg.size(), 0, 0);
+    p_socket->send(encrypted_msg, encrypted_msg.size(), 1000, 0);
  
 }
 
 int tls_socket::recv(std::string& uio, size_t uio_resid, size_t chunk, int flags) {
 
     std::string recv_buffer;
-    p_socket->recv(recv_buffer, uio_resid, chunk, flags);
-    
+
+    int bytes_recived = p_socket->recv(recv_buffer, uio_resid + 52, uio_resid , flags);
+   
     // get header
     tls_header* recv_header = (tls_header*)recv_buffer.c_str();
 
     // get start of the encrypted data
     char* start_of_encrypted_data = (char*)recv_buffer.c_str() + sizeof(tls_header);
 
-    std::string encrtped_msg(start_of_encrypted_data, start_of_encrypted_data + ntohs(recv_header->length));
+    auto len = ntohs(recv_header->length);
+
+    std::string encrtped_msg(start_of_encrypted_data, start_of_encrypted_data + len);
 
     uio = decrypt(encrtped_msg, server);
 
