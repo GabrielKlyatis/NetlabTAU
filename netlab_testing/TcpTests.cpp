@@ -366,7 +366,7 @@ protected:
 	void run_all_test(tcp_flavor tcp_type) {
 
 
-		/*set_tcp(inet_client, tcp_type);
+		set_tcp(inet_client, tcp_type);
 		set_tcp(inet_server, tcp_type);
 
 		std::cout << "start recive test" << std::endl;
@@ -379,7 +379,7 @@ protected:
 		std::cout << "pass recive test" << std::endl;
 		std::cout << "start sender test" << std::endl;
 
-		test_sender();*/
+		test_sender();
 
 		set_tcp(inet_client, tcp_type);
 		set_tcp(inet_server, tcp_type);
@@ -394,54 +394,33 @@ protected:
 
 };
 
-void init_openssl() {
-	SSL_load_error_strings();
-	OpenSSL_add_ssl_algorithms();
-}
-
-void cleanup_openssl() {
-	EVP_cleanup();
-}
 
 
 
-SSL_CTX* create_context() {
-	const SSL_METHOD* method;
-	SSL_CTX* ctx;
 
-	method = TLS_server_method(); // Using TLS_server_method for TLS 1.2
-	ctx = SSL_CTX_new(method);
-	if (!ctx) {
-		perror("Unable to create SSL context");
-		ERR_print_errors_fp(stderr);
-		exit(EXIT_FAILURE);
+
+
+class TLS_Tests : public TCP_Tests {
+
+protected:
+
+
+	TLS_Tests() : TCP_Tests()
+	{
+
 	}
 
-	// Set options to disable all extensions and only allow TLS 1.2
-	SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_TICKET | SSL_OP_NO_EXTENDED_MASTER_SECRET | SSL_OP_NO_ENCRYPT_THEN_MAC | SSL_OP_NO_TICKET) ;
 
 
 
-
-	return ctx;
-}
-
-
-void configure_context(SSL_CTX* ctx) {
-	SSL_CTX_use_certificate_file(ctx, "C:/Program Files/OpenSSL-Win64/server.crt", SSL_FILETYPE_PEM);
-	SSL_CTX_use_PrivateKey_file(ctx, "C:/Program Files/OpenSSL-Win64/server.key", SSL_FILETYPE_PEM);
-}
-
-class TLS_test : public TCP_Tests {
-
-public:
-
-	virtual void test_big_packet()
+	void send_packet(size_t msg_len)
 	{
-		sockaddr_in clientService;
+		
+		
 		clientService.sin_family = AF_INET;
 		clientService.sin_addr.s_addr = inet_addr("10.0.0.10");
 		clientService.sin_port = htons(4433);
+		sockaddr_in* p = &clientService; 
 
 		netlab::tls_socket* ListenSocket = (new netlab::tls_socket(inet_server));
 		sockaddr_in service2;
@@ -454,63 +433,112 @@ public:
 
 		netlab::tls_socket* ConnectSocket = new netlab::tls_socket(inet_client);
 		std::this_thread::sleep_for(std::chrono::seconds(2));
-		std::thread([ConnectSocket, clientService]()
-			{
-				ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-			}).detach();
+		std::thread([ConnectSocket, p]()
+		{
+			ConnectSocket->connect((SOCKADDR*)p, sizeof(*p));
+		}).detach();
 		//ConnectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 
-		netlab::L5_socket* AcceptSocket = nullptr;
-		AcceptSocket = ListenSocket->accept(nullptr, nullptr);
+		netlab::L5_socket *AcceptSocket2 = nullptr;
+		AcceptSocket2 = ListenSocket->accept(nullptr, nullptr);
 
-		netlab::tls_socket* accept_tls_scoket = (new netlab::tls_socket(inet_server, AcceptSocket, true));
+		netlab::tls_socket* accept_tls_scoket = (new netlab::tls_socket(inet_server, AcceptSocket2, true));
 		accept_tls_scoket->handshake();
 
-		std::string send_msg("hello world!, this is my first tls implemtation");
+		//std::string send_msg("hello world!, this is my first tls implemtation aaaaaaaaaaaaaaaaaaaaaaaa");
+		std::string send_msg(msg_len, 'T');
 		send_msg.push_back('\n');
+		std::cout << "send msg" << send_msg << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+		ConnectSocket->send(send_msg, send_msg.size(), 1, 0);
 
-
-		ConnectSocket->send(send_msg, 100, 1, 0);
-
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 
 		std::string rcv_msg;
-		accept_tls_scoket->recv(rcv_msg, 200, 96, 0);
+		rcv_msg.reserve(msg_len);
+		accept_tls_scoket->recv(rcv_msg, send_msg.size(), 1, 0);
 
+		std::cout << "send msg" << send_msg << std::endl;
+		std::cout << "recv msg" << rcv_msg << std::endl;
+		ASSERT_EQ(rcv_msg, send_msg);
 
+		cout << rcv_msg << endl;
 
-		ASSERT_EQ(send_msg, rcv_msg);
-		//cout << rcv_msg << endl;
+		ConnectSocket->shutdown(SD_SEND);
+		ListenSocket->shutdown(SD_RECEIVE);
 
-		//ConnectSocket->shutdown(SD_SEND);
-		//ListenSocket->shutdown(SD_RECEIVE);
-
+		cout << "fin" << endl;
 	}
-
 
 };
 
-TEST_F(TCP_Tests, test_reno)
-{
-	run_all_test(TCP_RENO);
-}
-
-
-TEST_F(TCP_Tests, test_tahoe)
-{
-	run_all_test(TCP_TAHOE);
-}
-
-//TEST_F(TCP_Tests, test_base)
-//{
-//	run_all_test(TCP_BASE);
-//}
 //
 //
-//TEST_F(TLS_test, tls_test)
+//
+//TEST_F(TLS_Tests, tls_without_segmentation)
 //{
-//	set_tcp(inet_client,TCP_RENO);
+//	set_tcp(inet_client, TCP_RENO);
 //	set_tcp(inet_server, TCP_RENO);
-//	test_big_packet();
+//	send_packet(500);
+//
 //}
+//
+//TEST_F(TLS_Tests, tls_with_segmentation)
+//{
+//	set_tcp(inet_client, TCP_RENO);
+//	set_tcp(inet_server, TCP_RENO);
+//	send_packet(2000);
+//
+//}
+
+
+
+
+
+TEST_F(TCP_Tests, test_reciver_reno)
+{
+	set_tcp(inet_client, TCP_RENO);
+	set_tcp(inet_server, TCP_RENO);
+
+	test_reciver();
+}
+
+
+TEST_F(TCP_Tests, test_sender_reno)
+{
+	set_tcp(inet_client, TCP_RENO);
+	set_tcp(inet_server, TCP_RENO);
+	test_sender();
+}
+
+TEST_F(TCP_Tests, test_big_packet_reno)
+{
+	set_tcp(inet_client, TCP_RENO);
+	set_tcp(inet_server, TCP_RENO);
+	test_big_packet();
+}
+
+
+TEST_F(TCP_Tests, test_reciver_tahoe)
+{
+	set_tcp(inet_client, TCP_TAHOE);
+	set_tcp(inet_server, TCP_TAHOE);
+
+	test_reciver();
+}
+
+
+TEST_F(TCP_Tests, test_sender_tahoe)
+{
+	set_tcp(inet_client, TCP_TAHOE);
+	set_tcp(inet_server, TCP_TAHOE);
+	test_sender();
+}
+
+TEST_F(TCP_Tests, test_big_packet_tahoe)
+{
+	set_tcp(inet_client, TCP_TAHOE);
+	set_tcp(inet_server, TCP_TAHOE);
+	test_big_packet();
+}
