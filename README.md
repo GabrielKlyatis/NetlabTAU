@@ -349,7 +349,7 @@ protected:
     // Initialize any necessary objects or states.
     }
     void TearDown() override {
-    // Clean up any resources that were used during the test.
+    // Cleanup any resources that were used during the test.
     }
 };
 ```
