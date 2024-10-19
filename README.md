@@ -351,7 +351,6 @@ protected:
     void TearDown() override {
     // Clean up any resources that were used during the test.
     }
-    // Clean up any resources that were used during the test.
 };
 ```
 
