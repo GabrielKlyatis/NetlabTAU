@@ -5,8 +5,7 @@
 	
     \brief	Declares the L3 class.
 */
-#ifndef L3_H_
-#define L3_H_
+#pragma once
 
 /*!
 	\def	NETLAB_L3_DEBUG
@@ -105,113 +104,62 @@ public:
 	virtual int pr_output(const struct pr_output_args &args) = 0;
 	virtual void pr_input(const struct pr_input_args &args) = 0;
 
-private:
-	virtual void pr_ctlinput() { };
-	virtual int pr_ctloutput() { return 0; };	
-	virtual int pr_usrreq(class netlab::L5_socket *so, int req, std::shared_ptr<std::vector<byte>>m,
-		struct sockaddr *nam, size_t nam_len, std::shared_ptr<std::vector<byte>> control) {	return 0; }
-	virtual void pr_fasttimo() { };	
-	virtual void pr_slowtimo() { };	
-	virtual void pr_drain() { };		
-	virtual int pr_sysctl() { return 0; };		
-};
+	/*!
+	\struct	ip_output_args
 
+	\brief	Arguments for IP output.
 
+	\sa	pr_output_args
+	*/
+	struct ip_output_args : public pr_output_args
+	{
+		ip_output_args(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it, std::shared_ptr<std::vector<byte>>& opt, struct L3::route* ro, int flags, struct  L3::ip_moptions* imo);
 
-
-
-
-
-
-
-/************************************************************************/
-/*                         SOLUTION                                     */
-/************************************************************************/
-
-/*!
-	\def	NETLAB_L3_FORWARDING
-	To enable IP forwarding, currently disabled.
-*/
-#define NETLAB_L3_FORWARDING
-#ifdef NETLAB_L3_FORWARDING
-#undef NETLAB_L3_FORWARDING
-#endif
-
-/*!
-	\def	NETLAB_L3_OPTIONS
-	To enable IP options, currently disabled.
-*/
-#define NETLAB_L3_OPTIONS
-#ifdef NETLAB_L3_OPTIONS
-#undef NETLAB_L3_OPTIONS
-#endif
-
-/*!
-	\def	NETLAB_L3_MULTICAST
-	To enable IP multi casting, currently disabled.
-*/
-#define NETLAB_L3_MULTICAST
-#ifdef NETLAB_L3_MULTICAST
-#undef NETLAB_L3_MULTICAST
-#endif
-
-/*!
-	\def	NETLAB_L3_FRAGMENTATION
-	To enable IPfragmentation, currently disabled.
-*/
-#define NETLAB_L3_FRAGMENTATION
-#ifdef NETLAB_L3_FRAGMENTATION
-#undef NETLAB_L3_FRAGMENTATION
-#endif
-
-
-
-/**
-* \class L3
-* \brief Represents a Layer 3 interface (IP).
-*/
-class L3_impl
-	: public L3
-{
-public:
+		std::shared_ptr<std::vector<byte>>& m;		/*!< The std::shared_ptr<std::vector<byte>> to process. */
+		std::vector<byte>::iterator& it;			/*!< The iterator, maintaining the current offset in the vector. */
+		std::shared_ptr<std::vector<byte>>& opt;	/*!< The IP option \warning Must be std::shared_ptr<std::vector<byte>>(nullptr) as options are not supported. */
+		struct L3::route* ro;						/*!< The route for the packet. Should only use the ro_dst member to hold the sockaddr for the output route. */
+		int flags;									/*!< The flags \see IP_OUTPUT_. */
+		struct  L3::ip_moptions* imo;				/*!< The IP multicast options \warning Must be nullptr as multicast are not supported. */
+	};
 
 	/*!
-	    \typedef	u_short n_short
-	
-	    \brief	Defines an alias representing the short as received from the net.
+		\typedef	u_short n_short
+
+		\brief	Defines an alias representing the short as received from the net.
 	*/
 	typedef u_short n_short;
-	
+
 	/*!
-	    \typedef	u_long n_long
-	
-	    \brief	Defines an alias representing the long as received from the net.
+		\typedef	u_long n_long
+
+		\brief	Defines an alias representing the long as received from the net.
 	*/
 	typedef u_long	n_long;
 
 	/*!
-	    \typedef	u_long n_time
-	
-	    \brief	Defines an alias representing the time in ms since 00:00 GMT, byte rev.
+		\typedef	u_long n_time
+
+		\brief	Defines an alias representing the time in ms since 00:00 GMT, byte rev.
 	*/
 	typedef	u_long	n_time;
 
 	enum ip_things // please rename 
-	{ 	
+	{
 		IPVERSION = 4,					/*!< Definitions for internet protocol version 4. \sa Per RFC 791, September 1981 */
 		MAX_IPOPTLEN = 40,				/*!< The actual length of the options (including ipopt_dst). */
 		IP_MAX_MEMBERSHIPS = 20,		/*!< per socket; must fit in one mbuf (legacy) */
 		IP_MAXPACKET = 65535,			/*!< The maximum packet size */
 		IP_MSS = 576,					/*!< The default maximum segment size */
 		IP_DEFAULT_MULTICAST_TTL = 1	/*!< normally limit multi casts to 1 hop */
-	};	
+	};
 
 	/*!
-	    \enum	IPOPT_
-	
-	    \brief	Definitions for options.
+		\enum	IPOPT_
+
+		\brief	Definitions for options.
 	*/
-	enum IPOPT_ 
+	enum IPOPT_
 	{
 		IPOPT_EOL = 0,			/*!< end of option list */
 		IPOPT_NOP = 1,			/*!< no operation */
@@ -232,13 +180,13 @@ public:
 	};
 
 	/*!
-	    \enum	IPOPT_SECUR_
-	
-	    \brief	Security Options for Internet Protocol (IPSO) as defined in RFC 1108.
-	    
+		\enum	IPOPT_SECUR_
+
+		\brief	Security Options for Internet Protocol (IPSO) as defined in RFC 1108.
+
 		\see RFC 1108
 	*/
-	enum IPOPT_SECUR_ 
+	enum IPOPT_SECUR_
 	{
 		IPOPT_SECUR_UNCLASS = 0x0000,   /*!< The Security Options for Unclassified option */
 		IPOPT_SECUR_CONFID = 0xf135,	/*!< The Security Options for Confidential option */
@@ -250,11 +198,11 @@ public:
 	};
 
 	/*!
-	    \enum	TTL_
-	
-	    \brief	Internet implementation parameters for Time-To-Live.
+		\enum	TTL_
+
+		\brief	Internet implementation parameters for Time-To-Live.
 	*/
-	enum TTL_ 
+	enum TTL_
 	{
 		MAXTTL = 255,		/*!< maximum time to live (seconds) */
 		IPDEFTTL = 64,		/*!< default ttl, from RFC 1340 */
@@ -263,11 +211,11 @@ public:
 	};
 
 	/*!
-	    \enum	IP_OUTPUT_
-	
-	    \brief	Flags passed to ip_output as last parameter.
+		\enum	IP_OUTPUT_
+
+		\brief	Flags passed to ip_output as last parameter.
 	*/
-	enum IP_OUTPUT_ 
+	enum IP_OUTPUT_
 	{
 		IP_FORWARDING = 0x1,				/*!< most of ip header exists */
 		IP_RAWOUTPUT = 0x2,					/*!< raw ip header exists */
@@ -276,20 +224,20 @@ public:
 	};
 
 	/*!
-	    \struct	rt_metrics
-	
-	    \brief
-	    These numbers are used by reliable protocols for determining retransmission behavior and
-	    are included in the routing structure.
-	        
-	    \note This struct is defined for both consistencies and support routing in the future.
+		\struct	rt_metrics
+
+		\brief
+		These numbers are used by reliable protocols for determining retransmission behavior and
+		are included in the routing structure.
+
+		\note This struct is defined for both consistencies and support routing in the future.
 	*/
 	struct rt_metrics {
 
 		/*!
-		    \fn	rt_metrics();
-		
-		    \brief	Default constructor.
+			\fn	rt_metrics();
+
+			\brief	Default constructor.
 		*/
 
 		rt_metrics();
@@ -321,7 +269,7 @@ public:
 
 			\brief	Index offsets for sockaddr array for alternate internal encoding.
 		*/
-		enum RTAX_ 
+		enum RTAX_
 		{
 			RTAX_DST = 0,		/*!< destination sockaddr present */
 			RTAX_GATEWAY = 1,	/*!< gateway sockaddr present */
@@ -335,7 +283,7 @@ public:
 		};
 
 		int	rti_addrs;							/*!< The rti addrs */
-		struct sockaddr *rti_info[RTAX_MAX];	/*!< The rti info[rtax max] array */
+		struct sockaddr* rti_info[RTAX_MAX];	/*!< The rti info[rtax max] array */
 	};
 
 	/*!
@@ -403,13 +351,13 @@ public:
 		short	rm_b;					/*!< bit offset; -1-index(netmask) */
 		char	rm_unused;				/*!< cf. rn_bmask */
 		u_char	rm_flags;				/*!< cf. rn_flags */
-		struct	radix_mask *rm_mklist;	/*!< more masks to try */
+		struct	radix_mask* rm_mklist;	/*!< more masks to try */
 
-		union	{
-			char	*rmu_mask;				/*!< the mask */
-			struct	radix_node *rmu_leaf;	/*!< for normal routes */
+		union {
+			char* rmu_mask;				/*!< the mask */
+			struct	radix_node* rmu_leaf;	/*!< for normal routes */
 		}	rm_rmu;
-		
+
 		int	rm_refs;						/*!< # of references to this struct */
 	};
 
@@ -423,11 +371,11 @@ public:
 	struct radix_node {
 
 		/*!
-		    \enum	RNF_
-		
-		    \brief	Flags for #rn_flags.
+			\enum	RNF_
+
+			\brief	Flags for #rn_flags.
 		*/
-		enum RNF_ 
+		enum RNF_
 		{
 			RNF_NORMAL = 1,	/*!< leaf contains normal route */
 			RNF_ROOT = 2,	/*!< leaf is root leaf for tree */
@@ -478,11 +426,11 @@ public:
 		inline int& rn_off() { return rn_u.rn_node.rn_Off; }
 
 		/*!
-		    \fn	inline radix_node* rn_l() const
-		
-		    \brief	Gets rn_l.
-		
-		    \return	rn_u.rn_node.rn_L.
+			\fn	inline radix_node* rn_l() const
+
+			\brief	Gets rn_l.
+
+			\return	rn_u.rn_node.rn_L.
 		*/
 		inline struct radix_node* rn_l() const { return rn_u.rn_node.rn_L; }
 
@@ -495,417 +443,48 @@ public:
 		*/
 		inline struct radix_node* rn_r() const { return rn_u.rn_node.rn_R; }
 
-		struct	radix_mask *rn_mklist;	/*!< list of masks contained in subtree */
-		struct	radix_node *rn_p;		/*!< parent */
-		
+		struct	radix_mask* rn_mklist;	/*!< list of masks contained in subtree */
+		struct	radix_node* rn_p;		/*!< parent */
+
 		short	rn_b;					/*!< bit offset; -1-index(netmask) */
 		char	rn_bmask;				/*!< node: mask for bit test*/
 		u_char	rn_flags;				/*!< enumerated above */
-		
+
 		union {
 			struct {								/*!< leaf only data: */
-				char	*rn_Key;					/*!< object of search */
-				char	*rn_Mask;					/*!< netmask, if present */
-				struct	radix_node *rn_Dupedkey;	/*!< The rn dupedkey */
+				char* rn_Key;					/*!< object of search */
+				char* rn_Mask;					/*!< netmask, if present */
+				struct	radix_node* rn_Dupedkey;	/*!< The rn dupedkey */
 			} rn_leaf;
 			struct {						/*!< node only data: */
 				int	rn_Off;					/*!< where to start compare */
-				struct	radix_node *rn_L;	/*!< progeny */
-				struct	radix_node *rn_R;	/*!< progeny */
+				struct	radix_node* rn_L;	/*!< progeny */
+				struct	radix_node* rn_R;	/*!< progeny */
 			} rn_node;
 		}		rn_u;
 	};
 
-	/*!
-	    \struct	radix_node_head
-	
-	    \brief
-	    A radix node head.
-	    
-	    \note This struct is defined for both consistencies and support routing in the future.
-	*/
-	struct radix_node_head {
-		struct L3_impl::radix_node *rnh_treetop;	/*!< The rnh treetop */
-		int	rnh_addrsize;				/*!< permit, but not require fixed keys */
-		int	rnh_pktsize;				/*!< permit, but not require fixed keys */
-	};
-
-	/*!
-	    \struct	ip_srcrt
-	
-	    \brief
-	    We need to save the IP options in case a protocol wants to respond to an incoming packet
-	    over the same route if the packet got here using IP source routing.  This allows
-	    connection establishment and maintenance when the remote end is on a network that is not
-	    known to us.
-	    
-	    \note This struct is defined for both consistencies and support IP options in the future.
-	*/
-	struct ip_srcrt {
-		struct	in_addr dst;				/*!< final destination */
-		char	nop;						/*!< one NOP to align */
-		char	srcopt[IPOPT_OFFSET + 1];	/*!< OPTVAL, OLEN and OFFSET */
-		struct	in_addr route[MAX_IPOPTLEN / sizeof(struct in_addr)];   /*!< the route address array */
-	};
-
-	/*!
-	    \struct	ipoption
-	
-	    \brief
-	    Structure stored in mbuf in inpcb::ip_options and passed to ip_output when ip options are
-	    in use.
-	    
-	    \note This struct is defined for both consistencies and support IP options in the future.
-	*/
-	struct ipoption {
-		struct	in_addr ipopt_dst;			/*!< first-hop dst if source routed */
-		char	ipopt_list[MAX_IPOPTLEN];	/*!< options proper */
-	};
-
-	/*!
-	    \struct	ip_timestamp
-	
-	    \brief	IP Time stamp option structure.
-	    
-		\note This struct is defined for both consistencies and support IP options in the future.
-	*/
-	struct	ip_timestamp {
-
-		/*!
-		    \typedef	u_char_pack ipt_oflw_flg_pack
-		
-		    \brief
-		    Defines an alias representing the two 4-bit pack of overflow counter then flags,
-		    according to windows byte order (BIG_ENDIAN).
-		*/
-		typedef u_char_pack ipt_oflw_flg_pack;
-
-		/*!
-		    \enum	IPOPT_TS_
-		
-		    \brief	Flag bits for ipt_flg.
-		*/
-		enum IPOPT_TS_ 
-		{
-			IPOPT_TS_TSONLY = 0,	/*!< timestamps only */
-			IPOPT_TS_TSANDADDR = 1,	/*!< timestamps and addresses */
-			IPOPT_TS_PRESPEC = 3	/*!< specified modules only */
-		};
-
-		u_char	ipt_code;	/*!< IPOPT_TS */
-		u_char	ipt_len;	/*!< size of structure (variable) */
-		u_char	ipt_ptr;	/*!< index of current entry */
-		ipt_oflw_flg_pack ipt_oflw_flg; /*!< overflow counter then flags defined in #IPOPT_TS_ */
-
-		/*!
-		    \union	ipt_timestamp
-		
-		    \brief	An ipt timestamp.
-		*/
-		union ipt_timestamp {
-			n_long	ipt_time[1];	/*!< network format */
-			struct	ipt_ta {
-				struct in_addr ipt_addr; /*!< the ipt address */
-				n_long ipt_time;	/*!< network format */
-			} ipt_ta[1]; 
-		} ipt_timestamp;
-	};
-
-	typedef struct ip_fragment
-	{
-		std::shared_ptr<std::vector<byte>> frag_data;
-		ip_fragment* next_fragment;
-
-		ip_fragment(std::shared_ptr<std::vector<byte>> m) : frag_data(m), next_fragment(nullptr)
-		{
-		}
-
-
-	}ip_fragment;
-
-
-	/*!
-	    \struct	ipq
-	
-	    \brief
-	    Ip reassembly queue structure.  Each fragment being reassembled is attached to one of
-	    these structures. They are timed out after ipq_ttl drops to 0, and may also be reclaimed
-	    if memory becomes tight.
-	    
-	    \note bn
-	*/
-	struct ipq {
-		enum ifq_len // rename 
-		{ 
-			IFQ_MAXLEN = 50 /*!< The ifq maxlen */
-		};
-
-		struct	ipq *next;	/*!< to other reassembly headers, forward */
-		struct	ipq *prev;	/*!< to other reassembly headers, backward */
-		u_char	ipq_ttl;	/*!< time for reassembly q to live */
-		u_char	ipq_p;		/*!< protocol of this fragment */
-		u_short	ipq_id;		/*!< sequence id for reassembly */
-		struct	ipasfrag *ipq_next;	/*!< The ip reassembly queue as linked list, forward */
-		struct	ipasfrag *ipq_prev;	/*!< The ip reassembly queue as linked list, backward */
-		struct	in_addr ipq_src;	/*!< to ip headers of fragments, source address */
-		struct	in_addr ipq_dst;	/*!< to ip headers of fragments, destination address */
-		ip_fragment* fragments;
-		uint16_t total_length;
-	};
-
-	/*!
-	    \struct	ipasfrag
-	
-	    \brief
-	    Ip header, when holding a fragment.
-	    
-	    \note ipf_next must be at same offset as ipq_next above.
-	*/
-	struct	ipasfrag {
-
-		/*!
-		    \typedef	u_char_pack ip_v_hl_pack
-		
-		    \brief
-		    Defines an alias representing the two 4-bit pack of version and header length,
-		    according to windows byte order (BIG_ENDIAN).
-		*/
-		typedef u_char_pack ip_v_hl_pack;
-
-		ip_v_hl_pack ip_v_hl;   /*!< version then header length, in a ip_v_hl_pack. \note The IP header length is in 4-bytes unit */
-		u_char	ipf_mff;		/*!< copied from (ip_off&IP_MF)	\bug overlays ip_tos: use low bit to avoid destroying tos; */
-		short	ip_len;			/*!< total length, including data */
-		u_short	ip_id;			/*!< identification */
-		short	ip_off;			/*!< fragment offset field \see IP_ */
-		u_char	ip_ttl;			/*!< time to live */
-		u_char	ip_p;			/*!< protocol */
-		u_short	ip_sum;			/*!< checksum */
-		struct	ipasfrag *ipf_next;	/*!< next fragment */
-		struct	ipasfrag *ipf_prev;	/*!< previous fragment */
-	};
-
-	
-	/*!
-	\struct	ip_output_args
-
-	\brief	Arguments for IP output.
-
-	\sa	pr_output_args
-	*/
-	struct ip_output_args
-		: public pr_output_args
-	{
-		/*!
-		    \fn	ip_output_args(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, std::shared_ptr<std::vector<byte>> &opt, struct L3::route *ro, int flags, struct L3::ip_moptions *imo);
-		
-		    \brief	Constructor.
-		
-		    \param [in,out]	m  	The std::shared_ptr<std::vector<byte>> to process.
-		    \param [in,out]	it 	The iterator, maintaining the current offset in the vector.
-		    \param [in,out]	opt
-		    The IP option \warning Must be std::shared_ptr&lt;std::vector&lt;byte&gt;&gt;
-		    (nullptr) as options are not supported.
-		    \param [in,out]	ro
-		    The route for the packet. Should only use the ro_dst member to hold the sockaddr for
-		    the output route.
-		    \param	flags	   	The flags \see IP_OUTPUT_.
-		    \param [in,out]	imo
-		    The IP multicast options \warning Must be nullptr as multicast are not supported.
-		*/
-		ip_output_args(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, std::shared_ptr<std::vector<byte>> &opt, struct L3::route *ro, int flags, struct  L3::ip_moptions *imo);
-
-		std::shared_ptr<std::vector<byte>> &m;		/*!< The std::shared_ptr<std::vector<byte>> to process. */
-		std::vector<byte>::iterator &it;			/*!< The iterator, maintaining the current offset in the vector. */
-		std::shared_ptr<std::vector<byte>> &opt;	/*!< The IP option \warning Must be std::shared_ptr<std::vector<byte>>(nullptr) as options are not supported. */
-		struct L3::route *ro;						/*!< The route for the packet. Should only use the ro_dst member to hold the sockaddr for the output route. */
-		int flags;									/*!< The flags \see IP_OUTPUT_. */
-		struct  L3::ip_moptions *imo;				/*!< The IP multicast options \warning Must be nullptr as multicast are not supported. */
-	};
-	
-	/*!
-	    \fn	L3_impl::L3_impl(class inet_os &inet, const short &pr_type = 0, const short &pr_protocol = 0, const short &pr_flags = 0);
-	
-	    \brief	Constructor.
-	
-	    \param [in,out]	inet	The inet.
-	    \param	pr_type			Type of the protocol type.
-	    \param	pr_protocol 	The protocol.
-	    \param	pr_flags		The protocol flags.
-	*/
-	L3_impl(class inet_os &inet, const short &pr_type = 0, const short &pr_protocol = 0, const short &pr_flags = 0);
-
-	/*!
-	    \fn	static void L3_impl::ip_insertoptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, std::shared_ptr<std::vector<byte>> &opt, int &phlen);
-	
-	    \brief
-	    Insert IP options into preformed packet. Adjust IP destination as required for IP source
-	    routing, as indicated by a non-zero in_addr at the start of the options.
-	
-		\param [in,out]	m 		The std::shared_ptr<std::vector<byte>> to strip.
-		\param [in,out]	it		The iterator, as the current offset in the vector.
-	    \param [in,out]	opt  	The IP option to be inserted.
-	    \param [in,out]	phlen	The ip header length.
-	*/
-	static void ip_insertoptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, std::shared_ptr<std::vector<byte>> &opt, int &iphlen);
-
-	/*!
-		\fn	static void L3_impl::ip_stripoptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it);
-
-		\brief
-		Strip out IP options, at higher level protocol in the kernel
-
-		\param [in,out]	m 	The std::shared_ptr<std::vector<byte>> to strip.
-		\param [in,out]	it	The iterator, as the current offset in the vector.
-	*/
-	static void ip_stripoptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it);
-
-	virtual void pr_init();
-	virtual void pr_input(const struct pr_input_args &args);
-	virtual int pr_output(const struct pr_output_args &args);
-
 private:
-
-	/*!
-	    \fn	void L3_impl::ip_init();
-	
-	    \brief
-	    Fill in IP protocol switch table, and all protocols not implemented in kernel go to raw
-	    IP protocol handler. The ip_init function is called once by inet_os::domaininit(const
-	    bool start_timer). at system initialization time.
-	*/
-	void ip_init();
-
-	/*!
-	    \brief
-	    The IP output code receives packets from two sources: the transport protocols and
-	    ip_forward() (which is disabled). For the standard Internet transport protocols, the
-	    generality of the protosw structure is not necessary, since the calling functions are not
-	    accessing IP in a protocol-independent context, however in order to allow different
-	    layers to be used, we access IP output operations to be accessed by inetsw[0].pr_output.
-	    We describe ip_output in three sections:
-	    	*	header initialization,
-	    	*	route selection, and
-	    	*	source address selection and fragmentation.
-	
-	    \param	args	\see ip_output_args.
-	
-	    \return	An int, for error handling.
-	*/
-	inline int ip_output(const struct ip_output_args &args);
-
-	/*!
-	    \brief	Helper function for #ip_output(), frees the \ref rtentry of #ro
-	
-	    \param [in,out]	ro	   	If non-null, the route from which to free the \ref rtentry.
-	    \param [in,out]	iproute	The iproute.
-	    \param	flags		   	The flags.
-	    \param	error		   	The error to return.
-	
-		\return	An int, for error handling.
-	*/
-	inline int done(struct route *ro, struct route &iproute, const int &flags, const int error);
-
-
-	/*!   
-		\note 	Currently disabled.
-
-	    Do option processing on a datagram, possibly discarding it if bad options are encountered,
-	    or forwarding it if source-routed. Returns 1 if packet has been forwarded/freed, 0 if the
-	    packet should be processed further.
-	
-		\param [in,out]	m 		The std::shared_ptr<std::vector<byte>> to strip.
-		\param [in,out]	it		The iterator, as the current offset in the vector.
-	
-		\return	An int, for error handling.
-	*/
-
-	inline int ip_dooptions(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it);
-
-	/*!
-		\note 	Currently disabled.
-	
-	    \brief
-	    Forward a packet. If some error occurs return the sender an icmp packet. Note we can't
-	    always generate a meaningful icmp message because icmp doesn't have a large enough
-	    repertoire of codes and types.
-	    
-	    If not forwarding, just drop the packet. This could be confusing if ipforwarding was
-	    zero but some routing protocol was advancing us as a gateway to somewhere.  However, we
-	    must let the routing protocol deal with that.
-	    
-	    The srcrt parameter indicates whether the packet is being forwarded via a source route.
-	
-		\param [in,out]	m 		The std::shared_ptr<std::vector<byte>> to strip.
-		\param [in,out]	it	The iterator, as the current offset in the vector.
-	    \param	srcrt	  	The srcrt.
-	*/
-	inline void ip_forward(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, const int &srcrt);
-
-	/*!
-		\post	m is passed to the upper layer for processing.
-		\note 	Currently disabled.
-		
-	    \brief	#pr_input() helper for reassemble.
-	
-		\param [in,out]	m 		The std::shared_ptr<std::vector<byte>> to strip.
-		\param [in,out]	it		The iterator, as the current offset in the vector.
-	    \param [in,out]	ip  	The \ref iphdr.
-	    \param [in,out]	hlen	The hlen.
-	*/
-	inline void ours(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, struct iphdr &ip, int &hlen);
-
-	/*!
-	    \brief	Prints the \ref iphdr with #checksum as its ip_sum, making sure to use the lock_guard for the print_mutex.
-	
-	    \param [in,out]	ip 	The IP.
-	    \param	checksum   	The checksum.
-	    \param [in,out]	str	(Optional) the string.
-	*/
-	inline void print(struct iphdr& ip, uint16_t checksum, std::ostream& str = std::cout);
-
-	/*!
-		\brief
-		Calculates the 16-bit checksum of the #buff of length #len.
-
-		\note This routine is very heavily used in the network code and should be modified for
-		each CPU to be as fast as possible.
-
-		\note This implementation is 386 version.
-
-		\param	buff	The buffer to checksum.
-		\param	len 	The length.
-
-		\return	An uint16_t checksum result.
-	*/
-	inline uint16_t in_cksum(const byte* buff, size_t len) { return inet.in_cksum(buff, len); }
-	
-
-	u_short	ip_id;						/*!< last ID assigned to an outgoing IP packet */
-	u_char	ip_protox[IPPROTO_MAX];		/*!< demultiplexing array for IP packets */
-	struct ipq ipq_t;					/*!< The reassembly queue */
-
-
-
-	virtual void pr_drain() { };
-	virtual int pr_sysctl() { return 0; };
 	virtual void pr_ctlinput() { };
-	virtual int pr_ctloutput() { return 0; };
-	virtual int pr_usrreq(class netlab::L5_socket *so, int req, std::shared_ptr<std::vector<byte>> &m,
-	struct sockaddr *nam, size_t nam_len, std::shared_ptr<std::vector<byte>> &control) { return 0; };		
-	virtual void pr_fasttimo() { };
-	virtual void pr_slowtimo() { };
+	virtual int pr_ctloutput() { return 0; };	
+	virtual int pr_usrreq(class netlab::L5_socket *so, int req, std::shared_ptr<std::vector<byte>>m,
+		struct sockaddr *nam, size_t nam_len, std::shared_ptr<std::vector<byte>> control) {	return 0; }
+	virtual void pr_fasttimo() { };	
+	virtual void pr_slowtimo() { };	
+	virtual void pr_drain() { };		
+	virtual int pr_sysctl() { return 0; };		
 };
 
-/*!
-    \struct	L3::iphdr
+/************************************************************************/
+/*                         ip_output_args                               */
+/************************************************************************/
 
-    \brief
-    Structure of an internet header, naked of options. We declare ip_len and ip_off to be short,
-    rather than u_short pragmatically since otherwise unsigned comparisons can result against
-    negative integers quite easily, and fail in subtle ways.
-    
-    \note Defined for the sake of consistency.
-*/
+L3::ip_output_args::ip_output_args(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it,
+	std::shared_ptr<std::vector<byte>>& opt, struct L3::route* ro, int flags, struct  L3::ip_moptions* imo)
+	: m(m), it(it), opt(opt), ro(ro), flags(flags), imo(imo) { }
+
+
+
 struct L3::iphdr {
 
 	/*!
@@ -917,100 +496,11 @@ struct L3::iphdr {
 	*/
 	typedef struct u_char_pack ip_v_hl_pack;
 
-	/*!
-	    \enum	IPTOS_
-	
-	    \brief	Flags for ip_tos.
-	*/
-	enum IPTOS_ 
-	{
-		IPTOS_LOWDELAY = 0x10,				/*!< The ip_tos lowdelay option */
-		IPTOS_THROUGHPUT = 0x08,			/*!< The ip_tos throughput option */
-		IPTOS_RELIABILITY = 0x04,			/*!< The ip_tos reliability option */
-		IPTOS_PREC_NETCONTROL = 0xe0,		/*!< The ip_tos prec netcontrol option (hopefully unused) */
-		IPTOS_PREC_INTERNETCONTROL = 0xc0,  /*!< The ip_tos prec internetcontrol option (hopefully unused) */
-		IPTOS_PREC_CRITIC_ECP = 0xa0,		/*!< The ip_tos prec critic ecp option (hopefully unused) */
-		IPTOS_PREC_FLASHOVERRIDE = 0x80,	/*!< The ip_tos prec flashoverride option (hopefully unused) */
-		IPTOS_PREC_FLASH = 0x60,			/*!< The ip_tos prec flash option (hopefully unused) */
-		IPTOS_PREC_IMMEDIATE = 0x40,		/*!< The ip_tos prec immediate option (hopefully unused) */
-		IPTOS_PREC_PRIORITY = 0x20,			/*!< The ip_tos prec priority option (hopefully unused) */
-		IPTOS_PREC_ROUTINE = 0x00			/*!< The ip_tos prec routine option (hopefully unused) */
-	};
-
-	/*!
-	    \enum	IP_
-	
-	    \brief	Flags for ip_off.
-	*/
-	enum IP_ 
-	{
-		IP_DF = 0x4000,			/*!< don't fragment flag */
-		IP_MF = 0x2000,			/*!< more fragments flag */
-		IP_OFFMASK = 0x1fff		/*!< mask for fragmenting bits */
-	};
-
 	iphdr() 
 		: ip_v_hl(ip_v_hl_pack(0, 0)), ip_tos(0), ip_len(0), ip_id(0), ip_off(0),
 		ip_ttl(0), ip_p(0), ip_sum(0), ip_src(struct in_addr()),
 		ip_dst(struct in_addr()) { }
 
-	/*!
-	    \fn	friend std::ostream& operator<<(std::ostream &output, const iphdr &ip);
-	
-	    \brief	Stream insertion operator.
-	
-	    \param [in,out]	output	The output stream (usually std::cout).
-	    \param	ip			  	The iphdr to printout.
-	
-	    \return	The output stream, when #ip was inserted and printed.
-	*/
-	friend std::ostream& operator<<(std::ostream &out, const iphdr &ip);
-
-	/*!
-	    \fn	inline const u_char ip_v() const;
-	
-	    \brief	As the ip version is kept in a #ip_v_hl_pack, this function gets it from there.
-	
-	    \return	The IP version (always 4).
-	*/
-	inline	const u_char ip_v() const;
-
-	/*!
-	    \fn	inline const u_char ip_hl() const;
-	
-	    \brief	As the ip header length is kept in a #ip_v_hl_pack,this function gets it from there.
-	
-	    \return
-	    The IP header length, in 4-bytes unit (usually 5).
-	    
-	    \warning	We need to make sure to multiply by 4 in order to get the size in bytes:
-	    
-	    \code ip_hl() &lt;&lt; 2 \endcode.
-	*/
-	inline	const u_char ip_hl() const;
-
-	/*!
-	    \fn	inline void ip_v(const u_char& ip_v);
-	
-	    \brief	As the ip version is kept in a #ip_v_hl_pack, this function sets it.
-	
-	    \param	ip_v	the IP version (always 4).
-	*/
-	inline	void ip_v(const u_char& ip_v);
-
-	/*!
-	    \fn	inline void ip_hl(const u_char& ip_hl);
-	
-	    \brief	As the ip header length is kept in a #ip_v_hl_pack,this function sets it.
-	
-	    \param	ip_hl
-	    The IP header length, in 4-bytes unit.
-	    
-	    \warning	We need to make sure to derive by 4 in order to get the size in bytes:
-	    
-	    \code ip_hl() >> 2 \endcode.
-	*/
-	inline	void ip_hl(const u_char& ip_hl);
 
 	ip_v_hl_pack ip_v_hl;		/*!< version then header length, in a ip_v_hl_pack. \note The IP header length is in 4-bytes unit */
 	u_char	ip_tos;				/*!< type of service \see IPTOS_ */
@@ -1174,7 +664,7 @@ struct L3::rtentry {
 	
 	    \return	sockaddr* cast of rt_nodes->rn_key() using reinterpret_cast.
 	*/
-	inline struct sockaddr* rt_key() const { return reinterpret_cast<struct sockaddr *>(rt_nodes->rn_key()); }
+	//inline struct sockaddr* rt_key() const { return reinterpret_cast<struct sockaddr *>(rt_nodes->rn_key()); }
 
 	/*!
 	    \fn	inline sockaddr* rt_mask() const
@@ -1183,7 +673,7 @@ struct L3::rtentry {
 	
 	    \return	sockaddr* cast of rt_nodes->rn_mask() using reinterpret_cast.
 	*/
-	inline struct sockaddr* rt_mask() const { return reinterpret_cast<struct sockaddr *>(rt_nodes->rn_mask()); }
+	//inline struct sockaddr* rt_mask() const { return reinterpret_cast<struct sockaddr *>(rt_nodes->rn_mask()); }
 
 	/*!
 	    \fn	inline u_long rt_expire() const
@@ -1192,9 +682,8 @@ struct L3::rtentry {
 	
 	    \return	rt_rmx.rmx_expire.
 	*/
-	inline u_long rt_expire() const { return rt_rmx.rmx_expire; }
+	//inline u_long rt_expire() const { return rt_rmx.rmx_expire; }
 
-	struct L3_impl::radix_node rt_nodes[2];		/*!< Radix search tree node layout. Tree glue, and other values */
 	struct sockaddr *rt_gateway;				/*!< The route's gateway. */
 
 	short				rt_flags;		/*!< up/down?, host/net */
@@ -1208,25 +697,5 @@ struct L3::rtentry {
 		\note	These numbers are used by reliable protocols for determining retransmission
 		behavior and are included in the routing structure.
 	*/
-	struct	L3_impl::rt_metrics	rt_rmx;		/*!< metrics used by rx'ing protocols */
 	struct	rtentry		*rt_gwroute;		/*!< implied entry for gatewayed routes */
 };
-
-struct L3::ip_moptions {
-	inet_os *imo_multicast_ifp;		/*!< OS for outgoing multi casts */
-	u_char	imo_multicast_ttl;		/*!< TTL for outgoing multi casts */
-	u_char	imo_multicast_loop;		/*!< 1 => hear sends if a member */
-	u_short	imo_num_memberships;	/*!< no. memberships this socket */
-	struct	in_multi *imo_membership[L3_impl::IP_MAX_MEMBERSHIPS];  /*!< The imo membership array of size L3_impl::IP_maximum_memberships (20) */
-
-
-
-};
-
-
-
-
-
-
-
-#endif /* L3_H_ */

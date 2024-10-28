@@ -33,12 +33,6 @@
     <ClCompile Include="L4\L4_ICMP_Sol.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="L4\L4_TCP_Sol.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L5\L5_Sol.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="infra\pcb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -76,18 +70,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="L0\L0_buffer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L4\L4_UDP_Impl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L4\tcp_tahoe.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L4\tcp_reno.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L5\tls_socket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="L5\HTTP\HTTP.cpp">
@@ -204,6 +186,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="L5\HTTP\HTTPServer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Sniffer\tins.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L3\L3_Solution.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L3\L3_impl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

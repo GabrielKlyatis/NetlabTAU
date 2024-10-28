@@ -1,8 +1,7 @@
-#ifndef NETLAB_PRINT_H
-#define NETLAB_PRINT_H
+#pragma once
 #include "../Types.h"
 
-#include "../sniffer/tins.h"
+#include "../Sniffer/tins.h"
 
 namespace netlab 
 {
@@ -18,6 +17,8 @@ namespace netlab
 	*/
 	size_t RawData(const class Tins::PDU &pdu, std::shared_ptr <std::vector<byte>> &buf);
 
+	size_t RawData(const Tins::PDU& pdu, uint8_t* buf, size_t size);
+
 	/*!
 	    \fn	std::string StrPort(uint16_t port_number);
 	
@@ -29,10 +30,9 @@ namespace netlab
 	*/
 	std::string StrPort(uint16_t port_number);
 
-	//uint8_t RNG8();
-	//uint16_t RNG16();
-	//uint32_t RNG32();
+	uint8_t RNG8();
+	uint16_t RNG16();
+	uint32_t RNG32();
+
+	//void printPDU(const ICMP& icmp, std::ostream& str);
 }
-
-
-#endif // NETLAB_PRINT_H

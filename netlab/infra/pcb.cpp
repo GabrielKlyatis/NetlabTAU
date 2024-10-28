@@ -251,10 +251,10 @@ int inpcb_impl::in_pcbconnect(struct sockaddr_in *nam, const size_t nam_len)
 		* interface has been set as a multicast option, use the
 		* address of that interface as our source address.
 		*/
-		if (IN_MULTICAST(ntohl(nam->sin_addr.s_addr)) &&
+		/*if (IN_MULTICAST(ntohl(nam->sin_addr.s_addr)) &&
 			inp_moptions != nullptr && 
 			inp_moptions->imo_multicast_ifp != nullptr) 
-				return 0;
+				return 0;*/
 
 		ifaddr.sin_addr = 
 			ia ? 
@@ -396,19 +396,19 @@ class inpcb_impl* inpcb_impl::in_pcblookup(struct in_addr faddr, u_int fport_arg
 
 void inpcb_impl::in_losing() 
 {
-	struct L3::rtentry *rt(inp_route.ro_rt);
-	if (rt) {
-		inp_route.ro_rt = nullptr;
-		struct L3_impl::rt_addrinfo info;
-		memset(&info, 0, sizeof(info));
-		info.rti_info[L3_impl::rt_addrinfo::RTAX_DST] = reinterpret_cast<struct sockaddr *>(&inp_route.ro_dst);
-		info.rti_info[L3_impl::rt_addrinfo::RTAX_GATEWAY] = rt->rt_gateway;
-		info.rti_info[L3_impl::rt_addrinfo::RTAX_NETMASK] = rt->rt_mask();
-		/*	
-		 *	A new route can be allocated the next time output is attempted.
-		 */
-		delete rt;
-	}
+	//struct L3::rtentry *rt(inp_route.ro_rt);
+	//if (rt) {
+	//	inp_route.ro_rt = nullptr;
+	//	struct L3::rt_addrinfo info;
+	//	memset(&info, 0, sizeof(info));
+	//	info.rti_info[L3::rt_addrinfo::RTAX_DST] = reinterpret_cast<struct sockaddr *>(&inp_route.ro_dst);
+	//	info.rti_info[L3::rt_addrinfo::RTAX_GATEWAY] = rt->rt_gateway;
+	//	info.rti_info[L3::rt_addrinfo::RTAX_NETMASK] = rt->rt_mask();
+	//	/*	
+	//	 *	A new route can be allocated the next time output is attempted.
+	//	 */
+	//	delete rt;
+	//}
 }
 
 

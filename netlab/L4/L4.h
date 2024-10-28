@@ -1,8 +1,10 @@
-#ifndef L4_H_
-#define L4_H_
+#pragma once
+
 #include "../Types.h"
+#include "../infra/inet_os.hpp"
 #include <string>
 #include <pthread.h>
+
 
 /**
 * \class L4
@@ -23,7 +25,7 @@ public:
 	* Default value is false.
 	* \endparblock
 	*/
-	L4(bool debug);
+	L4(bool debug, class inet_os& inet);
 
 	/**
 	* \brief L4 destructor.
@@ -91,7 +93,7 @@ public:
 	*
 	* \param lowerInterface \a (L3*) the L3 to be used by this layer.
 	*/
-	void setLowerInterface(class L3 *lowerInterface);
+	class L3* getNetworkLayer();
 
 	/**
 	* \brief Getter for the name of the lowest interface.
@@ -101,11 +103,11 @@ public:
 	const class NIC& getLowestInterface();
 
 private:
+
+	class inet_os& inet;
 	pthread_mutex_t recvPacket_mutex;
 	byte *recvPacket;
 	size_t recvPacketLen;
 	bool debug;
 	class L3* lowerInterface;
 };
-
-#endif /* L4_H_ */

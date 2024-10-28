@@ -502,7 +502,7 @@ public:
 	
 	std::mutex _splnet; /*!< The splnet mutex */
 	
-	static	std::mutex print_mutex; /*!< \static The print mutex. Must be locked before printing and unlocked afterwards. */
+	static std::mutex print_mutex; /*!< \static The print mutex. Must be locked before printing and unlocked afterwards. */
 
 	const bool slowtimo_on() const { return _slowtimo_on; }
 

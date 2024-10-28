@@ -13,7 +13,6 @@
 
 //std::mutex inet_os::splnet;
 std::mutex inet_os::print_mutex;
-
 /*!
     \fn	void inet_os::connect(const uint32_t count)
 
