@@ -229,9 +229,6 @@
     <ClCompile Include="infra\inet_os.cpp" />
     <ClCompile Include="infra\IPv4Address.cpp" />
     <ClCompile Include="L2\L2_ARP_impl.cpp" />
-    <ClCompile Include="L2\L2_impl.cpp" />
-    <ClCompile Include="L3\L3_impl.cpp" />
-    <ClCompile Include="L4\L4_ICMP_Sol.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="infra\NetworkInterface.cpp" />
     <ClCompile Include="L1\NIC.cpp" />

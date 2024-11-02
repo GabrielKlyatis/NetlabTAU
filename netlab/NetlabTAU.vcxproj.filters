@@ -51,22 +51,13 @@
     <ClCompile Include="infra\utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="L2\L2_impl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="infra\protosw.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L3\L3_impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="L2\L2_ARP_impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="L0\L0_buffer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L4\L4_ICMP_Sol.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

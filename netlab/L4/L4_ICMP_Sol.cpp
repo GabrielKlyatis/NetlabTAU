@@ -50,7 +50,8 @@ int L4::sendToL4(byte *sendData, size_t sendDataLen, std::string destIP, std::st
 	IP::address_type resolvedDestIP;
 	try 
 	{
-		resolvedDestIP = IP::address_type(destIP);
+		resolvedDestIP = IP::address_type("8.8.8.8");
+
 	}
 	catch (std::runtime_error &ex) 
 	{
@@ -70,9 +71,7 @@ int L4::sendToL4(byte *sendData, size_t sendDataLen, std::string destIP, std::st
 	std::shared_ptr<std::vector<byte>> toSend = std::make_unique<std::vector<byte>>(icmp_pdu.size());
 	RawData(icmp_pdu, toSend);
 	
-	//int ret = getNetworkLayer->sendToL3(toSend, icmp_pdu.size(), resolvedSrcIP.to_string(), resolvedDestIP.to_string());
-
-	int ret = 0;
+	int ret = getNetworkLayer->sendToL3(toSend, icmp_pdu.size(), resolvedSrcIP.to_string(), resolvedDestIP.to_string());
 
 	return ret;
 }

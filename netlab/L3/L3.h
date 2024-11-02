@@ -104,16 +104,15 @@ public:
 	virtual int pr_output(const struct pr_output_args &args) = 0;
 	virtual void pr_input(const struct pr_input_args &args) = 0;
 
-	/*!
-	\struct	ip_output_args
+	/************************************************************************/
+	/*                         ip_output_args                               */
+	/************************************************************************/
 
-	\brief	Arguments for IP output.
-
-	\sa	pr_output_args
-	*/
 	struct ip_output_args : public pr_output_args
 	{
-		ip_output_args(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it, std::shared_ptr<std::vector<byte>>& opt, struct L3::route* ro, int flags, struct  L3::ip_moptions* imo);
+		ip_output_args(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it,
+			std::shared_ptr<std::vector<byte>>& opt, struct L3::route* ro, int flags, struct  L3::ip_moptions* imo)
+			: m(m), it(it), opt(opt), ro(ro), flags(flags), imo(imo) { }
 
 		std::shared_ptr<std::vector<byte>>& m;		/*!< The std::shared_ptr<std::vector<byte>> to process. */
 		std::vector<byte>::iterator& it;			/*!< The iterator, maintaining the current offset in the vector. */
@@ -474,16 +473,6 @@ private:
 	virtual void pr_drain() { };		
 	virtual int pr_sysctl() { return 0; };		
 };
-
-/************************************************************************/
-/*                         ip_output_args                               */
-/************************************************************************/
-
-L3::ip_output_args::ip_output_args(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it,
-	std::shared_ptr<std::vector<byte>>& opt, struct L3::route* ro, int flags, struct  L3::ip_moptions* imo)
-	: m(m), it(it), opt(opt), ro(ro), flags(flags), imo(imo) { }
-
-
 
 struct L3::iphdr {
 
