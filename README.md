@@ -54,7 +54,8 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
      ![pthreads](./manual_prints/Setup/pthreads.PNG)
      
    - [WinPcap Developer’s Pack](https://www.winpcap.org/devel.htm) version 4.1.2.
-     Install Npcap (during installation select WinPcap API compatibility) rather than just including WinPcap's include library to avoid missing issues with .dll files.
+     Install Npcap (during installation select WinPcap API compatibility) rather than just including WinPcap's include library to avoid missing issues with .dll files
+     [Npcap](https://npcap.com/)
 
      ![WpdPack](./manual_prints/Setup/WpdPack.PNG)
      
