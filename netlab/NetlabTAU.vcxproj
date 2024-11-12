@@ -49,7 +49,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -102,7 +102,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\Projects\WpdPack_4_1_2\WpdPack\Include;C:\Projects\boost_1_83_0;C:\googletest-1.14.0\googletest\include;C:\Projects\OpenSSL-Win32\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\Projects\WpdPack_4_1_2\WpdPack\Include;C:\Projects\boost_1_83_0;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
     <ExecutablePath>C:\Windows\System32;$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
@@ -186,10 +186,9 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;WIN32;_LIB;_CONSOLE;BOOST_CB_DISABLE_RELEASE;_WINSOCK_DEPRECATED_NO_WARNINGS;HAVE_REMOTE;_RELEASE;_WINDOWS;NOMINMAX;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;WIN32;_CONSOLE;_LIB;NOMINMAX;BOOST_CB_DISABLE_DEBUG;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>
-      </AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Projects\boost_1_66_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BrowseInformation>true</BrowseInformation>
       <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
