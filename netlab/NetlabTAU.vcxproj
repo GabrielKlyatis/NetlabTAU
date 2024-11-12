@@ -228,6 +228,7 @@
     <ClCompile Include="infra\CatchMemoryLeak.cpp" />
     <ClCompile Include="infra\inet_os.cpp" />
     <ClCompile Include="infra\IPv4Address.cpp" />
+    <ClCompile Include="L2\L2_ARP.cpp" />
     <ClCompile Include="L2\L2_ARP_impl.cpp" />
     <ClCompile Include="L2\L2_impl.cpp" />
     <ClCompile Include="L3\L3_impl.cpp" />
@@ -262,6 +263,7 @@
     <ClInclude Include="infra\IPv4Address.h" />
     <ClInclude Include="L2\L2.h" />
     <ClInclude Include="L2\L2_ARP.h" />
+    <ClInclude Include="L2\L2_ARP_impl.h" />
     <ClInclude Include="L3\L3.h" />
     <ClInclude Include="L0\L0_buffer.h" />
     <ClInclude Include="L4\L4.h" />

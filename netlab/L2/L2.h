@@ -1,12 +1,4 @@
-/*!
-	\file	L2.h
-
-	\author	Tom Mahler
-
-	\brief	Declares the 2 class.
-*/
-#ifndef L2_H_
-#define L2_H_
+#pragma once
 
 /*!
 	\def	NETLAB_L2_DEBUG
@@ -280,14 +272,3 @@ public:
 	virtual void ether_input(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, struct ether_header *eh);
 
 };
-
-
-
-
-
-
-
-
-#endif /* L2_H_ */
-
-

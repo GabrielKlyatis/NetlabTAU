@@ -8,7 +8,7 @@
 #include "../L1/NIC.h"
 
 /************************************************************************/
-/*                         L2			                                */
+/*								   L2			                        */
 /************************************************************************/
 
 L2::L2(class inet_os &inet) : inet(inet) { inet.datalink(this); }
@@ -195,11 +195,3 @@ void L2_impl::ether_output(std::shared_ptr<std::vector<byte>> &m, std::vector<by
 
 	return (void)inet.nic()->lestart(m, it);
 }
-
-
-
-
-
-
-
-

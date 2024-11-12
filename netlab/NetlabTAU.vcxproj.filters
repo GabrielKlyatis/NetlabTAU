@@ -99,6 +99,9 @@
     <ClCompile Include="L5\HTTP\HTTPServer_Impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="L2\L2_ARP.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="L1\NIC.h">
@@ -204,6 +207,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="L5\HTTP\HTTPServer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L2\L2_ARP_impl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
