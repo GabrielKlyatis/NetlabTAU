@@ -178,7 +178,30 @@ struct	L2_ARP::ether_arp
 			* it - The iterator to return.
 			* op - The arp operation.
 	*/
-	inline static std::shared_ptr<std::vector<byte>> make_arp(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator &it, arphdr::ARPOP_ op = arphdr::ARPOP_REQUEST);
+	static std::shared_ptr<std::vector<byte>> make_arp(const u_long tip, const u_long sip, mac_addr taddr,
+		mac_addr saddr, std::vector<byte>::iterator& it, arphdr::ARPOP_ op = arphdr::ARPOP_REQUEST) {
+
+		/*
+	*	Allocate and Initialize mbuf
+	*	A packet header mbuf is allocated and the two length fields are set. MH_ALIGN
+	*	allows room for a 28-byte ether_arp structure at the end of the mbuf, and sets the
+	*	m_data pointer accordingly. The reason for moving this structure to the end of the
+	*	mbuf is to allow ether_output to prepend the 14-byte Ethernet header in the same
+	*	mbuf.
+	*/
+		std::shared_ptr<std::vector<byte>> m(new std::vector<byte>(sizeof(struct L2::ether_header) + sizeof(struct L2_ARP::ether_arp)));
+		if (m == nullptr)
+			throw std::runtime_error("make_arp_request failed! allocation failed!");
+
+		/*
+		* As above, for mbufs allocated with m_gethdr/MGETHDR
+		* or initialized by M_COPY_PKTHDR.
+		*/
+		it = m->begin() + sizeof(struct L2::ether_header);
+		auto ether_arp_struct = struct L2_ARP::ether_arp(tip, sip, taddr, saddr, op);
+		memcpy(&(m->data()[it - m->begin()]), &ether_arp_struct, sizeof(struct L2_ARP::ether_arp));
+		return m;
+	}
 
 	/*
 		make_arp_request Function: Makes an arp request packet (without the ether_header, however allocates the place to hold one).
@@ -188,7 +211,10 @@ struct	L2_ARP::ether_arp
 			* saddr - The source hw addr.
 			* it - The iterator to return.
 	*/
-	inline static std::shared_ptr<std::vector<byte>> make_arp_request(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator &it);
+	static std::shared_ptr<std::vector<byte>> make_arp_request(const u_long tip, const u_long sip, mac_addr taddr,
+		mac_addr saddr, std::vector<byte>::iterator& it) {
+		return make_arp(tip, sip, taddr, saddr, it);
+	}
 
 	/*
 		make_arp_reply Function: Makes an arp reply packet (without the ether_header, however allocates the place to hold one).
@@ -198,7 +224,10 @@ struct	L2_ARP::ether_arp
 			* saddr - The source hw addr.
 			* it - The iterator to return.
 	*/ 
-	inline static std::shared_ptr<std::vector<byte>> make_arp_reply(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator &it);
+	static std::shared_ptr<std::vector<byte>> make_arp_reply(const u_long tip, const u_long sip,
+		mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator& it) {
+		return make_arp(tip, sip, taddr, saddr, it, ether_arp::arphdr::ARPOP_REPLY);
+	}
 
 	/*
 		Stream insertion operator.
@@ -232,17 +261,36 @@ public:
 	inline ~llinfo_arp();
 
 	// Checks if the entry is valid in terms of time.
-	inline bool valid() const;
+	bool valid() const {
+		unsigned long long cmp(static_cast<unsigned long long>(floor(GetTickCount64())));
+		return true; // REVERT
+		//return la_timeStamp == 0 || (cmp > la_timeStamp && cmp < MAX_TIME_STAMP + la_timeStamp);
+	}
 
 	// Gets la MAC (non-const).
-	inline mac_addr& getLaMac();
+	inline mac_addr& getLaMac() { return la_mac; }
 
 	/*	
 		clearToSend Function: Checks if the entry is clear to send.
 			* arp_maxtries - The arp_maxtries (supplied by L2_ARP).
 			* arpt_down - The arpt_down (supplied by L2_ARP).
 	*/
-	inline bool clearToSend(const unsigned long arp_maxtries, const unsigned int arpt_down);
+	bool clearToSend(const unsigned long arp_maxtries, const unsigned int arpt_down) {
+		if (la_timeStamp) {
+			la_flags &= ~L3::rtentry::RTF_REJECT;
+			if (la_asked == 0 || (la_timeStamp != floor(GetTickCount64()))) {
+				la_timeStamp = static_cast<unsigned long long>(std::floor(GetTickCount64()));
+				if (la_asked++ < arp_maxtries)
+					return true;
+				else {
+					la_flags |= L3::rtentry::RTF_REJECT;
+					la_timeStamp += arpt_down;
+					la_asked = 0;
+				}
+			}
+		}
+		return false;
+	}
 
 	// Removes the top-of-stack packet, la_hold and its corresponding iterator hold_it.
 	inline void pop();
@@ -252,22 +300,26 @@ public:
 			* hold - The packet to hold.
 			* hold_it - The iterator of the packet to hold.
 	*/
-	inline void push(std::shared_ptr<std::vector<byte>> hold, const std::vector<byte>::iterator hold_it);
+	void push(std::shared_ptr<std::vector<byte>> hold, const std::vector<byte>::iterator hold_it) {
+		pop();
+		la_hold = hold;
+		la_hold_it = hold_it;
+	}
 
 	// Gets the top-of-stack packet, la_hold.
-	inline std::shared_ptr<std::vector<byte>> front() const;
+	inline std::shared_ptr<std::vector<byte>> front() const { return la_hold; }
 
 	// Gets the top-of-stack, iterator.
-	inline std::vector<byte>::iterator& front_it();
+	inline std::vector<byte>::iterator& front_it() { return la_hold_it; }
 
 	// Tests if the stack (of la_hold) is empty.
-	inline bool empty() const;
+	inline bool empty() const { return la_hold ? la_hold->empty() : true; }
 
 	// Updates the entry with the given la_mac.
 	inline void update(const mac_addr la_mac);
 
 	// Gets la timestamp.
-	inline unsigned long long getLaTimeStamp() const;
+	inline unsigned long long getLaTimeStamp() const { return la_timeStamp; }
 
 private:
 	enum time_stamp

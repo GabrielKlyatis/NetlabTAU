@@ -18,12 +18,6 @@
     <ClCompile Include="L1\NIC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main2.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="L1\NIC_Cable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -70,9 +64,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="L3\L3_impl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L2\L2_ARP_impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="L0\L0_buffer.cpp">

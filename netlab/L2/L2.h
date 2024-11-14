@@ -256,7 +256,7 @@ public:
 	    \return	true if it succeeds, false if it fails.
 	*/
 	template <typename T>
-	static inline bool ETHER_IS_VALID_LEN(const T t) { return ((t >= static_cast<T>(ETHER_MIN_LEN)) && (t <= static_cast<T>(ETHER_MAX_LEN))); }
+	static inline bool ETHER_IS_VALID_LEN(const T t) { return ((t >= static_cast<T>(L2::ether_header::ETHER_MIN_LEN)) && (t <= static_cast<T>(L2::ether_header::ETHER_MAX_LEN))); }
 
 	/*!
 	    \fn	L2_impl::L2_impl(class inet_os &inet)

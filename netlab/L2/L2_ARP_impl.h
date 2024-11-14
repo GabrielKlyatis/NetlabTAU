@@ -6,10 +6,7 @@
 /*							   L2_ARP - Solution                                  */
 /**********************************************************************************/
 
-typedef std::map<u_long, std::shared_ptr<L2_ARP::llinfo_arp>> ARP_map;
-
-class L2_ARP_impl
-	: public L2_ARP
+class L2_ARP_impl : public L2_ARP
 {
 public:
 
@@ -73,6 +70,9 @@ private:
 			* hw_snd - The hw snd.
 	*/
 	inline virtual void SendArpReply(const struct in_addr& itaddr, const struct in_addr& isaddr, const mac_addr& hw_tgt, const mac_addr& hw_snd) const;
+
+	// Definition of ARP_map type - given to students for clarity.
+	typedef std::map<u_long, std::shared_ptr<L2_ARP::llinfo_arp>> ARP_map;
 
 	// An ARP cache table, using std map.
 	class ArpCache : public ARP_map

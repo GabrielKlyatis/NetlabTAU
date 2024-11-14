@@ -97,39 +97,6 @@ std::ostream& operator<<(std::ostream& out, const struct L2_ARP::ether_arp& ea)
 	return out;
 }
 
-std::shared_ptr<std::vector<byte>> L2_ARP::ether_arp::make_arp(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator& it, arphdr::ARPOP_ op)
-{
-	/*
-	*	Allocate and Initialize mbuf
-	*	A packet header mbuf is allocated and the two length fields are set. MH_ALIGN
-	*	allows room for a 28-byte ether_arp structure at the end of the mbuf, and sets the
-	*	m_data pointer accordingly. The reason for moving this structure to the end of the
-	*	mbuf is to allow ether_output to prepend the 14-byte Ethernet header in the same
-	*	mbuf.
-	*/
-	std::shared_ptr<std::vector<byte>> m(new std::vector<byte>(sizeof(struct L2::ether_header) + sizeof(struct L2_ARP::ether_arp)));
-	if (m == nullptr)
-		throw std::runtime_error("make_arp_request failed! allocation failed!");
-
-	/*
-	* As above, for mbufs allocated with m_gethdr/MGETHDR
-	* or initialized by M_COPY_PKTHDR.
-	*/
-	it = m->begin() + sizeof(struct L2::ether_header);
-	memcpy(&m->data()[it - m->begin()], &struct L2_ARP::ether_arp(tip, sip, taddr, saddr, op), sizeof(struct L2_ARP::ether_arp));
-	return m;
-}
-
-std::shared_ptr<std::vector<byte>> L2_ARP::ether_arp::make_arp_request(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator& it)
-{
-	return make_arp(tip, sip, taddr, saddr, it);
-}
-
-std::shared_ptr<std::vector<byte>> L2_ARP::ether_arp::make_arp_reply(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator& it)
-{
-	return make_arp(tip, sip, taddr, saddr, it, ether_arp::arphdr::ARPOP_REPLY);
-}
-
 /************************************************************************/
 /*							L2_ARP::llinfo_arp				            */
 /************************************************************************/
@@ -142,56 +109,12 @@ L2_ARP::llinfo_arp::llinfo_arp(const mac_addr& la_mac, bool permanent) : llinfo_
 
 L2_ARP::llinfo_arp::~llinfo_arp() { pop(); }
 
-bool L2_ARP::llinfo_arp::valid() const
-{
-	unsigned long long cmp(static_cast<unsigned long long>(floor(GetTickCount64())));
-	return true; // REVERT
-	//return la_timeStamp == 0 || (cmp > la_timeStamp && cmp < MAX_TIME_STAMP + la_timeStamp);
-}
-
-L2_ARP::mac_addr& L2_ARP::llinfo_arp::getLaMac() { return la_mac; }
-
-unsigned long long L2_ARP::llinfo_arp::getLaTimeStamp() const { return la_timeStamp; }
-
-bool L2_ARP::llinfo_arp::clearToSend(const unsigned long arp_maxtries, const unsigned int arpt_down)
-{
-	if (la_timeStamp) {
-		la_flags &= ~L3::rtentry::RTF_REJECT;
-		if (la_asked == 0 || (la_timeStamp != floor(GetTickCount64()))) {
-			la_timeStamp = static_cast<unsigned long long>(std::floor(GetTickCount64()));
-			if (la_asked++ < arp_maxtries)
-				return true;
-			else {
-				la_flags |= L3::rtentry::RTF_REJECT;
-				la_timeStamp += arpt_down;
-				la_asked = 0;
-			}
-		}
-	}
-	return false;
-}
-
 void L2_ARP::llinfo_arp::pop()
 {
 	if (la_hold != nullptr) {
 		la_hold.reset(new std::vector<byte>());
 		la_hold_it = std::vector<byte>::iterator();
 	}
-}
-
-void L2_ARP::llinfo_arp::push(std::shared_ptr<std::vector<byte>> hold, const std::vector<byte>::iterator hold_it)
-{
-	pop();
-	la_hold = hold;
-	la_hold_it = hold_it;
-}
-
-std::shared_ptr<std::vector<byte>> L2_ARP::llinfo_arp::front() const { return la_hold; }
-
-std::vector<byte>::iterator& L2_ARP::llinfo_arp::front_it() { return la_hold_it; }
-
-bool L2_ARP::llinfo_arp::empty() const {
-	return la_hold ? la_hold->empty() : true;
 }
 
 void L2_ARP::llinfo_arp::update(const mac_addr la_mac)
