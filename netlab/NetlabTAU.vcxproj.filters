@@ -69,9 +69,6 @@
     <ClCompile Include="L0\L0_buffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="L4\L4_UDP_Impl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="L4\tcp_tahoe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -91,6 +88,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="L2\L2_ARP.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="L4\L4_UDP.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -232,7 +232,7 @@
     <ClCompile Include="L2\L2_impl.cpp" />
     <ClCompile Include="L3\L3_impl.cpp" />
     <ClCompile Include="L4\L4_ICMP_Sol.cpp" />
-    <ClCompile Include="L4\L4_UDP_Impl.cpp" />
+    <ClCompile Include="L4\L4_UDP.cpp" />
     <ClCompile Include="L4\L4_TCP_Sol.cpp" />
     <ClCompile Include="L4\tcp_reno.cpp" />
     <ClCompile Include="L4\tcp_tahoe.cpp" />
