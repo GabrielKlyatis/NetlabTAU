@@ -26,7 +26,7 @@
 #undef max
 #endif
 #include "../L1/NIC.h"
-#include "../L4/L4_TCP_impl.h"
+#include "../L4/L4_TCP.h"
 #include "../L2/L2.h"
 #include "../L5/L5.h"
 
@@ -188,7 +188,7 @@ inline void L4_TCP::tcpcb::tcp_quench() { log_snd_cwnd(snd_cwnd = t_maxseg); }
 
 inline short L4_TCP::tcpcb::TCP_REXMTVAL() const
 {
-	return (t_srtt >> L4_TCP_impl::TCP_RTT_SHIFT) + t_rttvar;
+	return (t_srtt >> L4_TCP::TCP_RTT_SHIFT) + t_rttvar;
 }
 
 void L4_TCP::tcpcb::tcp_xmit_timer(short rtt)
@@ -201,7 +201,7 @@ void L4_TCP::tcpcb::tcp_xmit_timer(short rtt)
 		* an alpha of .875 (srtt = rtt/8 + srtt*7/8 in fixed
 		* point).  Adjust rtt to origin 0.
 		*/
-		short delta(rtt - 1 - (t_srtt >> L4_TCP_impl::TCP_RTT_SHIFT));
+		short delta(rtt - 1 - (t_srtt >> L4_TCP::TCP_RTT_SHIFT));
 		if ((t_srtt += delta) <= 0)
 			t_srtt = 1;
 		/*
@@ -216,7 +216,7 @@ void L4_TCP::tcpcb::tcp_xmit_timer(short rtt)
 		*/
 		if (delta < 0)
 			delta = -delta;
-		if ((t_rttvar += (delta -= (t_rttvar >> L4_TCP_impl::TCP_RTTVAR_SHIFT))) <= 0)
+		if ((t_rttvar += (delta -= (t_rttvar >> L4_TCP::TCP_RTTVAR_SHIFT))) <= 0)
 			t_rttvar = 1;
 	}
 	else {
@@ -225,8 +225,8 @@ void L4_TCP::tcpcb::tcp_xmit_timer(short rtt)
 		* Set the variance to half the rtt (so our first
 		* retransmit happens at 3*rtt).
 		*/
-		t_srtt = rtt << L4_TCP_impl::TCP_RTT_SHIFT;
-		t_rttvar = rtt << (L4_TCP_impl::TCP_RTTVAR_SHIFT - 1);
+		t_srtt = rtt << L4_TCP::TCP_RTT_SHIFT;
+		t_rttvar = rtt << (L4_TCP::TCP_RTTVAR_SHIFT - 1);
 	}
 	t_rtt = t_rxtshift = 0;
 
@@ -241,7 +241,7 @@ void L4_TCP::tcpcb::tcp_xmit_timer(short rtt)
 	* statistical, we have to test that we don't drop below
 	* the minimum feasible timer (which is 2 ticks).
 	*/
-	L4_TCP_impl::TCPT_RANGESET(t_rxtcur, TCP_REXMTVAL(), t_rttmin, L4_TCP_impl::TCPTV_REXMTMAX);
+	L4_TCP::TCPT_RANGESET(t_rxtcur, TCP_REXMTVAL(), t_rttmin, L4_TCP::TCPTV_REXMTMAX);
 
 	/*
 	* We received an ack for a packet that wasn't retransmitted;
@@ -373,18 +373,8 @@ std::ostream& operator<<(std::ostream& out, const struct L4_TCP::tcpiphdr::ipovl
 /*                         L4_TCP_impl				                    */
 /************************************************************************/
 
-L4_TCP_impl::L4_TCP_impl(class inet_os& inet)
-	: L4_TCP(inet), tcb(inet), tcp_saveti(nullptr), tcp_last_inpcb(nullptr) { }
 
-L4_TCP_impl::~L4_TCP_impl()
-{
-	if (tcp_saveti)
-		delete tcp_saveti;
-	if (tcp_last_inpcb)
-		delete tcp_last_inpcb;
-}
-
-void L4_TCP_impl::pr_init()
+void L4_TCP::pr_init()
 {
 	tcp_saveti = nullptr;
 	tcp_last_inpcb = nullptr;
@@ -397,7 +387,7 @@ void L4_TCP_impl::pr_init()
 	tcp_recvspace = TCP_MAXWIN;
 }
 
-void L4_TCP_impl::pr_fasttimo()
+void L4_TCP::pr_fasttimo()
 {
 	std::lock_guard<std::mutex> lock(inet._splnet);
 
@@ -413,7 +403,7 @@ void L4_TCP_impl::pr_fasttimo()
 	}
 }
 
-void L4_TCP_impl::pr_slowtimo()
+void L4_TCP::pr_slowtimo()
 {
 	std::lock_guard<std::mutex> lock(inet._splnet);
 
@@ -521,7 +511,7 @@ void L4_TCP_impl::pr_slowtimo()
 /*				  L4_TCP_impl pr_usrreq						            */
 /************************************************************************/
 
-int L4_TCP_impl::pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr<std::vector<byte>>& m,
+int L4_TCP::pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr<std::vector<byte>>& m,
 	struct sockaddr* nam, size_t nam_len, std::shared_ptr<std::vector<byte>>& control) {
 	/*
 	*	Control Information Is Invalid
@@ -778,7 +768,7 @@ int L4_TCP_impl::pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr
 	return (error);
 }
 
-int L4_TCP_impl::tcp_attach(socket& so)
+int L4_TCP::tcp_attach(socket& so)
 {
 	/*
 	 *	Allocate space for send buffer and receive buffer:
@@ -828,7 +818,7 @@ int L4_TCP_impl::tcp_attach(socket& so)
 	return (0);
 }
 
-class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket& so)
+class L4_TCP::tcpcb* L4_TCP::tcp_newtcpcb(socket& so)
 {
 	class L4_TCP::tcpcb* tp(new L4_TCP::tcpcb(so, tcb));
 	/*
@@ -936,7 +926,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_newtcpcb(socket& so)
 	return tp;
 }
 
-class L4_TCP::tcpcb* L4_TCP_impl::tcp_timers(class L4_TCP::tcpcb* tp, int timer)
+class L4_TCP::tcpcb* L4_TCP::tcp_timers(class L4_TCP::tcpcb* tp, int timer)
 {
 	switch (timer) {
 
@@ -1152,7 +1142,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_timers(class L4_TCP::tcpcb* tp, int timer)
 	return (tp);
 }
 
-inline void L4_TCP_impl::tcp_setpersist(class L4_TCP::tcpcb& tp)
+inline void L4_TCP::tcp_setpersist(class L4_TCP::tcpcb& tp)
 {
 	if (tp.t_timer[TCPT_REXMT])
 		throw std::runtime_error("tcp_output REXMT");
@@ -1168,7 +1158,7 @@ inline void L4_TCP_impl::tcp_setpersist(class L4_TCP::tcpcb& tp)
 		tp.t_rxtshift++;
 }
 
-int L4_TCP_impl::tcp_backoff(const int backoff) // TODO: move to tahoe
+int L4_TCP::tcp_backoff(const int backoff) // TODO: move to tahoe
 {
 	if (0 <= backoff && backoff <= 5)
 		return 0x1 << backoff;
@@ -1177,7 +1167,7 @@ int L4_TCP_impl::tcp_backoff(const int backoff) // TODO: move to tahoe
 	return 0;
 }
 
-class L4_TCP::tcpcb* L4_TCP_impl::tcp_disconnect(class L4_TCP::tcpcb& tp)
+class L4_TCP::tcpcb* L4_TCP::tcp_disconnect(class L4_TCP::tcpcb& tp)
 {
 	socket* so(dynamic_cast<socket*>(tp.t_inpcb->inp_socket));
 	if (tp.t_state < L4_TCP::tcpcb::TCPS_ESTABLISHED)
@@ -1194,7 +1184,7 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_disconnect(class L4_TCP::tcpcb& tp)
 	return (&tp);
 }
 
-void L4_TCP_impl::tcp_usrclosed(class L4_TCP::tcpcb& tp)
+void L4_TCP::tcp_usrclosed(class L4_TCP::tcpcb& tp)
 {
 	switch (tp.t_state) {
 
@@ -1220,7 +1210,7 @@ void L4_TCP_impl::tcp_usrclosed(class L4_TCP::tcpcb& tp)
 	return;
 }
 
-void L4_TCP_impl::tcp_drop(class L4_TCP::tcpcb& tp, const int err)
+void L4_TCP::tcp_drop(class L4_TCP::tcpcb& tp, const int err)
 {
 	if (tp.t_inpcb) {
 		socket* so(dynamic_cast<socket*>(tp.t_inpcb->inp_socket));
@@ -1250,7 +1240,7 @@ void L4_TCP_impl::tcp_drop(class L4_TCP::tcpcb& tp, const int err)
 	}
 }
 
-class L4_TCP::tcpcb* L4_TCP_impl::tcp_close(class L4_TCP::tcpcb& tp)
+class L4_TCP::tcpcb* L4_TCP::tcp_close(class L4_TCP::tcpcb& tp)
 {
 	/*
 	*	Check If enough data sent to update statistics
@@ -1368,9 +1358,9 @@ class L4_TCP::tcpcb* L4_TCP_impl::tcp_close(class L4_TCP::tcpcb& tp)
 /*				  L4_TCP_impl pr_output						            */
 /************************************************************************/
 
-L4_TCP_impl::tcp_output_args::tcp_output_args(L4_TCP::tcpcb& tp) : tp(tp) { }
+L4_TCP::tcp_output_args::tcp_output_args(L4_TCP::tcpcb& tp) : tp(tp) { }
 
-int L4_TCP_impl::again(L4_TCP::tcpcb& tp, const bool idle, socket& so)
+int L4_TCP::again(L4_TCP::tcpcb& tp, const bool idle, socket& so)
 {
 	/*
 	 *	Determine if a Segment Should be Sent:
@@ -1753,7 +1743,7 @@ int L4_TCP_impl::again(L4_TCP::tcpcb& tp, const bool idle, socket& so)
 
 }
 
-int L4_TCP_impl::send(L4_TCP::tcpcb& tp, const bool idle, socket& so, bool sendalot, int& off, int& flags, long& win, long& len)
+int L4_TCP::send(L4_TCP::tcpcb& tp, const bool idle, socket& so, bool sendalot, int& off, int& flags, long& win, long& len)
 {
 	/*
 	*	The TCP options are built in the array opt, and the integer optlen keeps a count of
@@ -2283,7 +2273,7 @@ int L4_TCP_impl::send(L4_TCP::tcpcb& tp, const bool idle, socket& so, bool senda
 	return (0);
 }
 
-int L4_TCP_impl::out(L4_TCP::tcpcb& tp, int error)
+int L4_TCP::out(L4_TCP::tcpcb& tp, int error)
 {
 	/*
 	*	The error ENOBUFS is returned if the interface queue is full or if IP needs to obtain
@@ -2319,7 +2309,7 @@ int L4_TCP_impl::out(L4_TCP::tcpcb& tp, int error)
 	return (error);
 }
 
-void L4_TCP_impl::drop(class inpcb_impl* inp, const int dropsocket)
+void L4_TCP::drop(class inpcb_impl* inp, const int dropsocket)
 {
 	/*
 	* Drop space held by incoming segment and return.
@@ -2331,7 +2321,7 @@ void L4_TCP_impl::drop(class inpcb_impl* inp, const int dropsocket)
 	return;
 }
 
-void L4_TCP_impl::dropafterack(class L4_TCP::tcpcb* tp, const int& dropsocket, const int& tiflags)
+void L4_TCP::dropafterack(class L4_TCP::tcpcb* tp, const int& dropsocket, const int& tiflags)
 {
 	/*
 	* Generate an ACK dropping incoming segment if it occupies
@@ -2344,7 +2334,7 @@ void L4_TCP_impl::dropafterack(class L4_TCP::tcpcb* tp, const int& dropsocket, c
 	return;
 }
 
-void L4_TCP_impl::dropwithreset(class inpcb_impl* inp, const int& dropsocket, const int& tiflags, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, tcpiphdr* ti)
+void L4_TCP::dropwithreset(class inpcb_impl* inp, const int& dropsocket, const int& tiflags, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, tcpiphdr* ti)
 {
 	/*
 	* Generate a RST, dropping incoming segment.
@@ -2407,7 +2397,7 @@ void L4_TCP_impl::dropwithreset(class inpcb_impl* inp, const int& dropsocket, co
 	return drop(inp, dropsocket);
 }
 
-void L4_TCP_impl::step6(class L4_TCP::tcpcb* tp, int& tiflags, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, u_long& tiwin, int& needoutput)
+void L4_TCP::step6(class L4_TCP::tcpcb* tp, int& tiflags, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, u_long& tiwin, int& needoutput)
 {
 	/*
 	* Update window information.
@@ -2568,7 +2558,7 @@ void L4_TCP_impl::step6(class L4_TCP::tcpcb* tp, int& tiflags, struct L4_TCP::tc
 	return dodata(tp, tiflags, ti, m, it, needoutput);
 }
 
-void L4_TCP_impl::tcp_pulloutofband(socket& so, const L4_TCP::tcpiphdr& ti, std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it)
+void L4_TCP::tcp_pulloutofband(socket& so, const L4_TCP::tcpiphdr& ti, std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it)
 {
 	int cnt(ti.ti_urp() - 1);
 	if (cnt >= 0) {
@@ -2595,7 +2585,7 @@ void L4_TCP_impl::tcp_pulloutofband(socket& so, const L4_TCP::tcpiphdr& ti, std:
 	throw std::runtime_error("panic(''tcp_pulloutofband''");
 }
 
-void L4_TCP_impl::dodata(class L4_TCP::tcpcb* tp, int& tiflags, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, const int& needoutput) /* XXX */
+void L4_TCP::dodata(class L4_TCP::tcpcb* tp, int& tiflags, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, const int& needoutput) /* XXX */
 {
 	socket* so(dynamic_cast<socket*>(tp->inp_socket));
 
@@ -2728,7 +2718,7 @@ void L4_TCP_impl::dodata(class L4_TCP::tcpcb* tp, int& tiflags, struct L4_TCP::t
 	return;
 }
 
-void L4_TCP_impl::TCP_REASS(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, socket* so, int& flags)
+void L4_TCP::TCP_REASS(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, socket* so, int& flags)
 {
 	if (ti->ti_seq() == tp->rcv_nxt &&
 		tp->seg_next == reinterpret_cast<struct L4_TCP::tcpiphdr*>(tp) &&
@@ -2748,7 +2738,7 @@ void L4_TCP_impl::TCP_REASS(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti
 	}
 }
 
-int L4_TCP_impl::tcp_reass(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it)
+int L4_TCP::tcp_reass(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it)
 {
 	/*
 	*	We'll see that tcp_input calls tcp_reass with a null ti pointer when a SYN is
@@ -2876,7 +2866,7 @@ int L4_TCP_impl::tcp_reass(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti,
 	return present(tp, ti, m, it);
 }
 
-int L4_TCP_impl::present(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it)
+int L4_TCP::present(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it)
 {
 	if (tp->TCPS_HAVERCVDSYN() == false ||
 		(ti = tp->seg_next) == reinterpret_cast<struct L4_TCP::tcpiphdr*>(tp) ||
@@ -2901,7 +2891,7 @@ int L4_TCP_impl::present(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti, s
 	return (flags);
 }
 
-void  L4_TCP_impl::tcp_respond(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, const tcp_seq& ack, const tcp_seq& seq, const int& flags)
+void  L4_TCP::tcp_respond(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, const tcp_seq& ack, const tcp_seq& seq, const int& flags)
 {
 	int win(tp ? dynamic_cast<socket*>(tp->t_inpcb->inp_socket)->so_rcv.sbspace() : 0),
 		tlen;
@@ -2963,7 +2953,7 @@ void  L4_TCP_impl::tcp_respond(class L4_TCP::tcpcb* tp, struct L4_TCP::tcpiphdr*
 #endif
 }
 
-void L4_TCP_impl::tcp_dooptions(L4_TCP::tcpcb& tp, u_char* cp, int cnt, tcpiphdr& ti, int& ts_present, u_long& ts_val, u_long& ts_ecr)
+void L4_TCP::tcp_dooptions(L4_TCP::tcpcb& tp, u_char* cp, int cnt, tcpiphdr& ti, int& ts_present, u_long& ts_val, u_long& ts_ecr)
 {
 	u_short mss;
 	int opt, optlen;
@@ -3070,7 +3060,7 @@ void L4_TCP_impl::tcp_dooptions(L4_TCP::tcpcb& tp, u_char* cp, int cnt, tcpiphdr
 	}
 }
 
-int L4_TCP_impl::tcp_mss(class L4_TCP::tcpcb& tp, u_int offer)
+int L4_TCP::tcp_mss(class L4_TCP::tcpcb& tp, u_int offer)
 {
 
 	/*
@@ -3321,7 +3311,7 @@ int L4_TCP_impl::tcp_mss(class L4_TCP::tcpcb& tp, u_int offer)
 	return (mss);
 }
 
-void L4_TCP_impl::trimthenstep6(class L4_TCP::tcpcb* tp, int& tiflags, tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, u_long& tiwin, int& needoutput)
+void L4_TCP::trimthenstep6(class L4_TCP::tcpcb* tp, int& tiflags, tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, u_long& tiwin, int& needoutput)
 {
 	/*
 	*	The sequence number of the segment is incremented by 1 to account for the SYN. If
@@ -3371,9 +3361,9 @@ void L4_TCP_impl::trimthenstep6(class L4_TCP::tcpcb* tp, int& tiflags, tcpiphdr*
 
 
 
-inline void	L4_TCP_impl::TCP_ISSINCR(const int div) { tcp_iss += (250 * 1024) / div; }
+inline void	L4_TCP::TCP_ISSINCR(const int div) { tcp_iss += (250 * 1024) / div; }
 
-void L4_TCP_impl::print(struct L4_TCP::tcpiphdr& tcpip, uint16_t tcp_checksum, std::string intro, std::ostream& str) const
+void L4_TCP::print(struct L4_TCP::tcpiphdr& tcpip, uint16_t tcp_checksum, std::string intro, std::ostream& str) const
 {
 	std::swap(tcp_checksum, tcpip.ti_sum());
 	std::lock_guard<std::mutex> lock(inet.print_mutex);
@@ -3383,7 +3373,7 @@ void L4_TCP_impl::print(struct L4_TCP::tcpiphdr& tcpip, uint16_t tcp_checksum, s
 
 
 
-void L4_TCP_impl::print(struct L4_TCP::tcphdr& tcp, uint16_t tcp_checksum, std::string intro, std::ostream& str) const
+void L4_TCP::print(struct L4_TCP::tcphdr& tcp, uint16_t tcp_checksum, std::string intro, std::ostream& str) const
 {
 	std::swap(tcp_checksum, tcp.th_sum);
 	std::lock_guard<std::mutex> lock(inet.print_mutex);
@@ -3391,7 +3381,7 @@ void L4_TCP_impl::print(struct L4_TCP::tcphdr& tcp, uint16_t tcp_checksum, std::
 	std::swap(tcp_checksum, tcp.th_sum);
 }
 
-void L4_TCP_impl::tcp_congestion_conrol_handler(tcpcb* tp)
+void L4_TCP::tcp_congestion_conrol_handler(tcpcb* tp)
 {
 	u_int cw(tp->snd_cwnd);
 	float incr(tp->t_maxseg);
@@ -3400,7 +3390,7 @@ void L4_TCP_impl::tcp_congestion_conrol_handler(tcpcb* tp)
 	tp->log_snd_cwnd(tp->snd_cwnd = std::min(cw + (u_int)std::floor(incr), static_cast<u_int>(TCP_MAXWIN << tp->snd_scale)));
 }
 
-void  L4_TCP_impl::tcp_rto_timer_handler(tcpcb* tp)
+void  L4_TCP::tcp_rto_timer_handler(tcpcb* tp)
 {
 
 }
