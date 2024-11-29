@@ -102,7 +102,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\Projects\WpdPack_4_1_2\WpdPack\Include;C:\Projects\boost_1_83_0;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\Projects\WpdPack_4_1_2\WpdPack\Include;C:\Projects\boost_1_83_0;C:\googletest-1.14.0\googletest\include;C:\Projects\OpenSSL-Win32\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
     <ExecutablePath>C:\Windows\System32;$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
@@ -231,18 +231,8 @@
     <ClCompile Include="L2\L2_ARP_impl.cpp" />
     <ClCompile Include="L2\L2_impl.cpp" />
     <ClCompile Include="L3\L3_impl.cpp" />
-    <ClCompile Include="L4\L4_ICMP_Sol.cpp" />
     <ClCompile Include="L4\L4_TCP.cpp" />
-    <ClCompile Include="L4\L4_UDP_Impl.cpp" />
-    <ClCompile Include="L4\L4_TCP_impl.cpp" />
-    <ClCompile Include="L4\tcp_reno.cpp" />
-    <ClCompile Include="L4\tcp_tahoe.cpp" />
-    <ClCompile Include="L5\HTTP\HTTP.cpp" />
-    <ClCompile Include="L5\HTTP\HTTPClient_Impl.cpp" />
-    <ClCompile Include="L5\HTTP\HTTPServer_Impl.cpp" />
     <ClCompile Include="L5\L5_Sol.cpp" />
-    <ClCompile Include="L5\tls_socket.cpp" />
-    <ClCompile Include="main.cpp" />
     <ClCompile Include="infra\NetworkInterface.cpp" />
     <ClCompile Include="L1\NIC.cpp" />
     <ClCompile Include="L1\NIC_Cable.cpp" />
@@ -252,6 +242,7 @@
     <ClCompile Include="infra\protosw.cpp" />
     <ClCompile Include="L0\L0_buffer.cpp" />
     <ClCompile Include="infra\utils.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="infra\AddressRange.h" />
@@ -267,15 +258,6 @@
     <ClInclude Include="L4\L4.h" />
     <ClInclude Include="L4\L4_TCP.h" />
     <ClInclude Include="L4\L4_TCP_impl.h" />
-    <ClInclude Include="L4\L4_UDP.hpp" />
-    <ClInclude Include="L4\L4_UDP_Impl.hpp" />
-    <ClInclude Include="L4\tcp_reno.h" />
-    <ClInclude Include="L4\tcp_tahoe.h" />
-    <ClInclude Include="L5\HTTP\HTTP.hpp" />
-    <ClInclude Include="L5\HTTP\HTTPClient.hpp" />
-    <ClInclude Include="L5\HTTP\HTTPClient_Impl.hpp" />
-    <ClInclude Include="L5\HTTP\HTTPServer.hpp" />
-    <ClInclude Include="L5\HTTP\HTTPServer_Impl.hpp" />
     <ClInclude Include="L5\L5.h" />
     <ClInclude Include="infra\NetworkInterface.h" />
     <ClInclude Include="L1\NIC.h" />
@@ -284,10 +266,6 @@
     <ClInclude Include="infra\pcb.h" />
     <ClInclude Include="infra\Print.h" />
     <ClInclude Include="infra\protosw.hpp" />
-    <ClInclude Include="L5\tls_definition.hpp" />
-    <ClInclude Include="L5\tls_protocol_layer.hpp" />
-    <ClInclude Include="L5\tls_socket.h" />
-    <ClInclude Include="L5\tls_utils.hpp" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="infra\utils.h" />
   </ItemGroup>

@@ -27,7 +27,6 @@
 
 #include "../L3/L3.h"
 #include "../infra/pcb.h"
-#include "L4_UDP_Impl.hpp"
 
 // User-settable options (used with setsockopt).
 #ifdef TCP_NODELAY
@@ -58,14 +57,14 @@ struct tcphdr
 	// Flags for TCP header.
 	enum TH_
 	{
-		TH_FIN = 0x01,  /*!< The FIN flag */
-		TH_SYN = 0x02,  /*!< The SYN flag */
-		TH_RST = 0x04,  /*!< The RST flag */
-		TH_PUSH = 0x08, /*!< The PUSH flag */
-		TH_ACK = 0x10,  /*!< The ACK flag */
-		TH_URG = 0x20,  /*!< The URG flag */
-		TH_ECE = 0x40,  /*!< The th ECE flag */
-		TH_CWR = 0x80,  /*!< The th CWR flag */
+		TH_FIN = 0x01,  /* The FIN flag */
+		TH_SYN = 0x02,  /* The SYN flag */
+		TH_RST = 0x04,  /* The RST flag */
+		TH_PUSH = 0x08, /* The PUSH flag */
+		TH_ACK = 0x10,  /* The ACK flag */
+		TH_URG = 0x20,  /* The URG flag */
+		TH_ECE = 0x40,  /* The th ECE flag */
+		TH_CWR = 0x80,  /* The th CWR flag */
 		TH_FLAGS = (TH_FIN | TH_SYN | TH_RST | TH_PUSH | TH_ACK | TH_URG | TH_ECE | TH_CWR) /*!< all flags */
 	};
 
@@ -318,7 +317,7 @@ public:
 		log(tcpcb_logger()) { }
 
 	// Destructor. Free the reassembly queue, if any, and gets rid of all other allocated stuff.
-	tcpcb::~tcpcb()
+	~tcpcb()
 	{
 		/* Free the reassembly queue, if any */
 		struct tcpiphdr* t(seg_next);
@@ -366,7 +365,7 @@ public:
 			* b - The T to process.
 	*/
 	template<typename T>
-	static inline bool SEQ_LT(T a, T b);
+	static bool SEQ_LT(T a, T b) { return static_cast<int>(a - b) < 0; }
 
 	/*
 		SEQ_LEQ Function - Sequence less than or equal.
@@ -375,7 +374,7 @@ public:
 			* b - The T to process.
 	*/
 	template<typename T>
-	static inline bool SEQ_LEQ(T a, T b);
+	static bool SEQ_LEQ(T a, T b) { return static_cast<int>(a - b) <= 0; }
 
 	/*
 		SEQ_GT Function - Sequence greater than.
@@ -384,7 +383,7 @@ public:
 			* b - The T to process.
 	*/
 	template<typename T>
-	static inline bool SEQ_GT(T a, T b);
+	static bool SEQ_GT(T a, T b) { return static_cast<int>(a - b) > 0; }
 
 	/*
 		SEQ_GEQ Function - Sequence greater than or equal.
@@ -393,7 +392,7 @@ public:
 			* b - The T to process.
 	*/
 	template<typename T>
-	static inline bool SEQ_GEQ(T a, T b);
+	static bool SEQ_GEQ(T a, T b) { return static_cast<int>(a - b) >= 0; }
 
 	/*
 		in_pcblookup Function - Calls inpcb_impl::in_pcblookup().
@@ -415,7 +414,7 @@ public:
 
 
 	// Macros to initialize tcp sequence number for receive from initial receive sequence number.
-	inline void tcp_rcvseqinit();
+	virtual void tcp_rcvseqinit();
 
 	// Macros to initialize tcp sequence number for send from initial send sequence number.
 	inline void tcp_sendseqinit();
@@ -692,7 +691,6 @@ public:
 			tv = tvmax;
 	}
 
-protected:
 	virtual void pr_drain() { }
 	virtual int pr_sysctl() { return 0; }
 	virtual void pr_ctlinput() { }
@@ -818,7 +816,7 @@ protected:
 			* idle - The idle bool for timers.
 			* so - The socket that requested the send.
 	*/
-	inline int again(tcpcb& tp, const bool idle, socket& so);
+	virtual int again(tcpcb& tp, const bool idle, socket& so) = 0;
 
 	/*
 		send Function - The last half of tcp_output sends the segment-it fills in all the fields in the TCP header and
@@ -853,7 +851,7 @@ protected:
 			* dropsocket - The dropsocket.
 
 	*/
-	inline void drop(class inpcb_impl* inp, const int dropsocket);
+	virtual void drop(class inpcb_impl* inp, const int dropsocket) = 0;
 
 	/*
 		dropafterack Function -
@@ -865,7 +863,7 @@ protected:
 			* tiflags - The tcpiphdr flags.
 
 	*/
-	inline void dropafterack(class tcpcb* tp, const int& dropsocket, const int& tiflags);
+	virtual void dropafterack(class tcpcb* tp, const int& dropsocket, const int& tiflags) = 0;
 
 	/*
 		dropwithreset Function -
@@ -880,7 +878,7 @@ protected:
 			* it - The iterator, as the current offset in the vector.
 			* ti - If non-null, the tcpiphdr.
 	*/
-	inline void dropwithreset(class inpcb_impl* inp, const int& dropsocket, const int& tiflags, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, tcpiphdr* ti);
+	virtual void dropwithreset(class inpcb_impl* inp, const int& dropsocket, const int& tiflags, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, tcpiphdr* ti) = 0;
 
 	/*
 		Note - The funny name is for consistency with the freeBSD link name.
@@ -967,7 +965,7 @@ protected:
 			* seq - The sequence number.
 			* flags - The TCP flags.
 	*/
-	inline void tcp_respond(class tcpcb* tp, struct tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, const tcp_seq& ack, const tcp_seq& seq, const int& flags);
+	virtual void tcp_respond(class tcpcb* tp, struct tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, const tcp_seq& ack, const tcp_seq& seq, const int& flags) = 0;
 
 	/*
 		tcp_dooptions Function -
@@ -983,7 +981,7 @@ protected:
 			* ts_val - The timestamp value.
 			* ts_ecr - The timestamp ecr.
 	*/
-	inline void tcp_dooptions(class tcpcb& tp, u_char* cp, int cnt, tcpiphdr& ti, int& ts_present, u_long& ts_val, u_long& ts_ecr);
+	virtual void tcp_dooptions(class tcpcb& tp, u_char* cp, int cnt, tcpiphdr& ti, int& ts_present, u_long& ts_val, u_long& ts_ecr) = 0;
 
 	/*
 		tcp_mss Function -
@@ -1020,7 +1018,7 @@ protected:
 			* tiwin - The tcpiphdr window.
 			* needoutput - Need output?.
 	*/
-	inline void trimthenstep6(class tcpcb* tp, int& tiflags, tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, u_long& tiwin, int& needoutput);
+	virtual void trimthenstep6(class tcpcb* tp, int& tiflags, tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, u_long& tiwin, int& needoutput) = 0;
 
 	/*
 		TCP_ISSINCR Function - Increment for tcp_iss each second.

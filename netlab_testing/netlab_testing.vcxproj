@@ -39,7 +39,7 @@
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\Projects\WpdPack_4_1_2\WpdPack\Include;C:\Projects\boost_1_83_0;C:\Windows\System32;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>C:\googletest-1.14.0\googletest\include;C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\Projects\WpdPack_4_1_2\WpdPack\Include;C:\Projects\boost_1_83_0;$(IncludePath)</IncludePath>
+    <IncludePath>C:\googletest-1.14.0\googletest\include;C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\Projects\WpdPack_4_1_2\WpdPack\Include;C:\Projects\boost_1_83_0;C:\Projects\OpenSSL-Win32\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

@@ -51,8 +51,17 @@ public:
 	*/
 	virtual void pr_input(const struct pr_input_args& args) override;
 
-	// Ignore the following functions
+	/* Ignore the following function declarations */
 	virtual void pr_init();
+	virtual int pr_usrreq(class netlab::L5_socket* so, int req, std::shared_ptr<std::vector<byte>>& m,
+		struct sockaddr* nam, size_t nam_len, std::shared_ptr<std::vector<byte>>& control);
 	virtual void pr_fasttimo();
 	virtual void pr_slowtimo();
+	virtual void trimthenstep6(class tcpcb* tp, int& tiflags, tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, u_long& tiwin, int& needoutput);
+	virtual void tcp_dooptions(class tcpcb& tp, u_char* cp, int cnt, tcpiphdr& ti, int& ts_present, u_long& ts_val, u_long& ts_ecr);
+	virtual void tcp_respond(class tcpcb* tp, struct tcpiphdr* ti, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, const tcp_seq& ack, const tcp_seq& seq, const int& flags);
+	virtual void dropafterack(class tcpcb* tp, const int& dropsocket, const int& tiflags);
+	virtual void dropwithreset(class inpcb_impl* inp, const int& dropsocket, const int& tiflags, std::shared_ptr<std::vector<byte>> m, std::vector<byte>::iterator it, tcpiphdr* ti);
+	virtual void drop(class inpcb_impl* inp, const int dropsocket);
+	virtual int again(tcpcb& tp, const bool idle, socket& so);
 };
