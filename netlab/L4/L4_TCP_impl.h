@@ -3,17 +3,23 @@
 #include "L4_TCP.h"
 
 /***************************************************************************************/
-/*									 L4_TCP_impl									   */
+/*							L4_TCP_impl - Student Implementation					   */
 /***************************************************************************************/
 
 class L4_TCP_impl : public L4_TCP {
 public:
 
-/***************************************************************************************/
-/***************************************************************************************/
-/*				STUDENT IMPLEMENTATION SECTION BELOW - IGNORE THE REST				   */
-/***************************************************************************************/
-/***************************************************************************************/
+	/*
+		Constructor
+			* inet - The inet.
+	*/
+	L4_TCP_impl(class inet_os& inet);
+
+	/*
+		Destructor -
+		Deletes the tcp_saveti, and the tcp_last_inpcb if space has been allocated for them.
+	*/
+	~L4_TCP_impl();
 
 	// Wrapper for tcp_output.
 	virtual int pr_output(const struct pr_output_args& args) override;
@@ -45,31 +51,8 @@ public:
 	*/
 	virtual void pr_input(const struct pr_input_args& args) override;
 
-/***************************************************************************************/
-/***************************************************************************************/
-/*				STUDENT IMPLEMENTATION SECTION ABOVE - IGNORE THE REST				   */
-/***************************************************************************************/
-/***************************************************************************************/
-
-
-	
-
-
-public:
-
-	/*
-		Constructor
-			* inet - The inet.
-	*/
-	L4_TCP_impl(class inet_os& inet);
-
-	// Destructor - Deletes the tcp_saveti, and the tcp_last_inpcb if space has been allocated for them.
-	~L4_TCP_impl();
-
-//	virtual void pr_init();
-//	virtual void pr_fasttimo();
-//	virtual void pr_slowtimo();
-//
-
-	
+	// Ignore the following functions
+	virtual void pr_init();
+	virtual void pr_fasttimo();
+	virtual void pr_slowtimo();
 };

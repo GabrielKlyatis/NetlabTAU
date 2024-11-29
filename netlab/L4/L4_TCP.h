@@ -20,6 +20,11 @@
 #define NETLAB_NO_TCP_RESPOND
 #undef NETLAB_NO_TCP_RESPOND
 
+
+#include <iostream>
+#include <fstream>
+
+
 #include "../L3/L3.h"
 #include "../infra/pcb.h"
 #include "L4_UDP_Impl.hpp"
@@ -36,30 +41,531 @@
 #define	TCP_MAXSEG	0x02	/* Set maximum segment size */
 
 /***************************************************************************************/
-/*									L4_TCP - Interface								   */
+/*								L4_TCP - Headers & Control Block					   */
+/***************************************************************************************/
+
+struct tcphdr
+{
+	/*
+		Defines an alias representing the two 4-bit pack of offset and x2, according to windows
+		byte order (BIG_ENDIAN).
+	*/
+	typedef u_char_pack th_off_x2_pack;
+
+	// For BSD consistency.
+	typedef	u_long		tcp_seq;
+
+	// Flags for TCP header.
+	enum TH_
+	{
+		TH_FIN = 0x01,  /*!< The FIN flag */
+		TH_SYN = 0x02,  /*!< The SYN flag */
+		TH_RST = 0x04,  /*!< The RST flag */
+		TH_PUSH = 0x08, /*!< The PUSH flag */
+		TH_ACK = 0x10,  /*!< The ACK flag */
+		TH_URG = 0x20,  /*!< The URG flag */
+		TH_ECE = 0x40,  /*!< The th ECE flag */
+		TH_CWR = 0x80,  /*!< The th CWR flag */
+		TH_FLAGS = (TH_FIN | TH_SYN | TH_RST | TH_PUSH | TH_ACK | TH_URG | TH_ECE | TH_CWR) /*!< all flags */
+	};
+
+	tcphdr()
+		: th_sport(0), th_dport(0), th_seq(0), th_ack(0), th_off_x2(th_off_x2_pack(0, 0)), th_flags(0), th_win(0), th_sum(0), th_urp(0) { }
+
+	// Stream insertion operator.
+	friend std::ostream& operator<<(std::ostream& out, const struct tcphdr& tcp);
+
+	// Gets the data offset.
+	inline	const u_char th_off() const { return th_off_x2.hb; }
+
+	// Gets the unused.
+	inline	const u_char th_x2() const { return th_off_x2.lb; }
+
+	// Sets the data offset.
+	inline	void th_off(const u_char& th_off) { th_off_x2.hb = th_off; }
+
+	// Sets the unused.
+	inline	void th_x2(const u_char& ip_hl) { th_off_x2.lb = ip_hl; }
+
+	u_short	th_sport;		/* Source port */
+	u_short	th_dport;		/* Destination port */
+	tcp_seq	th_seq;			/* Sequence number */
+	tcp_seq	th_ack;			/* Acknowledgment number */
+
+	th_off_x2_pack th_off_x2;   /* Data offset then unused */
+
+	u_char	th_flags;   /* The flags \see TH_ */
+	u_short	th_win;		/* Window */
+	u_short	th_sum;		/* Checksum */
+	u_short	th_urp;		/* Urgent pointer */
+};
+
+struct tcpiphdr
+{
+	// For BSD consistency.
+	typedef	u_long		tcp_seq;
+
+	// Overlay for ip header used by other protocols (TCP, UDP).
+	struct ipovly
+	{
+		// Default constructor.
+		ipovly();
+
+		/*
+			Constructor
+				* ih_pr - The ip header protocol.
+				* ih_len - The ip header parameter ip_len (total length).
+				* ih_src - The IP source address.
+				* ih_dst - The IP destination address.
+		*/
+		ipovly(const u_char& ih_pr, const short& ih_len, const in_addr& ih_src, const in_addr& ih_dst);
+
+		// Stream insertion operator.
+		friend std::ostream& operator<<(std::ostream& out, const struct tcpiphdr::ipovly& ip);
+
+		struct tcpiphdr* ih_next, * ih_prev;			/* For protocol sequence q's */
+		u_char	ih_x1 = 0x00;		/* (unused) */
+		u_char	ih_pr;				/* Protocol */
+		short	ih_len;				/* Protocol length */
+		struct	in_addr ih_src;		/* Source internet address */
+		struct	in_addr ih_dst;		/* Destination internet address */
+	};
+
+	// Default constructor.
+	tcpiphdr();
+
+	/*
+		Constructor from received packet, does the casting.
+			* m - If non-null, the byte to process.
+			* ih_pr - The ip header protocol.
+			* ip_len - The ip header parameter ip_len (total length).
+			* ip_src - The IP source address.
+			* ip_dst - The IP destination address.
+	*/
+	tcpiphdr(byte* m, const u_char& ih_pr, const short& ip_len, const in_addr& ip_src, const in_addr& ip_dst);
+
+	// Stream insertion operator.
+	friend std::ostream& operator<<(std::ostream& out, const struct tcpiphdr& ti);
+
+	inline	struct tcpiphdr* ti_next() { return ti_i.ih_next; }
+	inline	void ti_next(struct tcpiphdr* ih_next) { ti_i.ih_next = ih_next; }
+
+	inline	struct tcpiphdr* ti_prev() { return ti_i.ih_prev; }
+
+	inline	void ti_prev(struct tcpiphdr* ih_prev) { ti_i.ih_prev = ih_prev; }
+
+	inline	u_char& ti_x1() { return ti_i.ih_x1; }
+	inline	const u_char& ti_x1() const { return ti_i.ih_x1; }
+
+	inline	u_char& ti_pr() { return ti_i.ih_pr; }
+	inline	const u_char& ti_pr() const { return ti_i.ih_pr; }
+
+	inline	short& ti_len() { return ti_i.ih_len; }
+	inline	const short& ti_len() const { return ti_i.ih_len; }
+
+	inline	struct	in_addr& ti_src() { return ti_i.ih_src; }
+	inline	const struct	in_addr& ti_src() const { return ti_i.ih_src; }
+
+	inline	struct	in_addr& ti_dst() { return ti_i.ih_dst; }
+	inline	const struct	in_addr& ti_dst() const { return ti_i.ih_dst; }
+
+	inline	u_short& ti_sport() { return ti_t.th_sport; }
+	inline	const u_short& ti_sport() const { return ti_t.th_sport; }
+
+	inline	u_short& ti_dport() { return ti_t.th_dport; }
+	inline	const u_short& ti_dport() const { return ti_t.th_dport; }
+
+	inline	tcp_seq& ti_seq() { return ti_t.th_seq; }
+	inline	const tcp_seq& ti_seq() const { return ti_t.th_seq; }
+
+	inline	tcp_seq& ti_ack() { return ti_t.th_ack; }
+	inline	const tcp_seq& ti_ack() const { return ti_t.th_ack; }
+
+	inline	void ti_x2(const u_char& th_x2) { ti_t.th_x2(th_x2); }
+	inline	const u_char ti_x2() { return ti_t.th_x2(); }
+
+	inline	void ti_off(const u_char& th_off) { ti_t.th_off(th_off); }
+	inline	const u_char ti_off() { return ti_t.th_off(); }
+
+	inline	u_char& ti_flags() { return ti_t.th_flags; }
+	inline	const u_char& ti_flags() const { return ti_t.th_flags; }
+
+	inline	u_short& ti_win() { return ti_t.th_win; }
+	inline	const u_short& ti_win() const { return ti_t.th_win; }
+
+	inline	u_short& ti_sum() { return ti_t.th_sum; }
+	inline	const u_short& ti_sum() const { return ti_t.th_sum; }
+
+	inline	u_short& ti_urp() { return ti_t.th_urp; }
+	inline	const u_short& ti_urp() const { return ti_t.th_urp; }
+
+	/*
+		tcp_template Function -
+		Create template to be used to send tcp packets on a connection. Call after host entry
+		created, allocates an mbuf and fills in a skeletal tcp/ip header, minimizing the amount
+		of work necessary when the connection is used.
+
+			* inp_faddr - The foreign host table entry.
+			* inp_fport - The foreign port.
+			* inp_laddr - The local host table entry.
+			* inp_lport - The local port.
+	*/
+	void tcp_template(const struct in_addr& inp_faddr, const u_short& inp_fport, const struct in_addr& inp_laddr, const u_short& inp_lport);
+
+	inline std::shared_ptr<std::vector<byte>> REASS_MBUF();
+
+	/*!
+		insque Function - Insert the given head to the global PCB linked list.
+			* head - The head of the linked list.
+	*/
+	inline void insque(struct tcpiphdr& head);
+
+	// Remove this object from the linked list (does not delete it).
+	inline void remque();
+
+	struct	ipovly ti_i;	/* Overlaid ip structure */
+	struct	tcphdr ti_t;	/* TCP header */
+};
+
+class tcpcb : public inpcb_impl
+{
+	friend class L4_TCP;
+	friend class L4_TCP_impl;
+	friend class tcp_tahoe;
+	friend class tcp_reno;
+
+public:
+
+	// TCP FSM state definitions - Per RFC793, September, 1981.
+	enum TCPS_
+	{
+		TCPS_CLOSED = 0,		/* Closed */
+		TCPS_LISTEN = 1,		/* Listening for connection */
+		TCPS_SYN_SENT = 2,		/* Active, have sent syn */
+		TCPS_SYN_RECEIVED = 3,	/* Have send and received syn */
+
+		/* states < TCPS_ESTABLISHED are those where connections not established */
+		TCPS_ESTABLISHED = 4,	/* Established */
+		TCPS_CLOSE_WAIT = 5,	/* RCVD FIN, waiting for close */
+
+		/* states > TCPS_CLOSE_WAIT are those where user has closed */
+		TCPS_FIN_WAIT_1 = 6,	/* Have closed, sent FIN */
+		TCPS_CLOSING = 7,		/* Closed xchd FIN; await FIN ACK */
+		TCPS_LAST_ACK = 8,		/* Had FIN and close; await FIN ACK */
+
+		/* states > TCPS_CLOSE_WAIT && < TCPS_FIN_WAIT_2 await ACK of FIN */
+		TCPS_FIN_WAIT_2 = 9,	/* Have closed, fin is acked */
+		TCPS_TIME_WAIT = 10,	/* In 2 * msl quiet wait after close */
+		TCP_NSTATES = 11		/* The TCP number of states */
+	};
+
+	// Flags for tcpcb
+	enum TF_
+	{
+		TF_ACKNOW = 0x0001,		/* ACK peer immediately */
+		TF_DELACK = 0x0002,		/* ACK, but try to delay it */
+		TF_NODELAY = 0x0004,	/* Don't delay packets to coalesce */
+		TF_NOOPT = 0x0008,		/* Don't use tcp options */
+		TF_SENTFIN = 0x0010,	/* Have sent FIN */
+		TF_REQ_SCALE = 0x0020,	/* Have/will request window scaling */
+		TF_RCVD_SCALE = 0x0040,	/* Other side has requested scaling */
+		TF_REQ_TSTMP = 0x0080,	/* Have/will request timestamps */
+		TF_RCVD_TSTMP = 0x0100,	/* A timestamp was received in SYN */
+		TF_SACK_PERMIT = 0x0200	/* Other side said I could SACK */
+	};
+
+	// Flags for TCP out-of-band.
+	enum TCPOOB_
+	{
+		TCPOOB_HAVEDATA = 0x01,
+		TCPOOB_HADDATA = 0x02
+	};
+
+	enum
+	{
+		TCPT_NTIMERS = 4	/* The tcpt number of timers */
+	};
+
+	// Constructor
+	tcpcb(inet_os& inet)
+		: inpcb_impl(inet), seg_next(nullptr), seg_prev(nullptr), t_state(0),
+		t_rxtshift(0), t_rxtcur(0), t_dupacks(0), t_maxseg(0), t_force(0),
+		t_flags(0), t_template(nullptr), t_inpcb(dynamic_cast<inpcb_impl*>(this)),
+		snd_una(0), snd_nxt(0), snd_up(0), snd_wl1(0), snd_wl2(0), iss(0), snd_wnd(0),
+		rcv_wnd(0), rcv_nxt(0), rcv_up(0), irs(0), rcv_adv(0), snd_max(0),
+		snd_ssthresh(0), t_idle(0), t_rtt(0), t_rtseq(0), t_srtt(0), t_rttvar(0),
+		t_rttmin(0), max_sndwnd(0), t_oobflags(0), t_iobc(0), t_softerror(0),
+		snd_scale(0), rcv_scale(0), request_r_scale(0), requested_s_scale(0),
+		ts_recent(0), ts_recent_age(0), last_ack_sent(0), t_tuba_pcb(nullptr),
+		log(tcpcb_logger()) { }
+
+	/*
+		Create a new TCP control block, making an empty reassembly queue and hooking it to the
+		argument protocol control block.
+			* so - The so.
+			* head - The head.
+	*/
+	tcpcb(socket& so, inpcb_impl& head)
+		: inpcb_impl(so, head), seg_next(nullptr), seg_prev(nullptr), t_state(0),
+		t_rxtshift(0), t_rxtcur(0), t_dupacks(0), t_maxseg(0), t_force(0),
+		t_flags(0), t_template(nullptr), t_inpcb(dynamic_cast<inpcb_impl*>(this)),
+		snd_una(0), snd_nxt(0), snd_up(0), snd_wl1(0), snd_wl2(0), iss(0), snd_wnd(0),
+		rcv_wnd(0), rcv_nxt(0), rcv_up(0), irs(0), rcv_adv(0), snd_max(0),
+		snd_ssthresh(0), t_idle(0), t_rtt(0), t_rtseq(0), t_srtt(0), t_rttvar(0),
+		t_rttmin(0), max_sndwnd(0), t_oobflags(0), t_iobc(0), t_softerror(0),
+		snd_scale(0), rcv_scale(0), request_r_scale(0), requested_s_scale(0),
+		ts_recent(0), ts_recent_age(0), last_ack_sent(0), t_tuba_pcb(nullptr),
+		log(tcpcb_logger()) { }
+
+	// Destructor. Free the reassembly queue, if any, and gets rid of all other allocated stuff.
+	tcpcb::~tcpcb()
+	{
+		/* Free the reassembly queue, if any */
+		struct tcpiphdr* t(seg_next);
+		while (t != reinterpret_cast<struct tcpiphdr*>(this))
+			delete reinterpret_cast<struct tcpiphdr*>(t->ti_next());
+		if (t_template)
+			delete t_template;
+		if (this != dynamic_cast<class tcpcb*>(t_inpcb))
+			delete t_inpcb;
+		inp_ppcb = nullptr;
+		dynamic_cast<socket*>(inp_socket)->soisdisconnected();
+	}
+
+	// Determines if we have received SYN.
+	inline bool TCPS_HAVERCVDSYN() const;
+
+	// Determines if we have received FIN.
+	inline bool TCPS_HAVERCVDFIN() const;
+
+	/*
+		tcp_outflags Function -
+		Flags used when sending segments in tcp_output. Basic flags (TH_RST,TH_ACK,TH_SYN,TH_FIN)
+		are totally determined by state, with the proviso that TH_FIN is sent only if all data
+		queued for output is included in the segment.
+	*/
+	inline const u_char tcp_outflags() const;
+
+	/*
+		intotcpcb Function - A tcpcb* caster from inpcb_impl.
+			* ip - If non-null, the inpcb_impl to cast.
+	*/
+	static inline class tcpcb* intotcpcb(class inpcb_impl* ip);
+	static inline class tcpcb* intotcpcb(class inpcb* ip);
+
+	/*
+		sototcpcb Function - A tcpcb* caster from socket.
+			* so - If non-null, the socket to cast.
+	*/
+	static inline class tcpcb* sototcpcb(socket* so);
+
+	/*
+		SEQ_LT Function - Sequence less than.
+			* T - Generic type parameter.
+			* a - The T to process.
+			* b - The T to process.
+	*/
+	template<typename T>
+	static inline bool SEQ_LT(T a, T b);
+
+	/*
+		SEQ_LEQ Function - Sequence less than or equal.
+			* T - Generic type parameter.
+			* a - The T to process.
+			* b - The T to process.
+	*/
+	template<typename T>
+	static inline bool SEQ_LEQ(T a, T b);
+
+	/*
+		SEQ_GT Function - Sequence greater than.
+			* T - Generic type parameter.
+			* a - The T to process.
+			* b - The T to process.
+	*/
+	template<typename T>
+	static inline bool SEQ_GT(T a, T b);
+
+	/*
+		SEQ_GEQ Function - Sequence greater than or equal.
+			* T - Generic type parameter.
+			* a - The T to process.
+			* b - The T to process.
+	*/
+	template<typename T>
+	static inline bool SEQ_GEQ(T a, T b);
+
+	/*
+		in_pcblookup Function - Calls inpcb_impl::in_pcblookup().
+			* faddr - The foreign host table entry.
+			* fport_arg - The foreign port.
+			* laddr - The local host table entry.
+			* lport_arg - The local port.
+			* flags - The flags.
+	*/
+	virtual class tcpcb* in_pcblookup(struct in_addr faddr, u_int fport_arg, struct in_addr laddr, u_int lport_arg, int flags);
+
+	/*
+		tcp_template Function -
+		Create template to be used to send tcp packets on a connection. Call after host entry
+		created, allocates an mbuf and fills in a skeletal tcp/ip header, minimizing the amount
+		of work necessary when the connection is used.
+	*/
+	void tcp_template();
+
+
+	// Macros to initialize tcp sequence number for receive from initial receive sequence number.
+	inline void tcp_rcvseqinit();
+
+	// Macros to initialize tcp sequence number for send from initial send sequence number.
+	inline void tcp_sendseqinit();
+
+	/*
+		When a source quench is received, close congestion window to one segment.  We will
+		gradually open it again as we proceed.
+	*/
+	inline void tcp_quench();
+
+	/*
+		TCP_REXMTVAL Function -
+		The initial retransmission should happen at rtt + 4 * rttvar.
+	*/
+	inline short TCP_REXMTVAL() const;
+
+	/*
+		tcp_xmit_timer Function -
+		Collect new round-trip time estimate and update averages and current timeout.
+			* rtt - The rtt.
+	*/
+	void tcp_xmit_timer(short rtt);
+
+	/*
+		tcp_canceltimers() Function -
+		Cancel all timers for TCP tp. The function tcp_canceltimers is called by tcp_input
+		when the TIME_ WAIT state is entered. All four timer counters are set to 0, which
+		turns off the retransmission, persist, keepalive, and FIN_WAIT_2 timers,
+		before tcp_input sets the 2MSL timer.
+	*/
+	void tcp_canceltimers();
+
+	void log_snd_cwnd(u_long snd_cwnd);
+
+
+	struct	tcpiphdr* seg_next;	/* Sequencing queue next */
+	struct	tcpiphdr* seg_prev;	/* Sequencing queue prev */
+
+	short	t_state;			/* State of this connection */
+
+	short	t_timer[TCPT_NTIMERS];	/* TCP timers */
+	short	t_rxtshift;	/* log(2) of rexmt exp. backoff */
+	short	t_rxtcur;	/* Current retransmit value */
+	short	t_dupacks;	/* Consecutive dup acks recd */
+
+	u_short	t_maxseg;	/* Maximum segment size */
+	char	t_force;	/* 1 if forcing out a byte */
+
+	u_short	t_flags;	/* Flags */
+
+	struct	tcpiphdr* t_template;	/* Skeletal packet for transmit */
+
+	class	inpcb_impl* t_inpcb;	/* Back pointer to internet pcb */
+
+	/*
+		The following fields are used as in the protocol specification.
+		See RFC783, Dec. 1981, page 21.
+	*/
+
+	/* Send sequence variables */
+	tcp_seq	snd_una;		/* Send unacknowledged */
+	tcp_seq	snd_nxt;		/* Send next */
+	tcp_seq	snd_up;			/* Send urgent pointer */
+	tcp_seq	snd_wl1;		/* Window update seg seq number */
+	tcp_seq	snd_wl2;		/* Window update seg ack number */
+	tcp_seq	iss;			/* Initial send sequence number */
+	u_long	snd_wnd;		/* Send window */
+
+	/* receive sequence variables */
+	u_long	rcv_wnd;		/* Receive window */
+	tcp_seq	rcv_nxt;		/* Receive next */
+	tcp_seq	rcv_up;			/* Receive urgent pointer */
+	tcp_seq	irs;			/* Initial receive sequence number */
+
+	/* Additional variables for this implementation. */
+
+	/* Receive variables */
+	tcp_seq	rcv_adv;		/* Advertised window */
+
+	/* Retransmit variables */
+	tcp_seq	snd_max;		/* Highest sequence number sent; used to recognize retransmits */
+
+	/* Congestion control (for slow start, source quench, retransmit after loss) */
+	u_long	snd_cwnd;		/* congestion-controlled window */
+	u_long	snd_ssthresh;	/* snd_cwnd size threshold for for slow start exponential to linear switch */
+
+	/*
+		Transmit timing - See below for scale of srtt and rttvar.
+		"Variance" is actually smoothed difference.
+	*/
+	u_short	t_idle;			/* Inactivity time */
+	short	t_rtt;			/* Round trip time */
+	tcp_seq	t_rtseq;		/* Sequence number being timed */
+	short	t_srtt;			/* Smoothed round-trip time */
+	short	t_rttvar;		/* Variance in round-trip time */
+	u_short	t_rttmin;		/* Minimum rtt allowed */
+	u_long	max_sndwnd;		/* Largest window peer has offered */
+
+	/* Out-of-band data */
+	char	t_oobflags;		/* Have some */
+	char	t_iobc;			/* Input character */
+	short	t_softerror;	/* Possible error not yet reported */
+
+	/* RFC 1323 variables */
+	u_char	snd_scale;			/* Window scaling for send window */
+	u_char	rcv_scale;			/* Window scaling for recv window */
+	u_char	request_r_scale;	/* Pending window scaling reciever */
+	u_char	requested_s_scale;  /* Pending window scaling send */
+	u_long	ts_recent;			/* Timestamp echo data */
+	u_long	ts_recent_age;		/* When last updated */
+	tcp_seq	last_ack_sent;		/* The last acknowledge sent */
+
+	/* TUBA */
+	char* t_tuba_pcb;		/* Next level down pcb for TCP over z */
+
+	class tcpcb_logger {
+
+		friend class tcpcb;
+	public:
+		~tcpcb_logger() { log.close(); }
+		typedef std::chrono::duration<double> seconds;
+		tcpcb_logger();
+		tcpcb_logger(const tcpcb_logger&)
+		{
+			//tcpcb_logger(); // UNCOMMENT FOR TCP LOGS
+		}
+
+		void update(u_long snd_cwnd);
+
+		std::ofstream log;
+		std::chrono::time_point<std::chrono::high_resolution_clock> start;
+		static int log_number;
+	};
+
+	tcpcb_logger log;
+};
+
+/***************************************************************************************/
+/*							L4_TCP - Interface & Implementation						   */
 /***************************************************************************************/
 
 class L4_TCP : public protosw 
 {
 public:
 
-	class L4_TCP::tcpcb;
-
-
 	// Defines an alias representing netlab::sockets.
 	typedef	class netlab::L5_socket_impl socket;
 
 	// For BSD consistency.
 	typedef	u_long		tcp_seq;
-
-	// TCP header - Per RFC 793, September, 1981.
-	struct tcphdr;
-
-	// TCP pseudo header: Tcp+ip header, after ip options removed.
-	struct tcpiphdr;
-
-	// TCP control block, one per tcp.
-	class tcpcb;
 
 	enum TCPT_
 	{
@@ -108,7 +614,7 @@ public:
 
 	// Constructor 
 	L4_TCP(class inet_os &inet) 
-		: protosw(inet, SOCK_STREAM, NULL, IPPROTO_TCP, PR_CONNREQUIRED | PR_WANTRCVD) { }
+		: protosw(inet, SOCK_STREAM, NULL, IPPROTO_TCP, PR_CONNREQUIRED | PR_WANTRCVD), tcb(inet) { }
 
 	// Destructor
 	~L4_TCP()
@@ -118,10 +624,6 @@ public:
 		if (tcp_last_inpcb)
 			delete tcp_last_inpcb;
 	}
-
-
-
-
 
 	// TCP initialization.
 	virtual void pr_init() = 0;
@@ -398,7 +900,7 @@ protected:
 			* m - The std::shared_ptr<std::vector<byte>> to strip.
 			* it - The iterator, as the current offset in the vector.
 	*/
-	static inline void tcp_pulloutofband(socket& so, const L4_TCP::tcpiphdr& ti, std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it);
+	static inline void tcp_pulloutofband(socket& so, const tcpiphdr& ti, std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it);
 
 	/*
 		dodata Function - Processing of Received Data: tcp_input continues by taking the received data (if any) and
@@ -539,7 +1041,8 @@ protected:
 	// Same but with a TCP header.
 	inline void print(struct tcphdr& tcp, uint16_t tcp_checksum, std::string intro = "[#] TCP packet received!", std::ostream& str = std::cout) const;
 
-	L4_TCP::tcpcb tcb;	/* The tcb head of the linked list of all connections */
+	// TCP control block, one per TCP.
+	class tcpcb tcb;	/* The tcb head of the linked list of all connections */
 	class inpcb_impl* tcp_last_inpcb;	/* The last seen inpcb, a small cache that show good results. */
 	int	tcp_maxidle;	/* The TCP max idle */
 	u_long	tcp_now;	/* For RFC 1323 timestamps */
@@ -558,494 +1061,4 @@ protected:
 	const int	tcp_maxpersistidle = TCPTV_KEEP_IDLE;	/* Max idle time in persist */
 	const int	tcprexmtthresh = 3; /* The tcp retransmit threshold */
 	const struct tcpiphdr* tcp_saveti = nullptr;
-
-
-};
-
-
-
-/************************************************************************/
-/*                         SOLUTION                                     */
-/************************************************************************/
-
-#include <iostream>
-#include <fstream>
-
-
-struct L4_TCP::tcphdr 
-{
-	/*
-		Defines an alias representing the two 4-bit pack of offset and x2, according to windows
-	    byte order (BIG_ENDIAN).
-	*/
-	typedef u_char_pack th_off_x2_pack;
-
-	// For BSD consistency.
-	typedef	u_long		tcp_seq;
-
-	// Flags for TCP header.
-	enum TH_
-	{
-		TH_FIN = 0x01,  /*!< The FIN flag */
-		TH_SYN = 0x02,  /*!< The SYN flag */
-		TH_RST = 0x04,  /*!< The RST flag */
-		TH_PUSH = 0x08, /*!< The PUSH flag */
-		TH_ACK = 0x10,  /*!< The ACK flag */
-		TH_URG = 0x20,  /*!< The URG flag */
-		TH_ECE = 0x40,  /*!< The th ECE flag */
-		TH_CWR = 0x80,  /*!< The th CWR flag */
-		TH_FLAGS = (TH_FIN | TH_SYN | TH_RST | TH_PUSH | TH_ACK | TH_URG | TH_ECE | TH_CWR) /*!< all flags */
-	};
-
-	tcphdr() 
-		: th_sport(0), th_dport(0), th_seq(0), th_ack(0), th_off_x2(th_off_x2_pack(0, 0)), th_flags(0), th_win(0), th_sum(0), th_urp(0) { }
-
-	// Stream insertion operator.
-	friend std::ostream& operator<<(std::ostream &out, const struct tcphdr &tcp);
-
-	// Gets the data offset.
-	inline	const u_char th_off() const { return th_off_x2.hb; }
-	
-	// Gets the unused.
-	inline	const u_char th_x2() const { return th_off_x2.lb; }
-	
-	// Sets the data offset.
-	inline	void th_off(const u_char& th_off) { th_off_x2.hb = th_off; }
-	
-	// Sets the unused.
-	inline	void th_x2(const u_char& ip_hl) { th_off_x2.lb = ip_hl; }
-
-	u_short	th_sport;		/* Source port */
-	u_short	th_dport;		/* Destination port */
-	tcp_seq	th_seq;			/* Sequence number */
-	tcp_seq	th_ack;			/* Acknowledgment number */
-	
-	th_off_x2_pack th_off_x2;   /* Data offset then unused */
-
-	u_char	th_flags;   /* The flags \see TH_ */
-	u_short	th_win;		/* Window */
-	u_short	th_sum;		/* Checksum */
-	u_short	th_urp;		/* Urgent pointer */
-};
-
-struct L4_TCP::tcpiphdr 
-{
-	// For BSD consistency.
-	typedef	u_long		tcp_seq;
-
-	// Overlay for ip header used by other protocols (TCP, UDP).
-	struct ipovly 
-	{
-		// Default constructor.
-		ipovly();
-
-		/*
-			Constructor
-				* ih_pr - The ip header protocol.
-				* ih_len - The ip header parameter ip_len (total length).
-				* ih_src - The IP source address.
-				* ih_dst - The IP destination address.
-		*/
-		ipovly(const u_char& ih_pr, const short &ih_len, const in_addr &ih_src, const in_addr &ih_dst);
-
-		// Stream insertion operator.
-		friend std::ostream& operator<<(std::ostream &out, const struct tcpiphdr::ipovly &ip);
-
-		struct L4_TCP::tcpiphdr	*ih_next, *ih_prev;			/* For protocol sequence q's */
-		u_char	ih_x1 = 0x00;		/* (unused) */
-		u_char	ih_pr;				/* Protocol */
-		short	ih_len;				/* Protocol length */
-		struct	in_addr ih_src;		/* Source internet address */
-		struct	in_addr ih_dst;		/* Destination internet address */
-	};
-	
-	// Default constructor.
-	tcpiphdr();
-
-	/*
-		Constructor from received packet, does the casting.
-			* m - If non-null, the byte to process.
-			* ih_pr - The ip header protocol.
-			* ip_len - The ip header parameter ip_len (total length).
-			* ip_src - The IP source address.
-			* ip_dst - The IP destination address.
-	*/
-	tcpiphdr(byte *m, const u_char& ih_pr, const short &ip_len, const in_addr &ip_src, const in_addr &ip_dst);
-
-	// Stream insertion operator.
-	friend std::ostream& operator<<(std::ostream &out, const struct tcpiphdr &ti);
-
-	inline	struct L4_TCP::tcpiphdr* ti_next() { return ti_i.ih_next; }
-	inline	void ti_next(struct L4_TCP::tcpiphdr *ih_next) { ti_i.ih_next = ih_next; }
-
-	inline	struct L4_TCP::tcpiphdr* ti_prev() { return ti_i.ih_prev; }
-
-	inline	void ti_prev(struct L4_TCP::tcpiphdr *ih_prev) { ti_i.ih_prev = ih_prev; }
-	
-	inline	u_char& ti_x1() { return ti_i.ih_x1; }
-	inline	const u_char& ti_x1() const { return ti_i.ih_x1; }
-	
-	inline	u_char& ti_pr() { return ti_i.ih_pr; }
-	inline	const u_char& ti_pr() const { return ti_i.ih_pr; }
-	
-	inline	short& ti_len() { return ti_i.ih_len; }
-	inline	const short& ti_len() const { return ti_i.ih_len; }
-	
-	inline	struct	in_addr& ti_src() { return ti_i.ih_src; }
-	inline	const struct	in_addr& ti_src() const { return ti_i.ih_src; }
-	
-	inline	struct	in_addr& ti_dst() { return ti_i.ih_dst; }
-	inline	const struct	in_addr& ti_dst() const { return ti_i.ih_dst; }
-	
-	inline	u_short& ti_sport() { return ti_t.th_sport; }
-	inline	const u_short& ti_sport() const { return ti_t.th_sport; }
-	
-	inline	u_short& ti_dport() { return ti_t.th_dport; }
-	inline	const u_short& ti_dport() const { return ti_t.th_dport; }
-	
-	inline	tcp_seq& ti_seq() { return ti_t.th_seq; }
-	inline	const tcp_seq& ti_seq() const { return ti_t.th_seq; }
-	
-	inline	tcp_seq& ti_ack() { return ti_t.th_ack; }
-	inline	const tcp_seq& ti_ack() const { return ti_t.th_ack; }
-	
-	inline	void ti_x2(const u_char& th_x2)	{ ti_t.th_x2(th_x2); }
-	inline	const u_char ti_x2() { return ti_t.th_x2(); }
-	
-	inline	void ti_off(const u_char& th_off) { ti_t.th_off(th_off); }
-	inline	const u_char ti_off() { return ti_t.th_off(); }
-	
-	inline	u_char& ti_flags() { return ti_t.th_flags; }
-	inline	const u_char& ti_flags() const { return ti_t.th_flags; }
-	
-	inline	u_short& ti_win() { return ti_t.th_win; }
-	inline	const u_short& ti_win() const { return ti_t.th_win; }
-	
-	inline	u_short& ti_sum() { return ti_t.th_sum; }
-	inline	const u_short& ti_sum() const { return ti_t.th_sum; }
-	
-	inline	u_short& ti_urp() { return ti_t.th_urp; }
-	inline	const u_short& ti_urp() const { return ti_t.th_urp; }
-
-	/*
-		tcp_template Function - 
-		Create template to be used to send tcp packets on a connection. Call after host entry
-		created, allocates an mbuf and fills in a skeletal tcp/ip header, minimizing the amount
-		of work necessary when the connection is used.
-
-			* inp_faddr - The foreign host table entry.
-			* inp_fport - The foreign port.
-			* inp_laddr - The local host table entry.
-			* inp_lport - The local port.
-	*/
-	void tcp_template(const struct in_addr &inp_faddr, const u_short &inp_fport, const struct in_addr &inp_laddr, const u_short &inp_lport);
-
-	inline std::shared_ptr<std::vector<byte>> REASS_MBUF();
-
-	/*!
-	    insque Function - Insert the given head to the global PCB linked list.
-			* head - The head of the linked list.
-	*/
-	inline void insque(struct tcpiphdr &head);
-
-	// Remove this object from the linked list (does not delete it).
-	inline void remque();
-
-	struct	ipovly ti_i;	/* Overlaid ip structure */
-	struct	tcphdr ti_t;	/* TCP header */
-};
-
-class L4_TCP::tcpcb	
-	: public inpcb_impl 
-{
-	friend class L4_TCP;
-	friend class L4_TCP_impl;
-	friend class tcp_tahoe;
-	friend class tcp_reno;
-
-public:
-
-	// TCP FSM state definitions - Per RFC793, September, 1981.
-	enum TCPS_
-	{
-		TCPS_CLOSED = 0,		/* Closed */
-		TCPS_LISTEN = 1,		/* Listening for connection */
-		TCPS_SYN_SENT = 2,		/* Active, have sent syn */
-		TCPS_SYN_RECEIVED = 3,	/* Have send and received syn */
-		
-		/* states < TCPS_ESTABLISHED are those where connections not established */
-		TCPS_ESTABLISHED = 4,	/* Established */
-		TCPS_CLOSE_WAIT = 5,	/* RCVD FIN, waiting for close */
-		
-		/* states > TCPS_CLOSE_WAIT are those where user has closed */
-		TCPS_FIN_WAIT_1 = 6,	/* Have closed, sent FIN */
-		TCPS_CLOSING = 7,		/* Closed xchd FIN; await FIN ACK */
-		TCPS_LAST_ACK = 8,		/* Had FIN and close; await FIN ACK */
-		
-		/* states > TCPS_CLOSE_WAIT && < TCPS_FIN_WAIT_2 await ACK of FIN */
-		TCPS_FIN_WAIT_2 = 9,	/* Have closed, fin is acked */
-		TCPS_TIME_WAIT = 10,	/* In 2 * msl quiet wait after close */
-		TCP_NSTATES = 11		/* The TCP number of states */
-	};
-
-	// Flags for tcpcb
-	enum TF_
-	{
-		TF_ACKNOW = 0x0001,		/* ACK peer immediately */
-		TF_DELACK = 0x0002,		/* ACK, but try to delay it */
-		TF_NODELAY = 0x0004,	/* Don't delay packets to coalesce */
-		TF_NOOPT = 0x0008,		/* Don't use tcp options */
-		TF_SENTFIN = 0x0010,	/* Have sent FIN */
-		TF_REQ_SCALE = 0x0020,	/* Have/will request window scaling */
-		TF_RCVD_SCALE = 0x0040,	/* Other side has requested scaling */
-		TF_REQ_TSTMP = 0x0080,	/* Have/will request timestamps */
-		TF_RCVD_TSTMP = 0x0100,	/* A timestamp was received in SYN */
-		TF_SACK_PERMIT = 0x0200	/* Other side said I could SACK */
-	};
-
-	// Flags for TCP out-of-band.
-	enum TCPOOB_
-	{
-		TCPOOB_HAVEDATA = 0x01,
-		TCPOOB_HADDATA = 0x02
-	};
-
-	enum
-	{
-		TCPT_NTIMERS = 4	/* The tcpt number of timers */
-	};
-
-	// Constructor
-	explicit tcpcb(inet_os &inet);
-
-	/*
-		Create a new TCP control block, making an empty reassembly queue and hooking it to the
-	    argument protocol control block.
-			* so - The so.
-			* head - The head.
-	*/
-	tcpcb(socket &so, inpcb_impl &head);
-
-	// Destructor
-	~tcpcb();
-
-	// Determines if we have received SYN.
-	inline bool TCPS_HAVERCVDSYN() const;
-
-	// Determines if we have received FIN.
-	inline bool TCPS_HAVERCVDFIN() const;
-
-	/*
-		tcp_outflags Function - 
-		Flags used when sending segments in tcp_output. Basic flags (TH_RST,TH_ACK,TH_SYN,TH_FIN)
-	    are totally determined by state, with the proviso that TH_FIN is sent only if all data
-	    queued for output is included in the segment.
-	*/
-	inline const u_char tcp_outflags() const;
-
-	/*
-		intotcpcb Function - A tcpcb* caster from inpcb_impl.
-			* ip - If non-null, the inpcb_impl to cast.
-	*/
-	static inline class L4_TCP::tcpcb* intotcpcb(class inpcb_impl *ip);
-	static inline class L4_TCP::tcpcb* intotcpcb(class inpcb *ip);
-
-	/*
-		sototcpcb Function - A tcpcb* caster from socket.
-			* so - If non-null, the socket to cast.
-	*/
-	static inline class L4_TCP::tcpcb* sototcpcb(socket *so);
-
-	/*
-		SEQ_LT Function - Sequence less than.
-			* T - Generic type parameter.
-			* a - The T to process.
-			* b - The T to process.
-	*/
-	template<typename T>
-	static inline bool SEQ_LT(T a, T b);
-
-	/*
-		SEQ_LEQ Function - Sequence less than or equal.
-			* T - Generic type parameter.
-			* a - The T to process.
-			* b - The T to process.
-	*/
-	template<typename T>
-	static inline bool SEQ_LEQ(T a, T b);
-
-	/*
-		SEQ_GT Function - Sequence greater than.
-			* T - Generic type parameter.
-			* a - The T to process.
-			* b - The T to process.
-	*/
-	template<typename T>
-	static inline bool SEQ_GT(T a, T b);
-
-	/*
-		SEQ_GEQ Function - Sequence greater than or equal.
-			* T - Generic type parameter.
-			* a - The T to process.
-			* b - The T to process.
-	*/
-	template<typename T>
-	static inline bool SEQ_GEQ(T a, T b);
-
-	/*
-		in_pcblookup Function - Calls inpcb_impl::in_pcblookup().
-			* faddr - The foreign host table entry.
-			* fport_arg - The foreign port.
-			* laddr - The local host table entry.
-			* lport_arg - The local port.
-			* flags - The flags.
-	*/
-	virtual class L4_TCP::tcpcb* in_pcblookup(struct in_addr faddr, u_int fport_arg, struct in_addr laddr, u_int lport_arg, int flags);
-
-	/*
-		tcp_template Function - 
-		Create template to be used to send tcp packets on a connection. Call after host entry
-		created, allocates an mbuf and fills in a skeletal tcp/ip header, minimizing the amount
-		of work necessary when the connection is used.
-	*/
-	void tcp_template();
-
-	
-	// Macros to initialize tcp sequence number for receive from initial receive sequence number.
-	inline void tcp_rcvseqinit();
-
-	// Macros to initialize tcp sequence number for send from initial send sequence number.
-	inline void tcp_sendseqinit();
-
-	/*
-	    When a source quench is received, close congestion window to one segment.  We will
-	    gradually open it again as we proceed.
-	*/
-	inline void tcp_quench();
-
-	/*
-		TCP_REXMTVAL Function -
-		The initial retransmission should happen at rtt + 4 * rttvar.
-	*/
-	inline short TCP_REXMTVAL() const;
-
-	/*
-		tcp_xmit_timer Function - 
-		Collect new round-trip time estimate and update averages and current timeout.
-			* rtt - The rtt.
-	*/
-	void tcp_xmit_timer(short rtt);
-
-	/*
-	    tcp_canceltimers() Function - 
-	    Cancel all timers for TCP tp. The function tcp_canceltimers is called by tcp_input 
-		when the TIME_ WAIT state is entered. All four timer counters are set to 0, which 
-		turns off the retransmission, persist, keepalive, and FIN_WAIT_2 timers,
-	    before tcp_input sets the 2MSL timer.
-	*/
-	void tcp_canceltimers();
-
-	void log_snd_cwnd(u_long snd_cwnd);
-
-
-	struct	tcpiphdr *seg_next;	/* Sequencing queue next */
-	struct	tcpiphdr *seg_prev;	/* Sequencing queue prev */
-	
-	short	t_state;			/* State of this connection */
-	
-	short	t_timer[TCPT_NTIMERS];	/* TCP timers */
-	short	t_rxtshift;	/* log(2) of rexmt exp. backoff */
-	short	t_rxtcur;	/* Current retransmit value */
-	short	t_dupacks;	/* Consecutive dup acks recd */
-	
-	u_short	t_maxseg;	/* Maximum segment size */
-	char	t_force;	/* 1 if forcing out a byte */
-	
-	u_short	t_flags;	/* Flags */
-	
-	struct	tcpiphdr	*t_template;	/* Skeletal packet for transmit */
-	
-	class	inpcb_impl	*t_inpcb;	/* Back pointer to internet pcb */
-
-	/*
-		The following fields are used as in the protocol specification.
-		See RFC783, Dec. 1981, page 21.
-	*/
-
-	/* Send sequence variables */
-	tcp_seq	snd_una;		/* Send unacknowledged */
-	tcp_seq	snd_nxt;		/* Send next */
-	tcp_seq	snd_up;			/* Send urgent pointer */
-	tcp_seq	snd_wl1;		/* Window update seg seq number */
-	tcp_seq	snd_wl2;		/* Window update seg ack number */
-	tcp_seq	iss;			/* Initial send sequence number */
-	u_long	snd_wnd;		/* Send window */
-	
-	/* receive sequence variables */
-	u_long	rcv_wnd;		/* Receive window */
-	tcp_seq	rcv_nxt;		/* Receive next */
-	tcp_seq	rcv_up;			/* Receive urgent pointer */
-	tcp_seq	irs;			/* Initial receive sequence number */
-	
-	/* Additional variables for this implementation. */
-
-	/* Receive variables */
-	tcp_seq	rcv_adv;		/* Advertised window */
-	
-	/* Retransmit variables */
-	tcp_seq	snd_max;		/* Highest sequence number sent; used to recognize retransmits */
-	
-	/* Congestion control (for slow start, source quench, retransmit after loss) */
-	u_long	snd_cwnd;		/* congestion-controlled window */
-	u_long	snd_ssthresh;	/* snd_cwnd size threshold for for slow start exponential to linear switch */
-	
-	/*
-		Transmit timing - See below for scale of srtt and rttvar.
-		"Variance" is actually smoothed difference.
-	*/
-	u_short	t_idle;			/* Inactivity time */
-	short	t_rtt;			/* Round trip time */
-	tcp_seq	t_rtseq;		/* Sequence number being timed */
-	short	t_srtt;			/* Smoothed round-trip time */
-	short	t_rttvar;		/* Variance in round-trip time */
-	u_short	t_rttmin;		/* Minimum rtt allowed */
-	u_long	max_sndwnd;		/* Largest window peer has offered */
-
-	/* Out-of-band data */
-	char	t_oobflags;		/* Have some */
-	char	t_iobc;			/* Input character */
-	short	t_softerror;	/* Possible error not yet reported */
-
-	/* RFC 1323 variables */
-	u_char	snd_scale;			/* Window scaling for send window */
-	u_char	rcv_scale;			/* Window scaling for recv window */
-	u_char	request_r_scale;	/* Pending window scaling reciever */
-	u_char	requested_s_scale;  /* Pending window scaling send */
-	u_long	ts_recent;			/* Timestamp echo data */
-	u_long	ts_recent_age;		/* When last updated */
-	tcp_seq	last_ack_sent;		/* The last acknowledge sent */
-
-	/* TUBA */
-	char	*t_tuba_pcb;		/* Next level down pcb for TCP over z */
-
-	class tcpcb_logger {
-		friend class L4_TCP::tcpcb;
-	public:
-		~tcpcb_logger()	{ log.close(); }
-	protected:
-		typedef std::chrono::duration<double> seconds;
-		tcpcb_logger();
-		tcpcb_logger(const tcpcb_logger&)
-		{
-			//tcpcb_logger(); // UNCOMMENT FOR TCP LOGS
-		}
-		
-		void update(u_long snd_cwnd);
-
-		std::ofstream log;
-		std::chrono::time_point<std::chrono::high_resolution_clock> start;
-		static int log_number;
-	};
-
-	tcpcb_logger log;
 };

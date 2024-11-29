@@ -1,11 +1,45 @@
 #include "L4_TCP_impl.h"
 
+/***************************************************************************************/
+/*							L4_TCP_impl - Student Implementation					   */
+/***************************************************************************************/
+
+/*
+	Constructor - IMPLEMENTED FOR YOU
+		* inet - The inet.
+*/
+L4_TCP_impl::L4_TCP_impl(class inet_os& inet) : L4_TCP(inet) { }
+
+/*
+	Destructor - IMPLEMENTED FOR YOU
+	Deletes the tcp_saveti, and the tcp_last_inpcb if space has been allocated for them.
+*/
+L4_TCP_impl::~L4_TCP_impl()
+{
+	if (tcp_saveti)
+		delete tcp_saveti;
+	if (tcp_last_inpcb)
+		delete tcp_last_inpcb;
+}
+
+// // Wrapper for tcp_output.
 int L4_TCP_impl::pr_output(const struct pr_output_args& args)
 {
 	return tcp_output(reinterpret_cast<const struct tcp_output_args*>(&args)->tp);
 }
 
-int L4_TCP_impl::tcp_output(class L4_TCP::tcpcb& tp)
+/*
+	tcp_output Function - The actual function, with the desired arguments. This function handles the transmission of TCP segments.
+
+		It constructs TCP headers, segments data to fit the Maximum Segment Size (MSS), applies flow control (using cwnd and rwnd),
+		and manages retransmissions for reliability. It computes checksums, attaches options (like SACK or timestamps),
+		updates sequence numbers, and passes packets to the IP layer for transmission.
+		The function ensures compliance with TCP's flow control, congestion control,
+		and retransmission mechanisms to maintain reliable data delivery.
+
+		* tp - The TCP control block of this connection.
+*/
+int L4_TCP_impl::tcp_output(class tcpcb& tp)
 {
 	/*
 	*	Is an ACK expected from the other end?
@@ -46,6 +80,18 @@ int L4_TCP_impl::tcp_output(class L4_TCP::tcpcb& tp)
 	return again(tp, idle, *dynamic_cast<socket*>(tp.t_inpcb->inp_socket));
 }
 
+/*
+	pr_input function - This function handles the reception of TCP segments.
+	It validates the TCP header, checks the checksum, and handles demultiplexing to the appropriate connection based on the
+	socket and port numbers. It manages sequence numbers, acknowledges received data, and processes TCP options like SACK or
+	timestamps. Depending on the state of the connection (e.g., SYN_RECEIVED, ESTABLISHED), it updates the Transmission Control Block (TCB),
+	handles retransmissions, and passes received data to the application layer.
+
+		* args - The arguments to the protocol, which include:
+				- m - The std::shared_ptr<std::vector<byte>> to process.
+				- it - The iterator, as the current offset in the vector.
+				- iphlen - The IP header length.
+*/
 void L4_TCP_impl::pr_input(const struct pr_input_args& args)
 {
 	std::shared_ptr<std::vector<byte>>& m(args.m);
@@ -64,12 +110,12 @@ void L4_TCP_impl::pr_input(const struct pr_input_args& args)
 	* Get IP and TCP header together in first mbuf.
 	* Note: IP leaves IP header in first mbuf.
 	*/
-	struct L4_TCP::tcpiphdr* ti(reinterpret_cast<struct L4_TCP::tcpiphdr*>(&m->data()[it - m->begin()]));
+	struct tcpiphdr* ti(reinterpret_cast<struct tcpiphdr*>(&m->data()[it - m->begin()]));
 
 	if (iphlen > sizeof(struct L3::iphdr))
 		L3_impl::ip_stripoptions(m, it);
 
-	if (m->end() - it < sizeof(struct L4_TCP::tcpiphdr))
+	if (m->end() - it < sizeof(struct tcpiphdr))
 		return drop(nullptr, 0);
 
 	/*
@@ -105,7 +151,7 @@ void L4_TCP_impl::pr_input(const struct pr_input_args& args)
 	* pull out TCP options and adjust length.		XXX
 	*/
 	int off(ti->ti_off() << 2);
-	if (off < sizeof(struct L4_TCP::tcphdr) || off > tlen)
+	if (off < sizeof(struct tcphdr) || off > tlen)
 		return drop(nullptr, 0);
 
 	/*
@@ -125,15 +171,15 @@ void L4_TCP_impl::pr_input(const struct pr_input_args& args)
 	u_long ts_val,
 		ts_ecr;
 
-	if (off > sizeof(struct L4_TCP::tcphdr)) {
+	if (off > sizeof(struct tcphdr)) {
 
 		/*
 		*	Process timestamp option quickly:
 		*	optlen is the number of bytes of options, and optp is a pointer to the first option
 		*	byte.
 		*/
-		optlen = off - sizeof(struct L4_TCP::tcphdr);
-		optp = &m->data()[it - m->begin() + sizeof(struct L4_TCP::tcpiphdr)];
+		optlen = off - sizeof(struct tcphdr);
+		optp = &m->data()[it - m->begin() + sizeof(struct tcpiphdr)];
 
 		/*
 		 *	If the following three conditions are all true, only the timestamp option is present
@@ -155,7 +201,7 @@ void L4_TCP_impl::pr_input(const struct pr_input_args& args)
 			(optlen > TCPOLEN_TSTAMP_APPA &&
 				optp[TCPOLEN_TSTAMP_APPA] == TCPOPT_EOL)) &&
 			*reinterpret_cast<u_long*>(optp) == htonl(TCPOPT_TSTAMP_HDR) &&
-			(ti->ti_flags() & L4_TCP::tcphdr::TH_SYN) == 0)
+			(ti->ti_flags() & tcphdr::TH_SYN) == 0)
 		{
 
 			/*
@@ -244,7 +290,7 @@ findpcb:
 	 *	probably being closed (tcp_close releases the TCP control block first, and then
 	 *	releases the PCB), so the input segment is dropped and an RST is sent as a reply.
 	 */
-	class L4_TCP::tcpcb* tp = L4_TCP::tcpcb::intotcpcb(inp);
+	class tcpcb* tp = tcpcb::intotcpcb(inp);
 	if (tp == nullptr)
 		return dropwithreset(inp, dropsocket, tiflags, m, it, ti);
 
@@ -257,7 +303,7 @@ findpcb:
 	 *	bind and listen. By silently dropping the segment and not replying with an RST, the
 	 *	client's connection request should time out, causing the client to retransmit the SYN.
 	 */
-	if (tp->t_state == L4_TCP::tcpcb::TCPS_CLOSED)
+	if (tp->t_state == tcpcb::TCPS_CLOSED)
 		return drop(tp, dropsocket);
 
 	/*
@@ -269,7 +315,7 @@ findpcb:
 	 *	header is left shifted by the send scale factor into a 32-bit value.
 	 */
 	u_long tiwin(ti->ti_win());
-	if ((tiflags & L4_TCP::tcphdr::TH_SYN) == 0)
+	if ((tiflags & tcphdr::TH_SYN) == 0)
 		tiwin <<= tp->snd_scale;
 
 	socket* so(dynamic_cast<socket*>(tp->inp_socket));
@@ -297,13 +343,13 @@ findpcb:
 		 *	segment is OK, dropsocket is set back to 0 in Figure 28.17.
 		 */
 		if (so->so_options & SO_ACCEPTCONN) {
-			if ((tiflags & (tcphdr::TH_RST | L4_TCP::tcphdr::TH_ACK | L4_TCP::tcphdr::TH_SYN)) != L4_TCP::tcphdr::TH_SYN)
+			if ((tiflags & (tcphdr::TH_RST | tcphdr::TH_ACK | tcphdr::TH_SYN)) != tcphdr::TH_SYN)
 
 				/*
 				* Note: dropwithreset makes sure we don't
 				* send a reset in response to a RST.
 				*/
-				if (tiflags & L4_TCP::tcphdr::TH_ACK)
+				if (tiflags & tcphdr::TH_ACK)
 					return dropwithreset(tp, dropsocket, tiflags, m, it, ti);
 				else
 					return drop(tp, dropsocket);
@@ -332,7 +378,7 @@ findpcb:
 			 *	ip_output by tcp_output, and the reverse route is used for datagrams sent on this
 			 *	connection.
 			 */
-			tp = L4_TCP::tcpcb::sototcpcb(so);
+			tp = tcpcb::sototcpcb(so);
 			tp->inp_laddr() = ti->ti_dst();
 			tp->inp_lport() = ti->ti_dport();
 
@@ -340,7 +386,7 @@ findpcb:
 			 *	The state of the new socket is set to LISTEN. If the received segment contains a
 			 *	SYN, the code in Figure 28.16 completes the connection request.
 			 */
-			tp->t_state = L4_TCP::tcpcb::TCPS_LISTEN;
+			tp->t_state = tcpcb::TCPS_LISTEN;
 
 			/*
 			 *	Compute window scale factor:
@@ -377,7 +423,7 @@ findpcb:
 	 *	after the peer's address has been recorded in the PCB, because processing the MSS
 	 *	option requires knowledge of the route that will be used to this peer.
 	 */
-	if (optp && tp->t_state != L4_TCP::tcpcb::TCPS_LISTEN)
+	if (optp && tp->t_state != tcpcb::TCPS_LISTEN)
 		tcp_dooptions(*tp, optp, optlen, *ti, ts_present, ts_val, ts_ecr);
 
 	/*
@@ -429,8 +475,8 @@ findpcb:
 	 *		6.	The next sequence number to send (snd_nxt) must equal the highest sequence
 	 *			number sent (snd_max). This means the last segment sent by TCP was not a retransmission.
 	*/
-	if (tp->t_state == L4_TCP::tcpcb::TCPS_ESTABLISHED &&
-		(tiflags & (tcphdr::TH_SYN | L4_TCP::tcphdr::TH_FIN | L4_TCP::tcphdr::TH_RST | L4_TCP::tcphdr::TH_URG | L4_TCP::tcphdr::TH_ACK)) == L4_TCP::tcphdr::TH_ACK &&
+	if (tp->t_state == tcpcb::TCPS_ESTABLISHED &&
+		(tiflags & (tcphdr::TH_SYN | tcphdr::TH_FIN | tcphdr::TH_RST | tcphdr::TH_URG | tcphdr::TH_ACK)) == tcphdr::TH_ACK &&
 		(!ts_present || TSTMP_GEQ(ts_val, tp->ts_recent)) &&
 		ti->ti_seq() == tp->rcv_nxt &&
 		tiwin && tiwin == tp->snd_wnd &&
@@ -449,7 +495,7 @@ findpcb:
 		* If last ACK falls within this segment's sequence numbers,
 		*  record the timestamp.
 		*/
-		if (ts_present && L4_TCP::tcpcb::SEQ_LEQ(ti->ti_seq(), tp->last_ack_sent) &&
+		if (ts_present && tcpcb::SEQ_LEQ(ti->ti_seq(), tp->last_ack_sent) &&
 			tcpcb::SEQ_LT(tp->last_ack_sent, ti->ti_seq() + ti->ti_len()))
 		{
 			tp->ts_recent_age = tcp_now;
@@ -471,7 +517,7 @@ findpcb:
 		*			the connection is not in the middle of slow start or congestion avoidance.
 		*/
 		if ((ti->ti_len() == 0) &&
-			(L4_TCP::tcpcb::SEQ_GT(ti->ti_ack(), tp->snd_una) &&
+			(tcpcb::SEQ_GT(ti->ti_ack(), tp->snd_una) &&
 				tcpcb::SEQ_LEQ(ti->ti_ack(), tp->snd_max) &&
 				tp->snd_cwnd >= tp->snd_wnd))
 		{
@@ -484,7 +530,7 @@ findpcb:
 			*/
 			if (ts_present)
 				tp->tcp_xmit_timer(static_cast<short>(tcp_now - ts_ecr + 1));
-			else if (tp->t_rtt && L4_TCP::tcpcb::SEQ_GT(ti->ti_ack(), tp->t_rtseq))
+			else if (tp->t_rtt && tcpcb::SEQ_GT(ti->ti_ack(), tp->t_rtseq))
 				tp->tcp_xmit_timer(tp->t_rtt);
 
 			/*
@@ -558,7 +604,7 @@ findpcb:
 		 *		4.	There is room in the receive buffer for the data in the segment.
 		 */
 		else if (ti->ti_ack() == tp->snd_una &&
-			tp->seg_next == reinterpret_cast<struct L4_TCP::tcpiphdr*>(tp) &&
+			tp->seg_next == reinterpret_cast<struct tcpiphdr*>(tp) &&
 			ti->ti_len() <= static_cast<short>(so->so_rcv.sbspace()))
 		{
 			/*
@@ -581,10 +627,10 @@ findpcb:
 			* Drop TCP, IP headers and TCP options then add data
 			* to socket buffer.
 			*/
-			auto view = boost::make_iterator_range(it + (sizeof(struct L4_TCP::tcpiphdr) + off - sizeof(struct L4_TCP::tcphdr)), m->end());
+			auto view = boost::make_iterator_range(it + (sizeof(struct tcpiphdr) + off - sizeof(struct tcphdr)), m->end());
 			so->so_rcv.sbappends(view);
 			so->sorwakeup();
-			tp->t_flags |= L4_TCP::tcpcb::TF_DELACK;
+			tp->t_flags |= tcpcb::TF_DELACK;
 			return;
 		}
 	}
@@ -603,7 +649,7 @@ findpcb:
 	 *
 	* Drop TCP, IP headers and TCP options.
 	*/
-	it += sizeof(struct L4_TCP::tcpiphdr) + off - sizeof(struct L4_TCP::tcphdr);
+	it += sizeof(struct tcpiphdr) + off - sizeof(struct tcphdr);
 
 	/*
 	 *	Calculate receive window
@@ -651,7 +697,7 @@ findpcb:
 		* Enter SYN_RECEIVED state, and process any other fields of this
 		* segment in this state.
 		*/
-	case L4_TCP::tcpcb::TCPS_LISTEN: {
+	case tcpcb::TCPS_LISTEN: {
 
 		/*
 		 *	Drop if RST, ACK, or no SYN
@@ -663,11 +709,11 @@ findpcb:
 		 *	The remaining code for this case handles the reception of a SYN for
 		 *	a connection in the LISTEN state. The new state will be SYN_RCVD.
 		 */
-		if (tiflags & L4_TCP::tcphdr::TH_RST)
+		if (tiflags & tcphdr::TH_RST)
 			return drop(tp, dropsocket);
-		else if (tiflags & L4_TCP::tcphdr::TH_ACK)
+		else if (tiflags & tcphdr::TH_ACK)
 			return dropwithreset(tp, dropsocket, tiflags, m, it, ti);
-		else if ((tiflags & L4_TCP::tcphdr::TH_SYN) == 0)
+		else if ((tiflags & tcphdr::TH_SYN) == 0)
 			return drop(tp, dropsocket);
 
 		/*
@@ -797,8 +843,8 @@ findpcb:
 		 *	tcp_output will be called. Looking at Figure 24.16 we see that tcp_outflags will
 		 *	cause a segment with the SYN and ACK flags to be sent.
 		 */
-		tp->t_flags |= L4_TCP::tcpcb::TF_ACKNOW;
-		tp->t_state = L4_TCP::tcpcb::TCPS_SYN_RECEIVED;
+		tp->t_flags |= tcpcb::TF_ACKNOW;
+		tp->t_state = tcpcb::TCPS_SYN_RECEIVED;
 		tp->t_timer[TCPT_KEEP] = TCPTV_KEEP_INIT;
 
 		/*
@@ -825,7 +871,7 @@ findpcb:
 								   *	arrange for segment to be acked (eventually)
 								   *	continue processing rest of data/controls, beginning with URG
 								   */
-	case L4_TCP::tcpcb::TCPS_SYN_SENT:
+	case tcpcb::TCPS_SYN_SENT:
 
 		/*
 		 *	Verify received ACK:
@@ -848,8 +894,8 @@ findpcb:
 		 *	connection in the SYN_SENT state need not contain an ACK. It can contain only a SYN,
 		 *	which is called a simultaneous open (Figure 24.15), and is described shortly.
 		 */
-		if ((tiflags & L4_TCP::tcphdr::TH_ACK) &&
-			(L4_TCP::tcpcb::SEQ_LEQ(ti->ti_ack(), tp->iss) || L4_TCP::tcpcb::SEQ_GT(ti->ti_ack(), tp->snd_max)))
+		if ((tiflags & tcphdr::TH_ACK) &&
+			(tcpcb::SEQ_LEQ(ti->ti_ack(), tp->iss) || tcpcb::SEQ_GT(ti->ti_ack(), tp->snd_max)))
 			return dropwithreset(tp, dropsocket, tiflags, m, it, ti);
 
 		/*
@@ -861,8 +907,8 @@ findpcb:
 		 *	host. In this case tcp_drop sets the socket's so_error variable, causing an error to be
 		 *	returned to the process that called connect.
 		 */
-		if (tiflags & L4_TCP::tcphdr::TH_RST)
-			if (tiflags & L4_TCP::tcphdr::TH_ACK)
+		if (tiflags & tcphdr::TH_RST)
+			if (tiflags & tcphdr::TH_ACK)
 				tcp_drop(*tp, ECONNREFUSED);
 			else
 				return drop(tp, dropsocket);
@@ -871,7 +917,7 @@ findpcb:
 		 *	Verify SYN flag set:
 		 *	If the SYN flag is not set in the received segment, it is dropped.
 		 */
-		if ((tiflags & L4_TCP::tcphdr::TH_SYN) == 0)
+		if ((tiflags & tcphdr::TH_SYN) == 0)
 			return drop(tp, dropsocket);
 
 		/*
@@ -885,9 +931,9 @@ findpcb:
 		 *	the acknowledgment field. If snd_nxt is less than snd_una (which shouldn't happen,
 		 *	given Figure 28.19), snd_nxt is set to snd_una.
 		 */
-		if (tiflags & L4_TCP::tcphdr::TH_ACK) {
+		if (tiflags & tcphdr::TH_ACK) {
 			tp->snd_una = ti->ti_ack();
-			if (L4_TCP::tcpcb::SEQ_LT(tp->snd_nxt, tp->snd_una))
+			if (tcpcb::SEQ_LT(tp->snd_nxt, tp->snd_una))
 				tp->snd_nxt = tp->snd_una;
 		}
 
@@ -911,7 +957,7 @@ findpcb:
 		 */
 		tp->irs = ti->ti_seq();
 		tp->tcp_rcvseqinit();
-		tp->t_flags |= L4_TCP::tcpcb::TF_ACKNOW;
+		tp->t_flags |= tcpcb::TF_ACKNOW;
 
 		/*
 		 *	If the received segment contains an ACK, and if snd_una is greater than the ISS for
@@ -922,7 +968,7 @@ findpcb:
 		 *	ISS. So at this point in the code, if the ACK flag is set, we're already guaranteed that snd_una
 		 *	is greater than the ISS.
 		 */
-		if (tiflags & L4_TCP::tcphdr::TH_ACK && L4_TCP::tcpcb::SEQ_GT(tp->snd_una, tp->iss)) {
+		if (tiflags & tcphdr::TH_ACK && tcpcb::SEQ_GT(tp->snd_una, tp->iss)) {
 
 			/*
 			 *	Connection Is established:
@@ -930,7 +976,7 @@ findpcb:
 			 *	is set to ESTABLISHED.
 			 */
 			so->soisconnected();
-			tp->t_state = L4_TCP::tcpcb::TCPS_ESTABLISHED;
+			tp->t_state = tcpcb::TCPS_ESTABLISHED;
 
 			/*
 			 * Check for window scale option:
@@ -941,8 +987,8 @@ findpcb:
 			 *
 			 * Do window scaling on this connection?
 			 */
-			if ((tp->t_flags & (L4_TCP::tcpcb::TF_RCVD_SCALE | L4_TCP::tcpcb::TF_REQ_SCALE)) ==
-				(L4_TCP::tcpcb::TF_RCVD_SCALE | L4_TCP::tcpcb::TF_REQ_SCALE))
+			if ((tp->t_flags & (tcpcb::TF_RCVD_SCALE | tcpcb::TF_REQ_SCALE)) ==
+				(tcpcb::TF_RCVD_SCALE | tcpcb::TF_REQ_SCALE))
 			{
 				tp->snd_scale = tp->requested_s_scale;
 				tp->rcv_scale = tp->request_r_scale;
@@ -990,7 +1036,7 @@ findpcb:
 		 *	open and the connection moves to the SYN_RCVD state.
 		 */
 		else
-			tp->t_state = L4_TCP::tcpcb::TCPS_SYN_RECEIVED;
+			tp->t_state = tcpcb::TCPS_SYN_RECEIVED;
 
 		return trimthenstep6(tp, tiflags, ti, m, it, tiwin, needoutput);
 	}
@@ -1033,7 +1079,7 @@ findpcb:
 	* and it's less than ts_recent, drop it.
 	*/
 	if (ts_present &&
-		(tiflags & L4_TCP::tcphdr::TH_RST) == 0 &&
+		(tiflags & tcphdr::TH_RST) == 0 &&
 		tp->ts_recent &&
 		TSTMP_LT(ts_val, tp->ts_recent))
 
@@ -1138,7 +1184,7 @@ findpcb:
 		 *	cleared. Finally todrop is decremented by 1 (since the SYN occupies a sequence number).
 		 *	The handling of duplicate data at the front of the segment continues in Figure 28.25.
 		 */
-		if (tiflags & L4_TCP::tcphdr::TH_SYN)
+		if (tiflags & tcphdr::TH_SYN)
 		{
 			tiflags &= ~tcphdr::TH_SYN;
 			ti->ti_seq()++;
@@ -1165,7 +1211,7 @@ findpcb:
 		*	another bug present in the original code (Exercise 28.9).
 		*/
 		if (todrop > ti->ti_len() ||
-			todrop == ti->ti_len() && (tiflags & L4_TCP::tcphdr::TH_FIN) == 0) {
+			todrop == ti->ti_len() && (tiflags & tcphdr::TH_FIN) == 0) {
 
 			/*
 			* Any valid FIN must be to the left of the window.
@@ -1178,7 +1224,7 @@ findpcb:
 			* Send an ACK to resynchronize and drop any data.
 			* But keep on processing for RST or ACK.
 			*/
-			tp->t_flags |= L4_TCP::tcpcb::TF_ACKNOW;
+			tp->t_flags |= tcpcb::TF_ACKNOW;
 			todrop = ti->ti_len();
 		}
 #else
@@ -1210,9 +1256,9 @@ findpcb:
 			* In either case, send ACK to resynchronize,
 			* but keep on processing for RST or ACK.
 			*/
-			if ((tiflags & L4_TCP::tcphdr::TH_FIN && todrop == ti->ti_len() + 1)
+			if ((tiflags & tcphdr::TH_FIN && todrop == ti->ti_len() + 1)
 #ifdef TCP_COMPAT_42
-				|| (tiflags & L4_TCP::tcphdr::TH_RST && ti->ti_seq() == tp->rcv_nxt - 1)
+				|| (tiflags & tcphdr::TH_RST && ti->ti_seq() == tp->rcv_nxt - 1)
 #endif
 				) {
 				todrop = ti->ti_len();
@@ -1239,10 +1285,10 @@ findpcb:
 			 * to itself. Allow packets with a SYN and
 			 * an ACK to continue with the processing.
 			 */
-			else if (todrop != 0 || (tiflags & L4_TCP::tcphdr::TH_ACK) == 0)
+			else if (todrop != 0 || (tiflags & tcphdr::TH_ACK) == 0)
 				return dropafterack(tp, dropsocket, tiflags);
 		}
-		tp->t_flags |= L4_TCP::tcpcb::TF_ACKNOW;
+		tp->t_flags |= tcpcb::TF_ACKNOW;
 #endif
 
 		/*
@@ -1282,7 +1328,7 @@ findpcb:
 	* user processes are gone, then RST the other end.
 	*/
 	if ((so->so_state & socket::SS_NOFDREF) &&
-		tp->t_state > L4_TCP::tcpcb::TCPS_CLOSE_WAIT && ti->ti_len())
+		tp->t_state > tcpcb::TCPS_CLOSE_WAIT && ti->ti_len())
 	{
 		(void)tcp_close(*tp);
 		return dropwithreset(tp, dropsocket, tiflags, m, it, ti);
@@ -1325,8 +1371,8 @@ findpcb:
 			* and start over if the sequence numbers
 			* are above the previous ones.
 			*/
-			if (tiflags & L4_TCP::tcphdr::TH_SYN &&
-				tp->t_state == L4_TCP::tcpcb::TCPS_TIME_WAIT &&
+			if (tiflags & tcphdr::TH_SYN &&
+				tp->t_state == tcpcb::TCPS_TIME_WAIT &&
 				tcpcb::SEQ_GT(ti->ti_seq(), tp->rcv_nxt))
 			{
 				iss = tp->snd_nxt;
@@ -1349,7 +1395,7 @@ findpcb:
 		* and ack.
 		*/
 			else if (tp->rcv_wnd == 0 && ti->ti_seq() == tp->rcv_nxt)
-				tp->t_flags |= L4_TCP::tcpcb::TF_ACKNOW;
+				tp->t_flags |= tcpcb::TF_ACKNOW;
 			else
 
 				/*
@@ -1368,7 +1414,7 @@ findpcb:
 		 */
 		m->resize(m->size() - todrop);
 		ti->ti_len() -= todrop;
-		tiflags &= ~(tcphdr::TH_PUSH | L4_TCP::tcphdr::TH_FIN);
+		tiflags &= ~(tcphdr::TH_PUSH | tcphdr::TH_FIN);
 	}
 
 	/*
@@ -1385,8 +1431,8 @@ findpcb:
 	* If last ACK falls within this segment's sequence numbers,
 	* record its timestamp.
 	*/
-	if (ts_present && L4_TCP::tcpcb::SEQ_LEQ(ti->ti_seq(), tp->last_ack_sent) &&
-		tcpcb::SEQ_LT(tp->last_ack_sent, ti->ti_seq() + ti->ti_len() + ((tiflags & (tcphdr::TH_SYN | L4_TCP::tcphdr::TH_FIN)) != 0)))
+	if (ts_present && tcpcb::SEQ_LEQ(ti->ti_seq(), tp->last_ack_sent) &&
+		tcpcb::SEQ_LT(tp->last_ack_sent, ti->ti_seq() + ti->ti_len() + ((tiflags & (tcphdr::TH_SYN | tcphdr::TH_FIN)) != 0)))
 	{
 		tp->ts_recent_age = tcp_now;
 		tp->ts_recent = ts_val;
@@ -1406,7 +1452,7 @@ findpcb:
 	*    CLOSING, LAST_ACK, TIME_WAIT STATES
 	*	Close the tcb.
 	*/
-	if (tiflags & L4_TCP::tcphdr::TH_RST)
+	if (tiflags & tcphdr::TH_RST)
 		switch (tp->t_state) {
 
 			/*
@@ -1423,9 +1469,9 @@ findpcb:
 			 *	This state can also be entered by a simultaneous open, after a process has called connect.
 			 *	In this case the socket error is returned to the process.
 			 */
-		case L4_TCP::tcpcb::TCPS_SYN_RECEIVED:
+		case tcpcb::TCPS_SYN_RECEIVED:
 			so->so_error = ECONNREFUSED;
-			tp->t_state = L4_TCP::tcpcb::TCPS_CLOSED;
+			tp->t_state = tcpcb::TCPS_CLOSED;
 			(void)tcp_close(*tp);
 			return drop(tp, dropsocket);
 
@@ -1439,18 +1485,18 @@ findpcb:
 			 *				assassination hazards" and recommends not letting an RST prematurely terminate the TIME_WAIT
 			 *				state. See Exercise 28.10 for an example.
 			 */
-		case L4_TCP::tcpcb::TCPS_ESTABLISHED:
-		case L4_TCP::tcpcb::TCPS_FIN_WAIT_1:
-		case L4_TCP::tcpcb::TCPS_FIN_WAIT_2:
-		case L4_TCP::tcpcb::TCPS_CLOSE_WAIT:
+		case tcpcb::TCPS_ESTABLISHED:
+		case tcpcb::TCPS_FIN_WAIT_1:
+		case tcpcb::TCPS_FIN_WAIT_2:
+		case tcpcb::TCPS_CLOSE_WAIT:
 			so->so_error = ECONNRESET;
-			tp->t_state = L4_TCP::tcpcb::TCPS_CLOSED;
+			tp->t_state = tcpcb::TCPS_CLOSED;
 			(void)tcp_close(*tp);
 			return drop(tp, dropsocket);
 
-		case L4_TCP::tcpcb::TCPS_CLOSING:
-		case L4_TCP::tcpcb::TCPS_LAST_ACK:
-		case L4_TCP::tcpcb::TCPS_TIME_WAIT:
+		case tcpcb::TCPS_CLOSING:
+		case tcpcb::TCPS_LAST_ACK:
+		case tcpcb::TCPS_TIME_WAIT:
 			(void)tcp_close(*tp);
 			return drop(tp, dropsocket);
 		}
@@ -1463,7 +1509,7 @@ findpcb:
 	* If a SYN is in the window, then this is an
 	* error and we send an RST and drop the connection.
 	*/
-	if (tiflags & L4_TCP::tcphdr::TH_SYN) {
+	if (tiflags & tcphdr::TH_SYN) {
 		tcp_drop(*tp, ECONNRESET);
 		return dropwithreset(tp, dropsocket, tiflags, m, it, ti);
 	}
@@ -1474,7 +1520,7 @@ findpcb:
 	 *
 	* If the ACK bit is off we drop the segment and return.
 	*/
-	if ((tiflags & L4_TCP::tcphdr::TH_ACK) == 0)
+	if ((tiflags & tcphdr::TH_ACK) == 0)
 		return drop(tp, dropsocket);
 
 	/*
@@ -1502,7 +1548,7 @@ findpcb:
 		* ESTABLISHED state and continue processing, otherwise
 		* send an RST.
 		*/
-	case L4_TCP::tcpcb::TCPS_SYN_RECEIVED:
+	case tcpcb::TCPS_SYN_RECEIVED:
 
 		/*
 		 *	Verify received ACK:
@@ -1516,11 +1562,11 @@ findpcb:
 		 *	that call now returns; if the server is blocked in a call to select ·waiting for the listening
 		 *	descriptor to become readable, it is now readable.
 		 */
-		if (L4_TCP::tcpcb::SEQ_GT(tp->snd_una, ti->ti_ack()) || L4_TCP::tcpcb::SEQ_GT(ti->ti_ack(), tp->snd_max))
+		if (tcpcb::SEQ_GT(tp->snd_una, ti->ti_ack()) || tcpcb::SEQ_GT(ti->ti_ack(), tp->snd_max))
 			return dropwithreset(tp, dropsocket, tiflags, m, it, ti);
 
 		so->soisconnected();
-		tp->t_state = L4_TCP::tcpcb::TCPS_ESTABLISHED;
+		tp->t_state = tcpcb::TCPS_ESTABLISHED;
 
 		/*
 		 *	Check for window scale option:
@@ -1530,8 +1576,8 @@ findpcb:
 		 *
 		 * Do window scaling?
 		 */
-		if ((tp->t_flags & (L4_TCP::tcpcb::TF_RCVD_SCALE | L4_TCP::tcpcb::TF_REQ_SCALE)) ==
-			(L4_TCP::tcpcb::TF_RCVD_SCALE | L4_TCP::tcpcb::TF_REQ_SCALE))
+		if ((tp->t_flags & (tcpcb::TF_RCVD_SCALE | tcpcb::TF_REQ_SCALE)) ==
+			(tcpcb::TF_RCVD_SCALE | tcpcb::TF_REQ_SCALE))
 		{
 			tp->snd_scale = tp->requested_s_scale;
 			tp->rcv_scale = tp->request_r_scale;
@@ -1624,15 +1670,15 @@ findpcb:
 		* data from the retransmission queue.  If this ACK reflects
 		* more up to date window information we update our window information.
 		*/
-	case L4_TCP::tcpcb::TCPS_ESTABLISHED:
-	case L4_TCP::tcpcb::TCPS_FIN_WAIT_1:
-	case L4_TCP::tcpcb::TCPS_FIN_WAIT_2:
-	case L4_TCP::tcpcb::TCPS_CLOSE_WAIT:
-	case L4_TCP::tcpcb::TCPS_CLOSING:
-	case L4_TCP::tcpcb::TCPS_LAST_ACK:
-	case L4_TCP::tcpcb::TCPS_TIME_WAIT:
+	case tcpcb::TCPS_ESTABLISHED:
+	case tcpcb::TCPS_FIN_WAIT_1:
+	case tcpcb::TCPS_FIN_WAIT_2:
+	case tcpcb::TCPS_CLOSE_WAIT:
+	case tcpcb::TCPS_CLOSING:
+	case tcpcb::TCPS_LAST_ACK:
+	case tcpcb::TCPS_TIME_WAIT:
 
-		if (L4_TCP::tcpcb::SEQ_LEQ(ti->ti_ack(), tp->snd_una)) {
+		if (tcpcb::SEQ_LEQ(ti->ti_ack(), tp->snd_una)) {
 			if (ti->ti_len() == 0 && tiwin == tp->snd_wnd) {
 
 				/*
@@ -1720,7 +1766,7 @@ findpcb:
 		 *	when the sequence numbers wrap and a missing ACK reappears later. As we can see in
 		 *	Figure 24.5, this rarely happens (since today's networks aren't fast enough).
 		 */
-		if (L4_TCP::tcpcb::SEQ_GT(ti->ti_ack(), tp->snd_max))
+		if (tcpcb::SEQ_GT(ti->ti_ack(), tp->snd_max))
 			return dropafterack(tp, dropsocket, tiflags);
 
 		/*
@@ -1757,7 +1803,7 @@ findpcb:
 		*/
 		if (ts_present)
 			tp->tcp_xmit_timer(static_cast<short>(tcp_now - ts_ecr + 1));
-		else if (tp->t_rtt && L4_TCP::tcpcb::SEQ_GT(ti->ti_ack(), tp->t_rtseq))
+		else if (tp->t_rtt && tcpcb::SEQ_GT(ti->ti_ack(), tp->t_rtseq))
 			tp->tcp_xmit_timer(tp->t_rtt);
 
 		/*
@@ -1897,7 +1943,7 @@ findpcb:
 		if (so->so_snd.sb_flags & socket::sockbuf::SB_NOTIFY)
 			so->sowwakeup();
 
-		if (L4_TCP::tcpcb::SEQ_LT(tp->snd_nxt, (tp->snd_una = ti->ti_ack())))
+		if (tcpcb::SEQ_LT(tp->snd_nxt, (tp->snd_una = ti->ti_ack())))
 			tp->snd_nxt = tp->snd_una;
 
 		/*
@@ -1917,7 +1963,7 @@ findpcb:
 			* for the ESTABLISHED state if our FIN is now acknowledged
 			* then enter FIN_WAIT_2.
 			*/
-		case L4_TCP::tcpcb::TCPS_FIN_WAIT_1:
+		case tcpcb::TCPS_FIN_WAIT_1:
 			if (ourfinisacked) {
 
 				/*
@@ -1938,7 +1984,7 @@ findpcb:
 					so->soisdisconnected();
 					tp->t_timer[TCPT_2MSL] = tcp_maxidle;
 				}
-				tp->t_state = L4_TCP::tcpcb::TCPS_FIN_WAIT_2;
+				tp->t_state = tcpcb::TCPS_FIN_WAIT_2;
 			}
 			break;
 
@@ -1953,9 +1999,9 @@ findpcb:
 			* then enter the TIME-WAIT state, otherwise ignore
 			* the segment.
 			*/
-		case L4_TCP::tcpcb::TCPS_CLOSING:
+		case tcpcb::TCPS_CLOSING:
 			if (ourfinisacked) {
-				tp->t_state = L4_TCP::tcpcb::TCPS_TIME_WAIT;
+				tp->t_state = tcpcb::TCPS_TIME_WAIT;
 				tp->tcp_canceltimers();
 				tp->t_timer[TCPT_2MSL] = 2 * TCPTV_MSL;
 				so->soisdisconnected();
@@ -1972,7 +2018,7 @@ findpcb:
 			* If our FIN is now acknowledged, delete the TCB,
 			* enter the closed state and return.
 			*/
-		case L4_TCP::tcpcb::TCPS_LAST_ACK:
+		case tcpcb::TCPS_LAST_ACK:
 			if (ourfinisacked) {
 				(void)tcp_close(*tp);
 				return drop(tp, dropsocket);
@@ -1990,7 +2036,7 @@ findpcb:
 			* is a retransmission of the remote FIN.  Acknowledge
 			* it and restart the finack timer.
 			*/
-		case L4_TCP::tcpcb::TCPS_TIME_WAIT:
+		case tcpcb::TCPS_TIME_WAIT:
 			tp->t_timer[TCPT_2MSL] = 2 * TCPTV_MSL;
 			return dropafterack(tp, dropsocket, tiflags);
 		}

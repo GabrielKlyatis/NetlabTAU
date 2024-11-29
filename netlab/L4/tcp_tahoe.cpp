@@ -26,7 +26,7 @@ void tcp_tahoe::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 		(void)tcp_output(*tp);
 
 		// Restore snd_nxt to continue from where we left off.
-		if (L4_TCP::tcpcb::SEQ_GT(onxt, tp->snd_nxt))
+		if (tcpcb::SEQ_GT(onxt, tp->snd_nxt))
 			tp->snd_nxt = onxt;
 
 		// Clear RTT measurements.
