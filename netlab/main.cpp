@@ -40,7 +40,7 @@ void main(int argc, char* argv[]) {
 
 	// Setting up the server.
 	inet_server.inetsw(new L3_impl(inet_server, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_client.inetsw(new L4_TCP_impl(inet_client), protosw::SWPROTO_TCP);
+	inet_server.inetsw(new L4_TCP_impl(inet_server), protosw::SWPROTO_TCP);
 	inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
 	inet_server.domaininit();
 
