@@ -613,7 +613,7 @@ public:
 
 	// Constructor 
 	L4_TCP(class inet_os &inet) 
-		: protosw(inet, SOCK_STREAM, NULL, IPPROTO_TCP, PR_CONNREQUIRED | PR_WANTRCVD), tcb(inet) { }
+		: protosw(inet, SOCK_STREAM, NULL, IPPROTO_TCP, PR_CONNREQUIRED | PR_WANTRCVD), tcb(inet), tcp_saveti(nullptr), tcp_last_inpcb(nullptr) { }
 
 	// Destructor
 	~L4_TCP()

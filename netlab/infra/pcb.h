@@ -2,6 +2,7 @@
 #define NETLAB_PCB_H
 #include "../L3/L3.h"
 #include "../L5/L5.h"
+#include <boost/range/iterator_range.hpp>
 #include <boost/functional/hash/hash.hpp>
 
 /*!

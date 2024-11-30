@@ -58,7 +58,7 @@ public:
 	enum BUFF_TYPE
 	{
 		DROP_DELAY,
-		DUPLICATE,
+		BUFF_TYPE_DUPLICATE,
 	};
 
 	/*!

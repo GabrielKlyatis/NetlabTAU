@@ -30,7 +30,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
@@ -232,6 +232,7 @@
     <ClCompile Include="L2\L2_impl.cpp" />
     <ClCompile Include="L3\L3_impl.cpp" />
     <ClCompile Include="L4\L4_TCP.cpp" />
+    <ClCompile Include="L4\L4_TCP_impl.cpp" />
     <ClCompile Include="L5\L5_Sol.cpp" />
     <ClCompile Include="infra\NetworkInterface.cpp" />
     <ClCompile Include="L1\NIC.cpp" />
