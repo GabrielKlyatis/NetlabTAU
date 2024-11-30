@@ -54,13 +54,8 @@ void main(int argc, char* argv[]) {
 	// Set up the client address structure
 	struct sockaddr_in client_service;
 	client_service.sin_family = AF_INET;
-	client_service.sin_addr.s_addr = inet_client.nic()->ip_addr().s_addr;
-	client_service.sin_port = htons(5000);
-
-	struct sockaddr_in client_service2;
-	client_service2.sin_family = AF_INET;
-	client_service2.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-	client_service2.sin_port = htons(8888);
+	client_service.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
+	client_service.sin_port = htons(8888);
 
 	// Set up the server address structure
 	sockaddr_in server_service;
@@ -79,7 +74,7 @@ void main(int argc, char* argv[]) {
 	std::string received_message;
 	received_message.resize(size);
 
-	connectSocket->connect((SOCKADDR*)&client_service2, sizeof(client_service2));
+	connectSocket->connect((SOCKADDR*)&client_service, sizeof(client_service));
 
 	// Create a SOCKET for accepting incoming requests.
 	netlab::L5_socket_impl* acceptSocket = nullptr;
@@ -87,12 +82,14 @@ void main(int argc, char* argv[]) {
 
 	netlab::L5_socket_impl* ConnectSocket = connectSocket;
 	std::thread([ConnectSocket, send_msg, size]()
-		{
-			ConnectSocket->send(send_msg, size, 1024);
-		}).detach();
+	{
+		ConnectSocket->send(send_msg, size, 1024);
+	}).detach();
 
 	std::string ret("");
 	int byte_recived = acceptSocket->recv(ret, size, 3);
+
+	std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	connectSocket->shutdown(SD_SEND);
 	listenSocket->shutdown(SD_RECEIVE);
