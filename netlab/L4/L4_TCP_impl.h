@@ -10,19 +10,25 @@ class L4_TCP_impl : public L4_TCP {
 public:
 
 	/*
-		Constructor
-			* inet - The inet.
-	*/
-	L4_TCP_impl(class inet_os& inet);
+	Constructor - IMPLEMENTED FOR YOU
+		* inet - The inet.
+*/
+	L4_TCP_impl(class inet_os& inet) : L4_TCP(inet) { }
 
 	/*
-		Destructor -
+		Destructor - IMPLEMENTED FOR YOU
 		Deletes the tcp_saveti, and the tcp_last_inpcb if space has been allocated for them.
 	*/
-	~L4_TCP_impl();
+	~L4_TCP_impl()
+	{
+		if (tcp_saveti)
+			delete tcp_saveti;
+		if (tcp_last_inpcb)
+			delete tcp_last_inpcb;
+	}
 
 	// Wrapper for tcp_output.
-	virtual int pr_output(const struct pr_output_args& args) override;
+	virtual int pr_output(const struct pr_output_args& args);
 
 	/*
 		tcp_output Function - The actual function, with the desired arguments. This function handles the transmission of TCP segments.
@@ -35,7 +41,7 @@ public:
 
 			* tp - The TCP control block of this connection.
 	*/
-	virtual int tcp_output(tcpcb& tp) override;
+	virtual int tcp_output(tcpcb& tp);
 
 	/*
 		pr_input function - This function handles the reception of TCP segments. 
@@ -49,7 +55,7 @@ public:
 					- it - The iterator, as the current offset in the vector.
 					- iphlen - The IP header length.
 	*/
-	virtual void pr_input(const struct pr_input_args& args) override;
+	virtual void pr_input(const struct pr_input_args& args);
 
 	/* Ignore the following function declarations */
 	virtual void pr_init();
