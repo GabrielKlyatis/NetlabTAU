@@ -307,11 +307,11 @@ L2_ARP_impl::mac_addr* L2_ARP_impl::arpresolve(std::shared_ptr<std::vector<byte>
 	 *	ETHER_MAP_IP_MULTICAST macro (Figure 12.6) converts the class D address into the
 	 *	corresponding Ethernet address.
 	 */
-	//if (m_flags & L2_impl::M_BCAST)	/* broadcast */
-		//return &mac_addr(inet.nic()->etherbroadcastaddr()); // will not work return address of stack variable
+	if (m_flags & L2_impl::M_BCAST)	/* broadcast */
+		return &mac_addr(inet.nic()->etherbroadcastaddr()); // will not work return address of stack variable
 	
-	//if (m_flags & L2_impl::M_MCAST)	/* multicast */ 
-		//return &mac_addr::ETHER_MAP_IP_MULTICAST(&reinterpret_cast<struct sockaddr_in *>(dst)->sin_addr); // same here
+	if (m_flags & L2_impl::M_MCAST)	/* multicast */ 
+		return &mac_addr::ETHER_MAP_IP_MULTICAST(&reinterpret_cast<struct sockaddr_in *>(dst)->sin_addr); // same here
 	
 	/*	
 	 *	Get pointer to llinfo_arp structure:

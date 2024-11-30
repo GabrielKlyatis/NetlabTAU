@@ -14,7 +14,7 @@ void main(int argc, char* argv[]) {
 
 	// Declaring the client 
 	inet_os inet_client = inet_os();
-	NIC nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "tcp");
+	NIC nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "ip src 10.0.0.10 or arp");
 
 	// Declaring the client's datalink layer
 	L2_impl datalink_client(inet_client);
@@ -30,7 +30,7 @@ void main(int argc, char* argv[]) {
 
 	// Declaring the server
 	inet_os inet_server = inet_os();
-	NIC nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "tcp");
+	NIC nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "ip src 10.0.0.15 or arp");
 
 	// Declaring the server's datalink layer
 	L2_impl datalink_server(inet_server);
@@ -79,7 +79,7 @@ void main(int argc, char* argv[]) {
 	std::string received_message;
 	received_message.resize(size);
 
-	connectSocket->connect((SOCKADDR*)&client_service, sizeof(client_service));
+	connectSocket->connect((SOCKADDR*)&client_service2, sizeof(client_service2));
 
 	// Create a SOCKET for accepting incoming requests.
 	netlab::L5_socket_impl* acceptSocket = nullptr;
