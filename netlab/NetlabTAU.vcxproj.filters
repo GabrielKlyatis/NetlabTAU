@@ -18,9 +18,6 @@
     <ClCompile Include="L1\NIC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main2.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -28,9 +25,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="infra\packet_sender_adapter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L4\L4_ICMP_Sol.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="L4\L4_TCP_Sol.cpp">
@@ -78,25 +72,10 @@
     <ClCompile Include="L0\L0_buffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="L4\L4_UDP_Impl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="L4\tcp_tahoe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="L4\tcp_reno.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L5\tls_socket.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L5\HTTP\HTTP.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L5\HTTP\HTTPClient_Impl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="L5\HTTP\HTTPServer_Impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -177,33 +156,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="L4\tcp_reno.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="L5\tls_utils.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="L5\tls_socket.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="L5\tls_protocol_layer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="L5\tls_definition.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="L5\HTTP\HTTP.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="L5\HTTP\HTTPClient_Impl.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="L5\HTTP\HTTPServer_Impl.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="L5\HTTP\HTTPClient.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="L5\HTTP\HTTPServer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
