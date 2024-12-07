@@ -10,7 +10,31 @@
 
 using namespace std;
 
+enum tcp_flavor {
+	TCP_TAHOE,
+	TCP_RENO
+};
+
+// Function to set the TCP flavor.
+void set_tcp(inet_os& os, tcp_flavor tcp_type) {
+	switch (tcp_type) {
+	case TCP_TAHOE:
+		os.inetsw(new tcp_tahoe(os), protosw::SWPROTO_TCP);
+		break;
+	case TCP_RENO:
+		os.inetsw(new tcp_reno(os), protosw::SWPROTO_TCP);
+		break;
+
+	default:
+		break;
+	}
+	os.domaininit();
+}
+
 void main(int argc, char* argv[]) {
+
+	// Set the TCP flavor
+	tcp_flavor tcp_type = TCP_TAHOE; // TCP_TAHOE or TCP_RENO
 
 	// Declaring the client 
 	inet_os inet_client = inet_os();
@@ -19,11 +43,12 @@ void main(int argc, char* argv[]) {
 	// Declaring the client's datalink layer
 	L2_impl datalink_client(inet_client);
 
-	// Setting up the client.
+	// Setting up the client's network layer.
 	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_client.inetsw(new L4_TCP_impl(inet_client), protosw::SWPROTO_TCP);
 	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-	inet_client.domaininit();
+
+	// Setting up the client's transport layer (TCP flavor).
+	set_tcp(inet_client, tcp_type);
 
 	// Declaring the ARP of the client.
 	L2_ARP_impl arp_client(inet_client, 10, 10000);
@@ -40,9 +65,10 @@ void main(int argc, char* argv[]) {
 
 	// Setting up the server.
 	inet_server.inetsw(new L3_impl(inet_server, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_server.inetsw(new L4_TCP_impl(inet_server), protosw::SWPROTO_TCP);
 	inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-	inet_server.domaininit();
+
+	// Setting up the server's transport layer (TCP flavor).
+	set_tcp(inet_server, tcp_type);
 
 	// Sniffer spawning.
 	inet_client.connect(0U);
@@ -71,10 +97,8 @@ void main(int argc, char* argv[]) {
 	connectSocket->connect((SOCKADDR*)&client_service, sizeof(client_service));
 
 	// Create the message to send.
-	std::string send_msg("TCP Communication");
+	std::string send_msg(500 * 1024, 'T');
 	size_t size = send_msg.size();
-	std::string received_message;
-	received_message.resize(size);
 
 	// Create a SOCKET for accepting incoming requests.
 	netlab::L5_socket_impl* acceptSocket = nullptr;
