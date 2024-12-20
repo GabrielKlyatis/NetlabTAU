@@ -102,7 +102,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\Projects\WpdPack_4_1_2\WpdPack\Include;C:\Projects\boost_1_83_0;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\include;C:\Projects\WpdPack_4_1_2\WpdPack\Include;C:\Projects\boost_1_83_0;C:\googletest-1.14.0\googletest\include;C:\Projects\OpenSSL-Win32\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
     <ExecutablePath>C:\Windows\System32;$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
@@ -197,7 +197,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>Release\Sniffer.lib;C:\Projects\WpdPack_4_1_2\WpdPack\Lib\wpcap.lib;C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib;Iphlpapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Release\Sniffer.lib;C:\Projects\WpdPack_4_1_2\WpdPack\Lib\wpcap.lib;C:\Projects\pthreads-w32-2-9-1-release\Pre-built.2\lib\x86\pthreadVC2.lib;Iphlpapi.lib;ws2_32.lib;C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libssl.lib;C:\Projects\OpenSSL-Win32\lib\VC\x86\MDd\libcrypto.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Projects\boost_1_83_0;C:\Windows\System32</AdditionalLibraryDirectories>
     </Link>
     <Bscmake>
@@ -242,7 +242,6 @@
     <ClCompile Include="L5\L5_Sol.cpp" />
     <ClCompile Include="L5\tls_socket.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="main2.cpp" />
     <ClCompile Include="infra\NetworkInterface.cpp" />
     <ClCompile Include="L1\NIC.cpp" />
     <ClCompile Include="L1\NIC_Cable.cpp" />

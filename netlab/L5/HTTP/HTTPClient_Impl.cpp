@@ -37,6 +37,16 @@ void HTTPClient_Impl::connect_to_server(inet_os& inet_server, HTTPServer_Impl* h
 		}).detach();
 }
 
+Resource* HTTPClient_Impl::get_resource(std::string& uri) {
+	for (Resource& resource : resources_from_server) {
+		if (resource.file_name == SERVER_FILESYSTEM + uri) {
+			return &resource;
+		}
+	}
+	std::cerr << "Failed to obtain the requested resource." << std::endl;
+	return nullptr;
+}
+
 // Send a GET request
 int HTTPClient_Impl::get(std::string& uri, std::string& request_version, HTTPHeaders& headers, QueryParams& params) {
 
@@ -129,10 +139,10 @@ int HTTPClient_Impl::handle_response(HTTPResponse& HTTP_response, std::string& r
 	if (HTTP_response.status_code == StatusCode::OK) {
 		// Save the resource
 		Resource resource;
-		resource.file_name = requested_resource;
+		resource.file_name = SERVER_FILESYSTEM + requested_resource;
 		resource.content = HTTP_response.body;
 		resource.content_type = HTTP_response.get_header_value("Content-Type", 0);
-		resources.push_back(resource);
+		resources_from_server.push_back(resource);
 		res = RESULT_SUCCESS;
 	}
 	else if (HTTP_response.status_code == StatusCode::Created) {

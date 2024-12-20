@@ -26,13 +26,15 @@ namespace netlab {
 
 		int handle_response(HTTPResponse& HTTP_response, std::string& requested_resource) override;
 
+		Resource* get_resource(std::string& uri);
+
 		L5_socket* socket;
 
 	private:
 		// Client Members
 		HTTPProtocol protocol;
 		uint16_t port;
-		std::vector<Resource> resources;
+		std::vector<Resource> resources_from_server;
 		bool connection_closed;
 	};
 }

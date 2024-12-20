@@ -97,6 +97,17 @@ int HTTPServer_Impl::create_resource(std::string& request_path, std::string& dat
 	return res;
 }
 
+// Get the resource from the server
+Resource* HTTPServer_Impl::get_resource(std::string& uri) {
+	for (Resource& resource : resources) {
+		if (resource.file_name == SERVER_FILESYSTEM + uri) {
+			return &resource;
+		}
+	}
+	std::cerr << "Failed to obtain the requested resource." << std::endl;
+	return nullptr;
+}
+
 // Handle the request
 int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 

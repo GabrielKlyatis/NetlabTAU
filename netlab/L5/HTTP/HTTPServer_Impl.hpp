@@ -28,8 +28,10 @@ namespace netlab {
 		L5_socket* socket;
 		L5_socket* client_socket;
 
+		Resource* get_resource(std::string& uri);
+
 	private:
-		// Server Methods
+		// Resource Methods
 		bool has_resource(std::string& request_path);
 		int create_resource(std::string& request_path, std::string& data);
 		int remove_resource(std::string& request_path);
