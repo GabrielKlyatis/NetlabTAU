@@ -95,7 +95,7 @@ std::wstring string_to_wstring(const std::string& str) {
 /************************************************************************************/
 
 void main(int argc, char* argv[]) {
-	//HTTP_GET();
+	HTTP_GET();
 	HTTP_POST();
 }
 

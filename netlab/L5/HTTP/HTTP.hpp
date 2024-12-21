@@ -249,8 +249,8 @@ namespace netlab {
 		// Body
 		void insert_body_param(const std::string& key, const std::string& val);
 		void parse_urlencoded(std::string& unfiltered_body);
-		void parse_multipart(const std::string& body, const std::string& boundary);
-		void parse_body(const std::string& body, const std::string& content_type);
+		std::string parse_multipart(const std::string& body, const std::string& boundary);
+		std::string parse_body(const std::string& body, const std::string& content_type);
 
 		// Request
 		int parse_request(const std::string& request_string);

@@ -72,9 +72,9 @@ int HTTPServer_Impl::remove_resource(std::string& request_path) {
 }
 
 // Create the resource on the server
-int HTTPServer_Impl::create_resource(std::string& request_path, std::string& data) {
+int HTTPServer_Impl::create_resource(HTTPRequest& HTTP_request) {
 	int res = RESULT_SUCCESS;
-	std::string full_path = SERVER_FILESYSTEM + request_path;
+	std::string full_path = SERVER_FILESYSTEM + HTTP_request.request_uri;
 	if (has_resource(full_path)) {
 		res = remove_resource(full_path);
 		if (res != RESULT_SUCCESS) {
@@ -88,12 +88,21 @@ int HTTPServer_Impl::create_resource(std::string& request_path, std::string& dat
 		res = RESULT_FAILURE;
 		return res;
 	}
-	resource_file << data;
+	resource_file << HTTP_request.body;
 	resource_file.close();
 	if (res != RESULT_SUCCESS) {
 		std::cerr << "HTTP SERVER: Failed to create resource on the server." << full_path << std::endl;
 		res = RESULT_FAILURE;
 	}
+
+	if (res != RESULT_FAILURE) {
+		Resource resource;
+		resource.file_name = SERVER_FILESYSTEM + HTTP_request.request_uri;
+		resource.content = HTTP_request.body;
+		resource.content_type = HTTP_request.get_header_value("Content-Type", 0);
+		resources.push_back(resource);
+	}
+
 	return res;
 }
 
@@ -140,7 +149,7 @@ int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 		break;
 	case HTTPMethod::POST:
 		// Create the resource
-		if (create_resource(HTTP_request.request_uri, HTTP_request.body) == RESULT_SUCCESS) {
+		if (create_resource(HTTP_request) == RESULT_SUCCESS) {
 			// Send a 201 Created response
 			HTTP_response.status_code = StatusCode::Created;
 			HTTP_response.reason = HTTPResponse::status_message(HTTP_response.status_code);

@@ -271,7 +271,7 @@ int HTTPRequest::parse_headers(const std::vector<std::string>& lines) {
 			std::string field_name = lines[i].substr(0, pos);
 			// Check if the header is supported
 			if (field_name == "Host" || field_name == "User-Agent" || field_name == "Content-Type" 
-				|| field_name == "Content-Length" || field_name == "Connection") {
+				|| field_name == "Content-Length" || field_name == "Connection" || "Content-Disposition") {
 				std::string field_value = lines[i].substr(pos + 2); // Skip ": " (colon and space)
 				insert_header(field_name, field_value);
 				res = RESULT_SUCCESS;
@@ -349,14 +349,14 @@ void HTTPRequest::parse_urlencoded(std::string& unfiltered_body) {
 }
 
 // Function to parse multipart/form-data
-void HTTPRequest::parse_multipart(const std::string& body, const std::string& boundary) {
+std::string HTTPRequest::parse_multipart(const std::string& body, const std::string& boundary) {
 	std::string delimiter = "--" + boundary;
 	std::string end_delimiter = delimiter + "--";
 	size_t pos = 0, end_pos = 0;
 
 	// Loop through all parts until the end boundary is found
 	while ((pos = body.find(delimiter, pos)) != std::string::npos) {
-		pos += delimiter.length();
+		pos += delimiter.length() + 2; // Delimiter and \r\n
 
 		// Check if it's the final boundary (end delimiter)
 		if (body.substr(pos, 2) == "--") {
@@ -376,6 +376,7 @@ void HTTPRequest::parse_multipart(const std::string& body, const std::string& bo
 		size_t header_end_pos = part.find("\r\n\r\n");
 		if (header_end_pos != std::string::npos) {
 			std::string headers = part.substr(0, header_end_pos);
+            parse_headers(split_lines(headers));
 			std::string content = part.substr(header_end_pos + 4);  // Skip the \r\n\r\n
 
 			// Extract the form field name from Content-Disposition header
@@ -393,14 +394,16 @@ void HTTPRequest::parse_multipart(const std::string& body, const std::string& bo
 
 					// Insert field name and content into the map
 					body_params.insert({ field_name, content });
+                    return content;
 				}
 			}
 		}
 	}
 }
 
-// Main function to parse the body
-void HTTPRequest::parse_body(const std::string& body, const std::string& content_type) {
+// Main function to parse the body - returns raw body
+std::string HTTPRequest::parse_body(const std::string & body, const std::string & content_type) {
+	std::string raw_body = body;
 	if (content_type == "application/x-www-form-urlencoded") {
 		std::string body_copy = body;  // Make a copy because regex modifies the string
 		parse_urlencoded(body_copy);
@@ -410,12 +413,13 @@ void HTTPRequest::parse_body(const std::string& body, const std::string& content
 		size_t boundary_pos = content_type.find("boundary=");
 		if (boundary_pos != std::string::npos) {
 			std::string boundary = content_type.substr(boundary_pos + 9);  // Skip 'boundary='
-			parse_multipart(body, boundary);
+			raw_body = parse_multipart(body, boundary);
 		}
 	}
 	else {
 		std::cerr << "Unsupported Content-Type: " << content_type << std::endl;
 	}
+	return raw_body;
 }
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> POST <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< //
@@ -470,11 +474,8 @@ int HTTPRequest::parse_request(const std::string& request_string) {
 					return RESULT_FAILURE;
 				}
 
-				// Use the existing parse_body function to parse the body
-				parse_body(body_content, content_type);
-
-				// Store the raw body for further reference if needed
-				body = body_content;
+				// Store raw body
+				body = parse_body(body_content, content_type);
 			}
 		}
 	}
