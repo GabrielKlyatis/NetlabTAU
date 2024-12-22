@@ -775,13 +775,40 @@ void HTTPServer_Impl::listen_for_connection() {
 
 void HTTPServer_Impl::run_server(inet_os& inet_server, HTTPProtocol http_protocol) {
 	
+	std::cout << "HTTP Server is running..." << std::endl;
+	std::cout << "-------------------------" << std::endl << std::endl;
+
 	set_HTTP_procotol(http_protocol, inet_server);
 	listen_for_connection();
+
+	//while (true) {
+	//	if (socket) {
+	//		client_socket = socket->accept(nullptr, 0);
+	//		std::cout << "Client connected" << std::endl;
+	//		std::cout << "-------------------------" << std::endl << std::endl;
+	//		if (protocol == HTTPProtocol::HTTPS) {
+	//			netlab::tls_socket* tls_sock = (new netlab::tls_socket(inet_server, client_socket, true));
+	//			tls_sock->handshake();
+	//			client_socket = tls_sock;
+	//		}
+	//	}
+	//	if (client_socket) {
+	//		// Receive the GET request
+	//		std::string received_request;
+	//		client_socket->recv(received_request, SB_SIZE_DEFAULT, 1, 0);
+	//		process_request(received_request);
+
+	//		// Close the connection
+	//		client_socket->shutdown(SD_RECEIVE);
+	//		client_socket = nullptr;
+	//	}
+	//}
 
 	std::thread serverThread([this, &inet_server]() {
 		while (true) {
 			if (socket) {
 				client_socket = socket->accept(nullptr, 0);
+				std::cout << "Client connected" << std::endl;
 				if (protocol == HTTPProtocol::HTTPS) {
 					netlab::tls_socket* tls_sock = (new netlab::tls_socket(inet_server, client_socket, true));
 					tls_sock->handshake();

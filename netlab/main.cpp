@@ -137,7 +137,18 @@ void main(int argc, char* argv[]) {
 	http_server->run_server(inet_server, HTTPProtocol::HTTP);
 
 	HTTP_GET(inet_client, inet_server, http_client, http_server);
-	//HTTP_POST(inet_client, inet_server, http_client, http_server);
+	HTTP_POST(inet_client, inet_server, http_client, http_server);
+
+	// Clean up
+	http_client->socket->shutdown(SD_SEND);
+
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+
+	inet_client.stop_fasttimo();
+	inet_client.stop_slowtimo();
+
+	inet_server.stop_fasttimo();
+	inet_server.stop_slowtimo();
 }
 
 /************************************************************************************/
@@ -201,17 +212,6 @@ void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_
 
 	std::cout << "HTTP GET inet_os Test Passed" << std::endl << std::endl;
 
-	// Clean up
-	http_client->socket->shutdown(SD_SEND);
-
-	std::this_thread::sleep_for(std::chrono::seconds(1));
-
-	inet_client.stop_fasttimo();
-	inet_client.stop_slowtimo();
-
-	inet_server.stop_fasttimo();
-	inet_server.stop_slowtimo();
-
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
@@ -272,24 +272,16 @@ void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http
 	post_request += create_headers_string(post_headers) + "\r\n"; // Add headers
 	post_request += post_body; // Add serialized body
 
+	std::this_thread::sleep_for(std::chrono::seconds(4));
+
 	// Send the POST request
 	int postRequestResult = http_client->post(post_request_uri, post_request_version, post_headers, post_params, post_body, post_body_params);
-
-	// Server receives the POST request
-	std::string received_request;
-	int request_size = post_request.size();
-	http_server->client_socket->recv(received_request, request_size, 0, 0);
-
-	// The server creates the request object, handles it and sends the response back to the client in the backend.
-	HTTPRequest HTTP_request;
-	HTTP_request.parse_request(received_request);
-	int postResponseResult = http_server->handle_request(HTTP_request);
 
 	// The client receives the response from the server.
 	std::string received_response;
 	http_client->socket->recv(received_response, SB_SIZE_DEFAULT, 1, 0);
 	HTTPResponse HTTP_response(received_response);
-	http_client->handle_response(HTTP_response, HTTP_request.request_uri);
+	http_client->handle_response(HTTP_response, post_request_uri);
 
 	// Accessing the resource obtained from the client - on the server side
 	Resource* obtained_resource = http_server->get_resource(post_request_uri);
@@ -299,7 +291,4 @@ void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http
 	}
 
 	std::cout << "HTTP POST inet_os Test Passed" << std::endl;
-
-	// Clean up
-	http_client->socket->shutdown(SD_SEND);
 }

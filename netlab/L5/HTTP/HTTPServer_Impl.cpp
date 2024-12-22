@@ -51,6 +51,7 @@ int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 		// Check if the server has the requested resource
 		if (has_resource(HTTP_request.request_uri)) {
 			// Send a 200 OK response
+			std::cout << "Resource found, sending to client..." << std::endl;
 			HTTP_response.status_code = StatusCode::OK;
 			HTTP_response.reason = HTTPResponse::status_message(HTTP_response.status_code);
 			HTTP_response.set_header_value("Content-Type", get_content_type(HTTP_request.request_uri));
@@ -67,6 +68,7 @@ int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 		// Create the resource
 		if (create_resource(HTTP_request) == RESULT_SUCCESS) {
 			// Send a 201 Created response
+			std::cout << "Resource was successfully created on the server." << std::endl;
 			HTTP_response.status_code = StatusCode::Created;
 			HTTP_response.reason = HTTPResponse::status_message(HTTP_response.status_code);
 			HTTP_response.set_header_value("Content-Type", HTTP_request.get_header_value("Content-Type", 0));
