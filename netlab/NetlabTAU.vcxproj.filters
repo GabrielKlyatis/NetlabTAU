@@ -93,6 +93,12 @@
     <ClCompile Include="L5\tls_protocol_layer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="L5\HTTP\HTTPClient_Impl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="L5\HTTP\HTTPServer_Impl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="L1\NIC.h">
@@ -206,5 +212,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="NetlabTAU.licenseheader" />
+    <None Include="L5\HTTP\Client_HD\clientFile.html" />
+    <None Include="L5\HTTP\Server_filesystem\clientFile.html" />
+    <None Include="L5\HTTP\Server_filesystem\NetlabTAU.html" />
   </ItemGroup>
 </Project>

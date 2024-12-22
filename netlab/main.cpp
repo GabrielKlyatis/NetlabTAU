@@ -4,6 +4,7 @@
 #include <sstream>
 #include <windows.h>
 #include <string>
+#include <thread>
 
 #include "L5/HTTP/HTTPServer_Impl.hpp"
 #include "L5/HTTP/HTTPClient_Impl.hpp"
@@ -27,24 +28,12 @@
 using namespace netlab;
 
 // Forward declarations
-void HTTP_GET();
-void HTTP_POST();
+void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server);
+void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server);
 
 /************************************************************************************/
 /*									Utility Functions								*/
 /************************************************************************************/
-
-void set_HTTP_variant(HTTPServer_Impl* http_server, HTTPClient_Impl* http_client, inet_os& inet_server, inet_os& inet_client,
-	HTTPProtocol http_protocol) {
-	http_server->set_HTTP_procotol(http_protocol, inet_server);
-	http_client->set_HTTP_procotol(http_protocol, inet_client);
-}
-
-void connect_to_server(HTTPServer_Impl* http_server, HTTPClient_Impl* http_client, inet_os& inet_server) {
-	http_server->listen_for_connection();
-	http_client->connect_to_server(inet_server, http_server);
-	http_server->accept_connection(inet_server);
-}
 
 std::string create_query_string(QueryParams& params) {
 	std::string query_string = "?";
@@ -95,15 +84,6 @@ std::wstring string_to_wstring(const std::string& str) {
 /************************************************************************************/
 
 void main(int argc, char* argv[]) {
-	HTTP_GET();
-	HTTP_POST();
-}
-
-/************************************************************************************/
-/*										HTTP GET									*/
-/************************************************************************************/
-
-void HTTP_GET() {
 
 	/************************************************************************************/
 	/*									Setup of lower levels							*/
@@ -146,18 +126,33 @@ void HTTP_GET() {
 	inet_server.connect(0U);
 
 	/************************************************************************************/
-	/*									 HTTP GET Flow									*/
+	/*						Setup of HTTP objects and server boot						*/
 	/************************************************************************************/
 
 	// Create the HTTP server and client objects
 	HTTPServer_Impl* http_server = new HTTPServer_Impl();
 	HTTPClient_Impl* http_client = new HTTPClient_Impl();
 
+	// Run the HTTP Server
+	http_server->run_server(inet_server, HTTPProtocol::HTTP);
+
+	HTTP_GET(inet_client, inet_server, http_client, http_server);
+	//HTTP_POST(inet_client, inet_server, http_client, http_server);
+}
+
+/************************************************************************************/
+/*										HTTP GET									*/
+/************************************************************************************/
+
+void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server) {
+
 	std::cout << "HTTP GET inet_os Test" << std::endl;
 
-	// Set the HTTP variant and connect to the server
-	set_HTTP_variant(http_server, http_client, inet_server, inet_client, HTTPProtocol::HTTP);
-	connect_to_server(http_server, http_client, inet_server);
+	// Set the HTTP variant (HTTP/HTTPS).
+	http_client->set_HTTP_procotol(HTTPProtocol::HTTP, inet_client);
+
+	// Connect to the server
+	http_client->connect_to_server(inet_server, http_server);
 
 	// Create the GET request
 	std::string get_request_method = "GET";
@@ -186,24 +181,16 @@ void HTTP_GET() {
 	std::string get_request = get_request_method + " " + get_request_uri + create_query_string(get_params) + " " +
 		get_request_version + "\r\n" + create_headers_string(get_headers) + "\r\n";
 
+	std::this_thread::sleep_for(std::chrono::seconds(4));
+
 	// Send the GET request
 	int getRequestResult = http_client->get(get_request_uri, get_request_version, get_headers, get_params);
-
-	// Receive the GET request
-	std::string received_request;
-	int request_size = get_request.size();
-	http_server->client_socket->recv(received_request, request_size, 0, 0);
-
-	// The server creates the request object, handles it and sends the response back to the client in the backend.
-	HTTPRequest HTTP_request;
-	HTTP_request.parse_request(received_request);
-	int getResponseResult = http_server->handle_request(HTTP_request);
 
 	// The client receives the response from the server.
 	std::string received_response;
 	http_client->socket->recv(received_response, SB_SIZE_DEFAULT, 1, 0);
 	HTTPResponse HTTP_response(received_response);
-	http_client->handle_response(HTTP_response, HTTP_request.request_uri);
+	http_client->handle_response(HTTP_response, get_request_uri);
 
 	// Accessing the resource obtained from the server - on the client side
 	Resource* obtained_resource = http_client->get_resource(get_request_uri);
@@ -216,7 +203,6 @@ void HTTP_GET() {
 
 	// Clean up
 	http_client->socket->shutdown(SD_SEND);
-	http_server->client_socket->shutdown(SD_RECEIVE);
 
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -233,61 +219,15 @@ void HTTP_GET() {
 /*										HTTP POST									*/
 /************************************************************************************/
 
-void HTTP_POST() {
-
-	/************************************************************************************/
-	/*									Setup of lower levels							*/
-	/************************************************************************************/
-
-	// Declaring the client 
-	inet_os inet_client = inet_os();
-	NIC nic_client(inet_client, "10.0.0.15", "bb:bb:bb:bb:bb:bb", nullptr, nullptr, true, "ip src 10.0.0.10 or arp");
-
-	// Declaring the client's datalink layer
-	L2_impl datalink_client(inet_client);
-
-	// Setting up the client's network layer.
-	inet_client.inetsw(new L3_impl(inet_client, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_client.inetsw(new L4_TCP_impl(inet_client), protosw::SWPROTO_TCP);
-	inet_client.inetsw(new L3_impl(inet_client, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-	inet_client.domaininit();
-
-	// Declaring the ARP of the client.
-	L2_ARP_impl arp_client(inet_client, 10, 10000);
-
-	// Declaring the server
-	inet_os inet_server = inet_os();
-	NIC nic_server(inet_server, "10.0.0.10", "aa:aa:aa:aa:aa:aa", nullptr, nullptr, true, "ip src 10.0.0.15 or arp");
-
-	// Declaring the server's datalink layer
-	L2_impl datalink_server(inet_server);
-
-	// Declaring the ARP of the server.
-	L2_ARP_impl arp_server(inet_server, 10, 10000);
-
-	// Setting up the server.
-	inet_server.inetsw(new L3_impl(inet_server, 0, 0, 0), protosw::SWPROTO_IP);
-	inet_server.inetsw(new L4_TCP_impl(inet_server), protosw::SWPROTO_TCP);
-	inet_server.inetsw(new L3_impl(inet_server, SOCK_RAW, IPPROTO_RAW, protosw::PR_ATOMIC | protosw::PR_ADDR), protosw::SWPROTO_IP_RAW);
-	inet_server.domaininit();
-
-	// Sniffer spawning.
-	inet_client.connect(0U);
-	inet_server.connect(0U);
-
-	/************************************************************************************/
-	/*									 HTTP POST Flow									*/
-	/************************************************************************************/
-
-	// Create the HTTP server and client objects
-	HTTPServer_Impl* http_server = new HTTPServer_Impl();
-	HTTPClient_Impl* http_client = new HTTPClient_Impl();
+void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server) {
 
 	std::cout << "HTTP POST inet_os Test" << std::endl;
 
-	// Set the HTTP variant and connect to the server
-	set_HTTP_variant(http_server, http_client, inet_server, inet_client, HTTPProtocol::HTTP);
-	connect_to_server(http_server, http_client, inet_server);
+	// Set the HTTP variant (HTTP/HTTPS).
+	http_client->set_HTTP_procotol(HTTPProtocol::HTTP, inet_client);
+
+	// Connect to the server
+	http_client->connect_to_server(inet_server, http_server);
 
 	// Read the client file
 	std::string clientFilePath = std::string(CLIENT_HARD_DRIVE) + "/clientFile.html";
@@ -362,5 +302,4 @@ void HTTP_POST() {
 
 	// Clean up
 	http_client->socket->shutdown(SD_SEND);
-	http_server->client_socket->shutdown(SD_RECEIVE);
 }

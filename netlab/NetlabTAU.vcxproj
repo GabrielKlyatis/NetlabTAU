@@ -49,7 +49,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -237,6 +237,8 @@
     <ClCompile Include="L4\tcp_reno.cpp" />
     <ClCompile Include="L4\tcp_tahoe.cpp" />
     <ClCompile Include="L5\HTTP\HTTP.cpp" />
+    <ClCompile Include="L5\HTTP\HTTPClient_Impl.cpp" />
+    <ClCompile Include="L5\HTTP\HTTPServer_Impl.cpp" />
     <ClCompile Include="L5\L5_Sol.cpp" />
     <ClCompile Include="L5\tls_protocol_layer.cpp" />
     <ClCompile Include="L5\tls_socket.cpp" />
@@ -292,6 +294,9 @@
     <Text Include="dot11\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="L5\HTTP\Client_HD\clientFile.html" />
+    <None Include="L5\HTTP\Server_filesystem\clientFile.html" />
+    <None Include="L5\HTTP\Server_filesystem\NetlabTAU.html" />
     <None Include="NetlabTAU.licenseheader" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

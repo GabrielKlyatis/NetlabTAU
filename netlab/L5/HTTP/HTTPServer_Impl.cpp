@@ -25,6 +25,14 @@ void HTTPServer_Impl::set_HTTP_procotol(HTTPProtocol http_protocol, inet_os& ine
 	}
 }
 
+int HTTPServer_Impl::process_request(std::string& received_request) {
+	// The server creates the request object, handles it and sends the response back to the client.
+	HTTPRequest HTTP_request;
+	HTTP_request.parse_request(received_request);
+	int getResponseResult = handle_request(HTTP_request);
+	return getResponseResult;
+}
+
 // Handle the request
 int HTTPServer_Impl::handle_request(HTTPRequest& HTTP_request) {
 

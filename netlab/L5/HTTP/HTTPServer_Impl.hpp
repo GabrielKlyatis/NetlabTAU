@@ -18,9 +18,10 @@ namespace netlab {
 
 		// Establish connection
 		void listen_for_connection();
-		void accept_connection(inet_os& inet_server);
+		void HTTPServer_Impl::run_server(inet_os& inet_server, HTTPProtocol http_protocol);
 
 		// Server Methods
+		int process_request(std::string& received_request);
 		int handle_request(HTTPRequest& request) override;
 		void send_response(HTTPResponse& response, bool close_connection);
 		
