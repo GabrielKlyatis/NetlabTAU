@@ -1,5 +1,4 @@
 #include "HTTPClient_Impl.hpp"
-#include "../../L1/NIC.h"
 
 using namespace netlab;
 
@@ -21,30 +20,6 @@ void HTTPClient_Impl::set_HTTP_procotol(HTTPProtocol http_protocol, inet_os& ine
 		this->socket = new tls_socket(inet_client);
 		break;
 	}
-}
-
-void HTTPClient_Impl::connect_to_server(inet_os& inet_server, HTTPServer_Impl* http_server) {
-
-	sockaddr_in clientService;
-	clientService.sin_family = AF_INET;
-	clientService.sin_addr.s_addr = inet_server.nic()->ip_addr().s_addr;
-	clientService.sin_port = protocol == HTTPProtocol::HTTP ? htons(SERVER_PORT) : htons(SERVER_PORT_HTTPS);
-
-	netlab::L5_socket* connectSocket = socket;
-	std::thread([connectSocket, clientService]()
-		{
-			connectSocket->connect((SOCKADDR*)&clientService, sizeof(clientService));
-		}).detach();
-}
-
-Resource* HTTPClient_Impl::get_resource(std::string& uri) {
-	for (Resource& resource : resources_from_server) {
-		if (resource.file_name == SERVER_FILESYSTEM + uri) {
-			return &resource;
-		}
-	}
-	std::cerr << "Failed to obtain the requested resource." << std::endl;
-	return nullptr;
 }
 
 // Send a GET request

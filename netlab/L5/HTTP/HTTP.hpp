@@ -1,8 +1,5 @@
 #pragma once
 
-#include "../L5.h"
-#include "../tls_socket.h"
-
 #include <iostream>
 #include <string>
 #include <array>
@@ -15,6 +12,9 @@
 #include <fstream>
 #include <ctime>
 #include <Windows.h>
+
+#include "../L5.h"
+#include "../tls_socket.h"
 
 namespace netlab {
 
@@ -29,10 +29,10 @@ namespace netlab {
 #define RESULT_SUCCESS 0
 #define RESULT_FAILURE 1
 #define R_N_OFFSET 2
-#define SERVER_FILESYSTEM "C:/Users/gabri/OneDrive/Desktop/NetlabTAUProject/NetlabTAU/netlab/L5/HTTP/Server_filesystem"
-#define CLIENT_HARD_DRIVE "../netlab/L5/HTTP/Client_HD" 
+#define SERVER_FILESYSTEM "C:/Server_filesystem"
+#define CLIENT_HARD_DRIVE "C:/Client_HD" 
 #define BOUNDARY "inet_os_boundary"
-#define INET_EXPLORER "C:\\Program Files\\Internet Explorer\\iexplore.exe"
+#define INET_EXPLORER "C:/Program Files/Internet Explorer/iexplore.exe"
 
 /************************************************************************/
 /*								aliases                                 */

@@ -15,14 +15,14 @@
 #include "L2/L2_ARP.h"
 #include "L1/NIC.h"
 
-/************************************************************************************/
+/**********************************************************************************************************/
 /*
 	Relevant header files:
 		* HTTP.hpp - Containing the HTTP data structures, headers, and the HTTP request/response classes.
 		* HTTPClient.hpp, HTTPServer.hpp - Containing the HTTP client and server interfaces.
 		* HTTPClient_Impl.hpp, HTTPServer_Impl.hpp - Containing the HTTP client and server implementations.
 */
-/************************************************************************************/
+/**********************************************************************************************************/
 
 using namespace netlab;
 
@@ -149,18 +149,22 @@ void HTTP_GET() {
 	/*									 HTTP GET Flow									*/
 	/************************************************************************************/
 
+	// Create the HTTP server and client objects
 	HTTPServer_Impl* http_server = new HTTPServer_Impl();
 	HTTPClient_Impl* http_client = new HTTPClient_Impl();
 
 	std::cout << "HTTP GET inet_os Test" << std::endl;
 
+	// Set the HTTP variant and connect to the server
 	set_HTTP_variant(http_server, http_client, inet_server, inet_client, HTTPProtocol::HTTP);
 	connect_to_server(http_server, http_client, inet_server);
 
+	// Create the GET request
 	std::string get_request_method = "GET";
 	std::string get_request_uri = "/NetlabTAU.html";
 	std::string get_request_version = "HTTP/1.1";
 
+	// Request headers
 	HTTPHeaders get_headers = {
 		{"Host", "www.NetlabTAU.TAU"},
 		{"User-Agent", netlab::get_user_agent()},
@@ -168,6 +172,7 @@ void HTTP_GET() {
 		{"Content-Type", "text/html"},
 	};
 
+	// Request params
 	QueryParams get_params = {
 		{"param1", "value1"},
 		{"param2", "value2"},
@@ -200,14 +205,16 @@ void HTTP_GET() {
 	HTTPResponse HTTP_response(received_response);
 	http_client->handle_response(HTTP_response, HTTP_request.request_uri);
 
+	// Accessing the resource obtained from the server - on the client side
 	Resource* obtained_resource = http_client->get_resource(get_request_uri);
 	if (obtained_resource) {
 		ShellExecute(NULL, L"open", string_to_wstring(INET_EXPLORER).c_str(),
 			string_to_wstring(obtained_resource->file_name).c_str(), NULL, SW_SHOWNORMAL);
 	}
 
-	std::cout << "HTTP GET inet_os Test Passed" << std::endl;
+	std::cout << "HTTP GET inet_os Test Passed" << std::endl << std::endl;
 
+	// Clean up
 	http_client->socket->shutdown(SD_SEND);
 	http_server->client_socket->shutdown(SD_RECEIVE);
 
@@ -272,11 +279,13 @@ void HTTP_POST() {
 	/*									 HTTP POST Flow									*/
 	/************************************************************************************/
 
+	// Create the HTTP server and client objects
 	HTTPServer_Impl* http_server = new HTTPServer_Impl();
 	HTTPClient_Impl* http_client = new HTTPClient_Impl();
 
 	std::cout << "HTTP POST inet_os Test" << std::endl;
 
+	// Set the HTTP variant and connect to the server
 	set_HTTP_variant(http_server, http_client, inet_server, inet_client, HTTPProtocol::HTTP);
 	connect_to_server(http_server, http_client, inet_server);
 
@@ -288,6 +297,7 @@ void HTTP_POST() {
 	std::string clientFileContents = fileStream.str();
 	clientFile.close();
 
+	// Create the POST request
 	std::string post_request_method = "POST";
 	std::string post_request_uri = "/clientFile.html"; // Full Request URI = Request path + Query string
 	std::string post_request_version = "HTTP/1.1";
@@ -308,7 +318,7 @@ void HTTP_POST() {
 	// Serialize the body
 	std::string post_body = serialize_body(post_body_params, "multipart/form-data");
 
-	// Headers
+	// Request headers
 	HTTPHeaders post_headers = {
 		{"Host", "www.HTTPClient.TAU"},
 		{"User-Agent", netlab::get_user_agent()},
@@ -350,6 +360,7 @@ void HTTP_POST() {
 
 	std::cout << "HTTP POST inet_os Test Passed" << std::endl;
 
+	// Clean up
 	http_client->socket->shutdown(SD_SEND);
 	http_server->client_socket->shutdown(SD_RECEIVE);
 }

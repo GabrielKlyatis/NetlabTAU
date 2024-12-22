@@ -33,7 +33,7 @@ namespace netlab {
 	private:
 		// Resource Methods
 		bool has_resource(std::string& request_path);
-		int HTTPServer_Impl::create_resource(HTTPRequest& HTTP_request);
+		int create_resource(HTTPRequest& HTTP_request);
 		int remove_resource(std::string& request_path);
 
 		// Server Members
