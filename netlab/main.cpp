@@ -203,11 +203,14 @@ void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_
 	HTTPResponse HTTP_response(received_response);
 	http_client->handle_response(HTTP_response, get_request_uri);
 
+	char buffer[MAX_PATH];
+	GetCurrentDirectoryA(MAX_PATH, buffer);
+
 	// Accessing the resource obtained from the server - on the client side
 	Resource* obtained_resource = http_client->get_resource(get_request_uri);
 	if (obtained_resource) {
-		ShellExecute(NULL, L"open", string_to_wstring(INET_EXPLORER).c_str(),
-			string_to_wstring(obtained_resource->file_name).c_str(), NULL, SW_SHOWNORMAL);
+		std::string fullpath = std::string(buffer) + "/" + obtained_resource->file_name;
+		ShellExecuteA(nullptr, "open", G_CHROME, fullpath.c_str(), NULL, SW_SHOWNORMAL);
 	}
 
 	std::cout << "HTTP GET inet_os Test Passed" << std::endl << std::endl;
@@ -283,12 +286,16 @@ void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http
 	HTTPResponse HTTP_response(received_response);
 	http_client->handle_response(HTTP_response, post_request_uri);
 
+	char buffer[MAX_PATH];
+	GetCurrentDirectoryA(MAX_PATH, buffer);
+
 	// Accessing the resource obtained from the client - on the server side
 	Resource* obtained_resource = http_server->get_resource(post_request_uri);
 	if (obtained_resource) {
-		ShellExecute(NULL, L"open", string_to_wstring(INET_EXPLORER).c_str(),
-			string_to_wstring(obtained_resource->file_name).c_str(), NULL, SW_SHOWNORMAL);
+		std::string fullpath = std::string(buffer) + "/" + obtained_resource->file_name;
+		ShellExecuteA(nullptr, "open", G_CHROME, fullpath.c_str(), NULL, SW_SHOWNORMAL);
 	}
+
 
 	std::cout << "HTTP POST inet_os Test Passed" << std::endl;
 }
