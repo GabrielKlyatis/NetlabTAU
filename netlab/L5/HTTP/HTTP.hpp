@@ -29,8 +29,8 @@ namespace netlab {
 #define RESULT_SUCCESS 0
 #define RESULT_FAILURE 1
 #define R_N_OFFSET 2
-#define SERVER_FILESYSTEM "L5/HTTP/Server_filesystem"
-#define CLIENT_HARD_DRIVE "L5/HTTP/Client_HD" 
+#define SERVER_FILESYSTEM "NetlabTAU/include/L5/HTTP/Server_filesystem"
+#define CLIENT_HARD_DRIVE "NetlabTAU/include/L5/HTTP/Client_HD" 
 #define BOUNDARY "inet_os_boundary"
 #define G_CHROME "GoogleChromePortable\\GoogleChromePortable.exe"
 
@@ -188,6 +188,9 @@ namespace netlab {
 /*                        Utility Functions                             */
 /************************************************************************/
 
+	std::vector<std::string> split_lines(const std::string& str);
+	std::string create_query_string(QueryParams& params);
+	std::string create_headers_string(HTTPHeaders& headers);
 	std::string get_current_time();
 	std::string get_content_type(std::string& resource_path);
 	std::string get_file_contents(const std::string& resource_path);

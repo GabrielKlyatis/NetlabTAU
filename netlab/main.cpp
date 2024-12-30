@@ -4,7 +4,6 @@
 #include <sstream>
 #include <windows.h>
 #include <string>
-#include <thread>
 
 #include "L5/HTTP/HTTPServer_Impl.hpp"
 #include "L5/HTTP/HTTPClient_Impl.hpp"
@@ -30,54 +29,6 @@ using namespace netlab;
 // Forward declarations
 void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server);
 void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server);
-
-/************************************************************************************/
-/*									Utility Functions								*/
-/************************************************************************************/
-
-std::string create_query_string(QueryParams& params) {
-	std::string query_string = "?";
-	bool first = true;
-
-	for (const auto& param : params) {
-		if (!first) {
-			query_string += "&";
-		}
-		query_string += param.first + "=" + param.second;
-		first = false;
-	}
-
-	return query_string;
-}
-
-std::string create_headers_string(HTTPHeaders& headers) {
-	std::string headers_string;
-	std::vector<std::string> default_request_headers_order = { "Host" ,"User-Agent", "Connection", "Content-Type", "Content-Length" };
-
-	for (const auto& header_name : default_request_headers_order) {
-		auto it = headers.find(header_name);
-		if (it != headers.end()) {
-			std::string header_value = it->second;
-			headers_string += header_name + ": " + header_value + "\r\n";
-		}
-	}
-
-	for (const auto& header : headers) {
-		if (std::find(default_request_headers_order.begin(), default_request_headers_order.end(), header.first) == default_request_headers_order.end()) {
-			std::string header_value = header.second;
-			headers_string += header.first + ": " + header_value + "\r\n";
-		}
-	}
-
-	return headers_string;
-}
-
-std::wstring string_to_wstring(const std::string& str) {
-	int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
-	std::wstring wstrTo(size_needed, 0);
-	MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
-	return wstrTo;
-}
 
 /************************************************************************************/
 /*							Main (Calling both GET & POST)							*/
@@ -136,6 +87,7 @@ void main(int argc, char* argv[]) {
 	// Run the HTTP Server
 	http_server->run_server(inet_server, HTTPProtocol::HTTP);
 
+	// Send the GET and POST requests to the server
 	HTTP_GET(inet_client, inet_server, http_client, http_server);
 	HTTP_POST(inet_client, inet_server, http_client, http_server);
 
@@ -192,7 +144,7 @@ void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_
 	std::string get_request = get_request_method + " " + get_request_uri + create_query_string(get_params) + " " +
 		get_request_version + "\r\n" + create_headers_string(get_headers) + "\r\n";
 
-	std::this_thread::sleep_for(std::chrono::seconds(4));
+	std::this_thread::sleep_for(std::chrono::seconds(4)); // Wait for the server to be ready
 
 	// Send the GET request
 	int getRequestResult = http_client->get(get_request_uri, get_request_version, get_headers, get_params);
@@ -203,13 +155,12 @@ void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_
 	HTTPResponse HTTP_response(received_response);
 	http_client->handle_response(HTTP_response, get_request_uri);
 
-	char buffer[MAX_PATH];
-	GetCurrentDirectoryA(MAX_PATH, buffer);
-
 	// Accessing the resource obtained from the server - on the client side
+	char currentPath[MAX_PATH];
+	GetCurrentDirectoryA(MAX_PATH, currentPath);
 	Resource* obtained_resource = http_client->get_resource(get_request_uri);
 	if (obtained_resource) {
-		std::string fullpath = std::string(buffer) + "/" + obtained_resource->file_name;
+		std::string fullpath = std::string(currentPath) + "/" + obtained_resource->file_name;
 		ShellExecuteA(nullptr, "open", G_CHROME, fullpath.c_str(), NULL, SW_SHOWNORMAL);
 	}
 
@@ -275,7 +226,7 @@ void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http
 	post_request += create_headers_string(post_headers) + "\r\n"; // Add headers
 	post_request += post_body; // Add serialized body
 
-	std::this_thread::sleep_for(std::chrono::seconds(4));
+	std::this_thread::sleep_for(std::chrono::seconds(4)); // Wait for the server to be ready
 
 	// Send the POST request
 	int postRequestResult = http_client->post(post_request_uri, post_request_version, post_headers, post_params, post_body, post_body_params);
@@ -286,16 +237,14 @@ void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http
 	HTTPResponse HTTP_response(received_response);
 	http_client->handle_response(HTTP_response, post_request_uri);
 
-	char buffer[MAX_PATH];
-	GetCurrentDirectoryA(MAX_PATH, buffer);
-
 	// Accessing the resource obtained from the client - on the server side
+	char currentPath[MAX_PATH];
+	GetCurrentDirectoryA(MAX_PATH, currentPath);
 	Resource* obtained_resource = http_server->get_resource(post_request_uri);
 	if (obtained_resource) {
-		std::string fullpath = std::string(buffer) + "/" + obtained_resource->file_name;
+		std::string fullpath = std::string(currentPath) + "/" + obtained_resource->file_name;
 		ShellExecuteA(nullptr, "open", G_CHROME, fullpath.c_str(), NULL, SW_SHOWNORMAL);
 	}
-
 
 	std::cout << "HTTP POST inet_os Test Passed" << std::endl;
 }
