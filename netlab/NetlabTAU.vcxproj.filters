@@ -99,9 +99,6 @@
     <ClCompile Include="L5\HTTP\HTTPClient_Impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="L5\tls_socket_impl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="L1\NIC.h">

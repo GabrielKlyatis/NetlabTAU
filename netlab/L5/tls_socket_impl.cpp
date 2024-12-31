@@ -187,7 +187,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     tls_header encrypted_handshake_header;
     encrypted_handshake_header.type = TLS_CONTENT_TYPE_HANDSHAKE;
     encrypted_handshake_header.version = htons(TLS_VERSION_TLSv1_2);
-    encrypted_handshake_header.length = htons(64);
+    encrypted_handshake_header.length = htons(encrypted_final_msg.size());
 
     std::string encrypted_handshake_msg;
     encrypted_handshake_msg.append((char*)&encrypted_handshake_header, sizeof(encrypted_handshake_header));
@@ -216,7 +216,7 @@ void tls_socket::connect(const struct sockaddr* name, int name_len) {
     // Get encrypted handshake message
     char* start_of_encrypted_handshake = (char*)recv_buffer.c_str() + sizeof(tls_header) + 1;
     tls_header* encrypted_handshake_header1 = (tls_header*)start_of_encrypted_handshake;
-    uint32_t encrypted_handshake_len = 64;
+    uint32_t encrypted_handshake_len = encrypted_final_msg.size();
     char* start_of_encrypted_handshake_msg = start_of_encrypted_handshake + sizeof(tls_header);
 
     // Decrypt the message
@@ -313,7 +313,7 @@ void tls_socket::handshake() {
     std::vector<uint8_t> pre_master_vec(decrypted_premaster_secret, decrypted_premaster_secret + MASTER_SECRET_SIZE);
     std::vector<uint8_t> master_secret_vec = derive_master_secret(pre_master_vec, client_rand, server_rand);
 
-    // Key deriviation
+    // Key derivation
     derive_keys(master_secret_vec, client_rand, server_rand);
 
     // Change cipher message
