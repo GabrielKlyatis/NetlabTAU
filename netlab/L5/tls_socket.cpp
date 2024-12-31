@@ -268,7 +268,7 @@ void tls_socket::listen(int backlog) {
 std::vector<uint8_t> get_certificate() {
 
     // Create the certificate
-    const char* cert_file = "C:/Users/gabri/OneDrive/Desktop/Netlab06Sol/OpenSSL-Win32/server.crt";
+    const char* cert_file = "OpenSSL-Win32/server.crt";
 
     FILE* fp = fopen(cert_file, "r");
     if (!fp) {
@@ -294,7 +294,7 @@ std::vector<uint8_t> get_certificate() {
 
 void rsa_decrypt(uint8_t decrypted_premaster_secret[MASTER_SECRET_SIZE], uint8_t encrypted[PRE_MASTER_SECRET_ENCRYPTED_SIZE]) {
     // Load the private key
-    const char* key_file = "C:/Users/gabri/OneDrive/Desktop/Netlab06Sol/OpenSSL-Win32/server.key";
+    const char* key_file = "OpenSSL-Win32/server.key";
     FILE* key_fp = fopen(key_file, "r");
     if (!key_fp) {
         fprintf(stderr, "unable to open: %s\n", key_file);

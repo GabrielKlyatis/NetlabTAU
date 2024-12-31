@@ -767,7 +767,7 @@ void HTTPServer_Impl::listen_for_connection() {
 
 void HTTPServer_Impl::run_server(inet_os& inet_server, HTTPProtocol http_protocol) {
 	
-	std::cout << "HTTP Server is running..." << std::endl << std::endl;
+	std::cout << "HTTPS Server is running..." << std::endl << std::endl;
 
 	set_HTTP_procotol(http_protocol, inet_server);
 	listen_for_connection();
