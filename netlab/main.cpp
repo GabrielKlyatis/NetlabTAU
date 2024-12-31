@@ -76,7 +76,7 @@ void main(int argc, char* argv[]) {
 	inet_server.connect(0U);
 
 	/************************************************************************************/
-	/*						Setup of HTTP objects and server boot						*/
+	/*						Setup of HTTPS objects and server boot						*/
 	/************************************************************************************/
 
 	// Create the HTTPS server and client objects
@@ -107,7 +107,7 @@ void main(int argc, char* argv[]) {
 
 void HTTPS_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server) {
 
-	std::cout << "HTTP GET inet_os Test" << std::endl;
+	std::cout << "HTTPS GET inet_os Test" << std::endl;
 
 	// Set the HTTP variant (HTTP/HTTPS).
 	http_client->set_HTTP_procotol(HTTPProtocol::HTTPS, inet_client);
@@ -156,5 +156,5 @@ void HTTPS_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http
 		ShellExecuteA(nullptr, "open", G_CHROME, fullpath.c_str(), NULL, SW_SHOWNORMAL);
 	}
 
-	std::cout << "HTTP GET inet_os Test Passed" << std::endl << std::endl;
+	std::cout << "HTTPS GET inet_os Test Passed" << std::endl << std::endl;
 }
