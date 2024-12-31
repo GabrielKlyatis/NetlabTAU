@@ -712,7 +712,7 @@ void tls_socket::send(std::string uio, size_t uio_resid, size_t chunk, int flags
     char* buff = (char*)&header;
 
     encrypted_msg.insert(encrypted_msg.begin(), buff, buff + sizeof(tls_header));
-    p_socket->send(encrypted_msg, encrypted_msg.size(), 1000, 0);
+    p_socket->send(encrypted_msg, encrypted_msg.size(), chunk, flags);
  
 }
 
@@ -720,7 +720,7 @@ int tls_socket::recv(std::string& uio, size_t uio_resid, size_t chunk, int flags
 
     std::string recv_buffer;
 
-    int bytes_recived = p_socket->recv(recv_buffer, uio_resid + 52, uio_resid , flags);
+    int bytes_recived = p_socket->recv(recv_buffer, uio_resid + 52, chunk, flags);
    
     // get header
     tls_header* recv_header = (tls_header*)recv_buffer.c_str();

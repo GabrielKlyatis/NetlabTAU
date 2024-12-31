@@ -27,11 +27,10 @@
 using namespace netlab;
 
 // Forward declarations
-void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server);
-void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server);
+void HTTPS_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server);
 
 /************************************************************************************/
-/*							Main (Calling both GET & POST)							*/
+/*							  Main (Calling both GET)								*/
 /************************************************************************************/
 
 void main(int argc, char* argv[]) {
@@ -80,16 +79,15 @@ void main(int argc, char* argv[]) {
 	/*						Setup of HTTP objects and server boot						*/
 	/************************************************************************************/
 
-	// Create the HTTP server and client objects
+	// Create the HTTPS server and client objects
 	HTTPServer_Impl* http_server = new HTTPServer_Impl();
 	HTTPClient_Impl* http_client = new HTTPClient_Impl();
 
-	// Run the HTTP Server
-	http_server->run_server(inet_server, HTTPProtocol::HTTP);
+	// Run the HTTPS Server
+	http_server->run_server(inet_server, HTTPProtocol::HTTPS);
 
 	// Send the GET and POST requests to the server
-	HTTP_GET(inet_client, inet_server, http_client, http_server);
-	HTTP_POST(inet_client, inet_server, http_client, http_server);
+	HTTPS_GET(inet_client, inet_server, http_client, http_server);
 
 	// Clean up
 	http_client->socket->shutdown(SD_SEND);
@@ -104,15 +102,15 @@ void main(int argc, char* argv[]) {
 }
 
 /************************************************************************************/
-/*										HTTP GET									*/
+/*										HTTPS GET									*/
 /************************************************************************************/
 
-void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server) {
+void HTTPS_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server) {
 
 	std::cout << "HTTP GET inet_os Test" << std::endl;
 
 	// Set the HTTP variant (HTTP/HTTPS).
-	http_client->set_HTTP_procotol(HTTPProtocol::HTTP, inet_client);
+	http_client->set_HTTP_procotol(HTTPProtocol::HTTPS, inet_client);
 
 	// Connect to the server
 	http_client->connect_to_server(inet_server, http_server);
@@ -136,15 +134,9 @@ void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_
 		{"param2", "value2"},
 		{"query", "anotherExample"},
 		{"sort", "desc"},
-		{"param3", "value3"},
-		{"param4", "value4"}
 	};
 
-	// Create the query string
-	std::string get_request = get_request_method + " " + get_request_uri + create_query_string(get_params) + " " +
-		get_request_version + "\r\n" + create_headers_string(get_headers) + "\r\n";
-
-	std::this_thread::sleep_for(std::chrono::seconds(4)); // Wait for the server to be ready
+	std::this_thread::sleep_for(std::chrono::seconds(8)); // Wait for the server to be ready
 
 	// Send the GET request
 	int getRequestResult = http_client->get(get_request_uri, get_request_version, get_headers, get_params);
@@ -165,86 +157,4 @@ void HTTP_GET(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_
 	}
 
 	std::cout << "HTTP GET inet_os Test Passed" << std::endl << std::endl;
-
-	std::this_thread::sleep_for(std::chrono::seconds(2));
-}
-
-/************************************************************************************/
-/*										HTTP POST									*/
-/************************************************************************************/
-
-void HTTP_POST(inet_os& inet_client, inet_os& inet_server, HTTPClient_Impl* http_client, HTTPServer_Impl* http_server) {
-
-	std::cout << "HTTP POST inet_os Test" << std::endl;
-
-	// Set the HTTP variant (HTTP/HTTPS).
-	http_client->set_HTTP_procotol(HTTPProtocol::HTTP, inet_client);
-
-	// Connect to the server
-	http_client->connect_to_server(inet_server, http_server);
-
-	// Read the client file
-	std::string clientFilePath = std::string(CLIENT_HARD_DRIVE) + "/clientFile.html";
-	std::ifstream clientFile(clientFilePath, std::ios::in | std::ios::binary);
-	std::ostringstream fileStream;
-	fileStream << clientFile.rdbuf();
-	std::string clientFileContents = fileStream.str();
-	clientFile.close();
-
-	// Create the POST request
-	std::string post_request_method = "POST";
-	std::string post_request_uri = "/clientFile.html"; // Full Request URI = Request path + Query string
-	std::string post_request_version = "HTTP/1.1";
-
-	// Post params
-	QueryParams post_params = {
-	{"param1", "value1"},
-	{"param2", "value2"},
-	{"query", "anotherExample"},
-	{"sort", "desc"},
-	{"param3", "value3"},
-	{"param4", "value4"}
-	};
-
-	// Body params will be serialized as URL-encoded
-	QueryParams post_body_params = {{"html_content", clientFileContents}};
-
-	// Serialize the body
-	std::string post_body = serialize_body(post_body_params, "multipart/form-data");
-
-	// Request headers
-	HTTPHeaders post_headers = {
-		{"Host", "www.HTTPClient.TAU"},
-		{"User-Agent", netlab::get_user_agent()},
-		{"Connection", "close"},
-		{"Content-Type", "multipart/form-data; boundary=inet_os_boundary"},
-		{"Content-Length", std::to_string(post_body.size())}
-	};
-
-	// Create the full request string
-	std::string post_request = post_request_method + " " + post_request_uri + create_query_string(post_params) + " " + post_request_version + "\r\n";
-	post_request += create_headers_string(post_headers) + "\r\n"; // Add headers
-	post_request += post_body; // Add serialized body
-
-	std::this_thread::sleep_for(std::chrono::seconds(4)); // Wait for the server to be ready
-
-	// Send the POST request
-	int postRequestResult = http_client->post(post_request_uri, post_request_version, post_headers, post_params, post_body, post_body_params);
-
-	// The client receives the response from the server.
-	std::string received_response;
-	http_client->socket->recv(received_response, SB_SIZE_DEFAULT, 1, 0);
-	HTTPResponse HTTP_response(received_response);
-	http_client->handle_response(HTTP_response, post_request_uri);
-
-	// Accessing the resource obtained from the client - on the server side
-	char currentPath[MAX_PATH];
-	GetCurrentDirectoryA(MAX_PATH, currentPath);
-	Resource* obtained_resource = http_server->get_resource(post_request_uri);
-	if (obtained_resource) {
-		std::string fullpath = std::string(currentPath) + "/" + obtained_resource->file_name;
-		ShellExecuteA(nullptr, "open", G_CHROME, fullpath.c_str(), NULL, SW_SHOWNORMAL);
-	}
-
-	std::cout << "HTTP POST inet_os Test Passed" << std::endl;
 }
