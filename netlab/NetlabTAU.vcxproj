@@ -242,6 +242,7 @@
     <ClCompile Include="L5\L5_Sol.cpp" />
     <ClCompile Include="L5\tls_protocol_layer.cpp" />
     <ClCompile Include="L5\tls_socket.cpp" />
+    <ClCompile Include="L5\tls_socket_impl.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="infra\NetworkInterface.cpp" />
     <ClCompile Include="L1\NIC.cpp" />

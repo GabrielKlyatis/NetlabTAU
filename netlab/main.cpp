@@ -18,9 +18,9 @@
 /**********************************************************************************************************/
 /*
 	Relevant header files:
-		* HTTP.hpp - Containing the HTTP data structures, headers, and the HTTP request/response classes.
-		* HTTPClient.hpp, HTTPServer.hpp - Containing the HTTP client and server interfaces.
-		* HTTPClient_Impl.hpp, HTTPServer_Impl.hpp - Containing the HTTP client and server implementations.
+		* tls_definition.hpp - Contains the definition of the various TLS components and data structures.
+		* tls_protocol_layer.hpp - Contains the TLS Record Layer, Handshake, Change Cipher Spec and Alert classes.
+		* tls_socket.h - Contains the TLS socket implementation.
 */
 /**********************************************************************************************************/
 
