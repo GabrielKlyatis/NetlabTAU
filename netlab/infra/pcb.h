@@ -1,6 +1,6 @@
 #ifndef NETLAB_PCB_H
 #define NETLAB_PCB_H
-#include "../L3/L3.h"
+#include "../L3/L3_impl.h"
 #include "../L5/L5.h"
 #include <boost/functional/hash/hash.hpp>
 
