@@ -49,7 +49,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -228,7 +228,9 @@
     <ClCompile Include="infra\CatchMemoryLeak.cpp" />
     <ClCompile Include="infra\inet_os.cpp" />
     <ClCompile Include="infra\IPv4Address.cpp" />
-    <ClCompile Include="L2\L2_ARP_impl.cpp" />
+    <ClCompile Include="L2\L2_ARP.cpp" />
+    <ClCompile Include="L4\L4_UDP.cpp" />
+    <ClCompile Include="L5\L5_Sol.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="infra\NetworkInterface.cpp" />
     <ClCompile Include="L1\NIC.cpp" />
@@ -249,6 +251,7 @@
     <ClInclude Include="infra\IPv4Address.h" />
     <ClInclude Include="L2\L2.h" />
     <ClInclude Include="L2\L2_ARP.h" />
+    <ClInclude Include="L2\L2_ARP_impl.h" />
     <ClInclude Include="L3\L3.h" />
     <ClInclude Include="L0\L0_buffer.h" />
     <ClInclude Include="L3\L3_impl.h" />
@@ -261,6 +264,8 @@
     <ClInclude Include="infra\Print.h" />
     <ClInclude Include="infra\protosw.hpp" />
     <ClInclude Include="L4\L4.h" />
+    <ClInclude Include="L4\L4_UDP.hpp" />
+    <ClInclude Include="L4\L4_UDP_Impl.hpp" />
     <ClInclude Include="L5\L5.h" />
     <ClInclude Include="Sniffer\tins.h" />
     <ClInclude Include="Types.h" />

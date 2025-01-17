@@ -379,3 +379,6 @@ __pycache__/
 
 
 # End of https://www.gitignore.io/api/c++,windows,visualstudio
+
+/netlab/GoogleChromePortable/
+/netlab/OpenSSL-Win32/

@@ -1,228 +1,17 @@
-#include "L2_ARP.h"	
-
 #include <list>
 #include <iomanip>
 
 #include "../L3/L3.h"
 #include "L2.h"
+#include "L2_ARP_impl.h"
 
 #include <algorithm>
-
-/************************************************************************/
-/*                    L2_ARP::ether_arp::arphdr			                */
-/************************************************************************/
-
-L2_ARP::ether_arp::arphdr::arphdr(ARPOP_ op)
-	: ar_hrd(htons(ARPHRD_ETHER)), ar_pro(htons(L2::ether_header::ETHERTYPE_IP)), ar_hln(6 * sizeof(u_char)),
-	ar_pln(4 * sizeof(u_char)), ar_op(htons(op)) { }
-
-std::string L2_ARP::ether_arp::arphdr::ar_op_format() const 
-{
-	switch (ar_op)
-	{
-	case L2_ARP::ether_arp::arphdr::ARPOP_REQUEST:
-		return "ARPOP_REQUEST";
-		break;
-	case L2_ARP::ether_arp::arphdr::ARPOP_REPLY:
-		return "ARPOP_REPLY";
-		break;
-	case L2_ARP::ether_arp::arphdr::ARPOP_REVREQUEST:
-		return "ARPOP_REVREQUEST";
-		break;
-	case L2_ARP::ether_arp::arphdr::ARPOP_REVREPLY:
-		return "ARPOP_REVREPLY";
-		break;
-	case L2_ARP::ether_arp::arphdr::ARPOP_INVREQUEST:
-		return "ARPOP_INVREQUEST";
-		break;
-	case L2_ARP::ether_arp::arphdr::ARPOP_INVREPLY:
-		return "ARPOP_INVREPLY";
-		break;
-	default:
-		return "";
-		break;
-	}
-}
-
-std::string L2_ARP::ether_arp::arphdr::hw_addr_format() const 
-{
-	switch (ar_hrd)
-	{
-	case ARPHRD_ETHER:
-		return "ARPHRD_ETHER";
-		break;
-	case ARPHRD_FRELAY:
-		return "ARPHRD_FRELAY";
-		break;
-	default:
-		return "NOT_SET";
-		break;
-	}
-}
-
-std::ostream& operator<<(std::ostream &out, const struct L2_ARP::ether_arp::arphdr &ea_hdr) 
-{
-	std::ios::fmtflags f(out.flags());
-	out << "HardwareType = " << ea_hdr.hw_addr_format() <<
-		"(= 0x" << std::setfill('0') << std::setw(2) << std::hex << ea_hdr.ar_hrd << ")" <<
-		" , ProtocolType = 0x" << std::setw(2) << std::hex << ea_hdr.ar_pro <<
-		" , HardwareAddressLength  = " << std::dec << static_cast<u_char>(ea_hdr.ar_hln) <<
-		" , ProtocolAddressLength  = " << std::dec << static_cast<u_char>(ea_hdr.ar_pln) <<
-		" , Operation = " << ea_hdr.ar_op_format() <<
-		"(= 0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<u_short>(ea_hdr.ar_op) << ")";
-	out.flags(f);
-	return out;
-}
-
-/************************************************************************/
-/*                    L2_ARP::ether_arp					                */
-/************************************************************************/
-
-L2_ARP::ether_arp::ether_arp(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, arphdr::ARPOP_ op)
-	: ea_hdr(op), arp_sha(saddr), arp_tha(taddr) 
-{
-	std::memcpy(arp_spa, &sip, sizeof(arp_spa));
-	std::memcpy(arp_tpa, &tip, sizeof(arp_tpa));
-}
-
-std::ostream& operator<<(std::ostream &out, const struct L2_ARP::ether_arp &ea) 
-{
-	std::ios::fmtflags f(out.flags());
-	out << "< ARP (" << static_cast<uint32_t>(sizeof(struct	L2_ARP::ether_arp)) <<
-		" bytes) :: " << ea.ea_hdr <<
-		" , SenderHardwareAddress = " << ea.arp_sha <<
-		" , SenderProtocol Address = " << inet_ntoa(*reinterpret_cast<struct in_addr *>(const_cast<u_char *>(ea.arp_spa)));
-	out << " , TargetHardwareAddress = " << ea.arp_tha <<
-		" , TargetProtocol Address = " << inet_ntoa(*reinterpret_cast<struct in_addr *>(const_cast<u_char *>(ea.arp_tpa))) <<
-		" , >";
-	out.flags(f);
-	return out;
-}
-
-std::shared_ptr<std::vector<byte>> L2_ARP::ether_arp::make_arp(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator &it, arphdr::ARPOP_ op) 
-{
-	/*
-	*	Allocate and Initialize mbuf
-	*	A packet header mbuf is allocated and the two length fields are set. MH_ALIGN
-	*	allows room for a 28-byte ether_arp structure at the end of the mbuf, and sets the
-	*	m_data pointer accordingly. The reason for moving this structure to the end of the
-	*	mbuf is to allow ether_output to prepend the 14-byte Ethernet header in the same
-	*	mbuf.
-	*/
-	std::shared_ptr<std::vector<byte>> m(new std::vector<byte>(sizeof(struct L2::ether_header) + sizeof(struct L2_ARP::ether_arp)));
-	if (m == nullptr)
-		throw std::runtime_error("make_arp_request failed! allocation failed!");
-
-	/*
-	* As above, for mbufs allocated with m_gethdr/MGETHDR
-	* or initialized by M_COPY_PKTHDR.
-	*/
-	it = m->begin() + sizeof(struct L2::ether_header);
-	memcpy(&m->data()[it - m->begin()], &struct L2_ARP::ether_arp(tip, sip, taddr, saddr, op), sizeof(struct L2_ARP::ether_arp));
-	return m;
-}
-
-std::shared_ptr<std::vector<byte>> L2_ARP::ether_arp::make_arp_request(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator &it) 
-{
-	return make_arp(tip, sip, taddr, saddr, it);
-}
-
-std::shared_ptr<std::vector<byte>> L2_ARP::ether_arp::make_arp_reply(const u_long tip, const u_long sip, mac_addr taddr, mac_addr saddr, std::vector<byte>::iterator &it) 
-{
-	return make_arp(tip, sip, taddr, saddr, it, ether_arp::arphdr::ARPOP_REPLY);
-}
-
-//std::lock_guard<std::mutex> lock(inet.print_mutex);
-//str << intro << ea << std::endl;
-
-/************************************************************************/
-/*                    L2_ARP::llinfo_arp				                */
-/************************************************************************/
-
-L2_ARP::llinfo_arp::llinfo_arp(bool permanent)
-	: la_asked(0), la_flags(0), la_timeStamp(static_cast<unsigned long long>(permanent ? 0 : floor(GetTickCount64()))),
-	la_hold(), la_hold_it(), la_mac("") { }
-
-L2_ARP::llinfo_arp::llinfo_arp(const mac_addr &la_mac, bool permanent) : llinfo_arp(permanent) { update(la_mac); }
-
-L2_ARP::llinfo_arp::~llinfo_arp() { pop(); }
-
-bool L2_ARP::llinfo_arp::valid() const 
-{
-	unsigned long long cmp(static_cast<unsigned long long>(floor(GetTickCount64())));
-	return true; // REVERT
-	//return la_timeStamp == 0 || (cmp > la_timeStamp && cmp < MAX_TIME_STAMP + la_timeStamp);
-}
-
-L2_ARP::mac_addr& L2_ARP::llinfo_arp::getLaMac() { return la_mac; }
-
-unsigned long long L2_ARP::llinfo_arp::getLaTimeStamp() const { return la_timeStamp; }
-
-bool L2_ARP::llinfo_arp::clearToSend(const unsigned long arp_maxtries, const unsigned int arpt_down) 
-{
-	if (la_timeStamp) {
-		la_flags &= ~L3::rtentry::RTF_REJECT;
-		if (la_asked == 0 || (la_timeStamp != floor(GetTickCount64()))) {
-			la_timeStamp = static_cast<unsigned long long>(std::floor(GetTickCount64()));
-			if (la_asked++ < arp_maxtries)
-				return true;
-			else {
-				la_flags |= L3::rtentry::RTF_REJECT;
-				la_timeStamp += arpt_down;
-				la_asked = 0;
-			}
-		}
-	}
-	return false;
-}
-
-void L2_ARP::llinfo_arp::pop() 
-{
-	if (la_hold != nullptr) {
-		la_hold.reset(new std::vector<byte>());
-		la_hold_it = std::vector<byte>::iterator();
-	}
-}
-
-void L2_ARP::llinfo_arp::push(std::shared_ptr<std::vector<byte>> hold, const std::vector<byte>::iterator hold_it) 
-{
-	pop();
-	la_hold = hold;
-	la_hold_it = hold_it;
-}
-
-std::shared_ptr<std::vector<byte>> L2_ARP::llinfo_arp::front() const { return la_hold; }
-
-std::vector<byte>::iterator& L2_ARP::llinfo_arp::front_it() { return la_hold_it; }
-
-bool L2_ARP::llinfo_arp::empty() const { 
-	return la_hold ? la_hold->empty() : true;
-}
-
-void L2_ARP::llinfo_arp::update(const mac_addr la_mac) 
-{
-	/*	The sender's hardware address is copied into a UCHAR array.	*/
-	this->la_mac = la_mac;
-
-	/*	When the sender's hardware address is resolved, the following steps occur. If the expiration
-	*	time is nonzero, it is reset to the current time in the future. This test exists because
-	*	the arp command can create permanent entries: entries that never time out. These entries
-	*	are marked with an expiration time of 0. When an ARP request is sent (i.e., for a non
-	*	permanent ARP entry) the expiration time is set to the current time, which is nonzero. */
-	if (la_timeStamp != 0)
-		la_timeStamp = GetTickCount64();
-
-	/*	The RTF_REECT flag is cleared and the la_asked counter is set to 0. We'll see that these
-	*	last two steps are used in arpresolve to avoid ARP flooding.	*/
-	la_flags &= ~L3::rtentry::RTF_REJECT;
-	la_asked = 0;
-}
 
 /************************************************************************/
 /*                    L2_ARP_impl::ArpCache						        */
 /************************************************************************/
 
-L2_ARP_impl::ArpCache::ArpCache(const unsigned long arp_maxtries, const unsigned int arpt_down) 
+L2_ARP_impl::ArpCache::ArpCache(const unsigned long arp_maxtries, const unsigned int arpt_down)
 	: arp_maxtries(arp_maxtries), arpt_down(arpt_down) { }
 
 void L2_ARP_impl::ArpCache::cleanup()
@@ -257,12 +46,6 @@ L2_ARP_impl::ArpCache::mapped_type& L2_ARP_impl::ArpCache::operator[] (key_type&
 	return _Myt::operator[](k);
 }
 
-//L2_ARP_impl::ArpCache::iterator L2_ARP_impl::ArpCache::insert(const key_type& _Keyval, bool permanent) {
-//	if (size() >= arp_maxtries)
-//		cleanup();
-//	return std::map<key_type, mapped_type>::insert(std::pair<key_type, mapped_type>(_Keyval, mapped_type(new L2_ARP::llinfo_arp(permanent)))).first;
-//}
-
 L2_ARP_impl::ArpCache::iterator L2_ARP_impl::ArpCache::find(const key_type& _Keyval) {
 	iterator it(_Myt::find(_Keyval));
 	if (it != end())
@@ -274,65 +57,53 @@ L2_ARP_impl::ArpCache::iterator L2_ARP_impl::ArpCache::find(const key_type& _Key
 }
 
 /************************************************************************/
-/*                    L2_ARP_impl						                */
+/*							 L2_ARP_impl						        */
 /************************************************************************/
 
-L2_ARP_impl::L2_ARP_impl(inet_os &inet, const unsigned long arp_maxtries, const int arpt_down)
+// Constructor
+L2_ARP_impl::L2_ARP_impl(inet_os& inet, const unsigned long arp_maxtries, const int arpt_down)
 	: L2_ARP(inet, arp_maxtries, arpt_down), arpcache(ArpCache(arp_maxtries, arpt_down)) { }
 
-void L2_ARP_impl::insertPermanent(const u_long ip, const mac_addr &la_mac) {
+void L2_ARP_impl::insertPermanent(const u_long ip, const mac_addr& la_mac) {
 	arpcache[ip] = std::shared_ptr<L2_ARP::llinfo_arp>(new L2_ARP::llinfo_arp(la_mac, true));
-} //arpcache.insert(ip, true)->second->update(la_mac); }
+}
 
-void L2_ARP_impl::arpwhohas(const struct in_addr &addr) { return arprequest(addr.s_addr); }
+void L2_ARP_impl::arpwhohas(const struct in_addr& addr) { return arprequest(addr.s_addr); }
 
-void L2_ARP_impl::arprequest(const u_long &tip)
+void L2_ARP_impl::arprequest(const u_long& tip)
 {
 	std::vector<byte>::iterator it;
 	std::shared_ptr<std::vector<byte>> m(ether_arp::make_arp_request(tip, inet.nic()->ip_addr().s_addr, "", inet.nic()->mac(), it));
-	//byte *m(ether_arp::make_arp_request(tip, inet.nic->ip_addr.s_addr, "", inet.nic->mac, m_len));
+
 	struct sockaddr sa;
-	struct L2::ether_header *eh = reinterpret_cast<struct L2::ether_header *>(sa.sa_data);
+	struct L2_impl::ether_header* eh = reinterpret_cast<struct L2_impl::ether_header*>(sa.sa_data);
 	eh->ether_dhost = inet.nic()->etherbroadcastaddr();
-	eh->ether_type = L2::ether_header::ETHERTYPE_ARP;		/* if_output will swap */
+	eh->ether_type = L2_impl::ether_header::ETHERTYPE_ARP;		/* if_output will swap */
 	sa.sa_family = AF_UNSPEC;
 	inet.datalink()->ether_output(m, it, &sa, nullptr);
 }
 
-L2_ARP_impl::mac_addr* L2_ARP_impl::arpresolve(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, short m_flags, struct sockaddr *dst)
+L2_ARP_impl::mac_addr* L2_ARP_impl::arpresolve(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it, short m_flags, struct sockaddr* dst)
 {
-	/*	
-	 *	Handle broadcast and multicast destinations
-	 *	If the M_BCAST flag of the mbuf is set, the destination is filled in with the Ethernet
-	 *	broadcast address and the function returns 1. If the M_MCAST flag is set, the
-	 *	ETHER_MAP_IP_MULTICAST macro (Figure 12.6) converts the class D address into the
-	 *	corresponding Ethernet address.
-	 */
-	//if (m_flags & L2_impl::M_BCAST)	/* broadcast */
-		//return &mac_addr(inet.nic()->etherbroadcastaddr()); // will not work return address of stack variable
-	
-	//if (m_flags & L2_impl::M_MCAST)	/* multicast */ 
-		//return &mac_addr::ETHER_MAP_IP_MULTICAST(&reinterpret_cast<struct sockaddr_in *>(dst)->sin_addr); // same here
-	
-	/*	
-	 *	Get pointer to llinfo_arp structure:
-	 *	The destination address is a unicast address. If a pointer to a routing table entry is
-	 *	passed by the caller, la is set to the corresponding llinfo_arp structure. Otherwise
-	 *	arplookup searches the routing table for the specified IP address. The second argument
-	 *	is 1, telling arplookup to create the entry if it doesn't already exist; the third
-	 *	argument is 0, which means don't look for a proxy ARP entry.
-	 */
-	struct in_addr &sin(reinterpret_cast<struct sockaddr_in *>(dst)->sin_addr);	
-	std::shared_ptr<L2_ARP::llinfo_arp> &la(arplookup(sin.s_addr, true));
-	
-	/*	
+	 /*
+	  *	Get pointer to llinfo_arp structure:
+	  *	The destination address is a unicast address. If a pointer to a routing table entry is
+	  *	passed by the caller, la is set to the corresponding llinfo_arp structure. Otherwise
+	  *	arplookup searches the routing table for the specified IP address. The second argument
+	  *	is 1, telling arplookup to create the entry if it doesn't already exist; the third
+	  *	argument is 0, which means don't look for a proxy ARP entry.
+	  */
+	struct in_addr& sin(reinterpret_cast<struct sockaddr_in*>(dst)->sin_addr);
+	std::shared_ptr<L2_ARP::llinfo_arp>& la(arplookup(sin.s_addr, true));
+
+	/*
 	 *	If either rt or la are null pointers, one of the allocations failed, since arplookup
 	 *	should have created an entry if one didn't exist. An error message is logged, the packet
 	 *	released, and the function returns 0.
 	 */
 	if (la)
 	{
-		/*	
+		/*
 		 *	Even though an ARP entry is located, it must be checked for validity. The entry is valid if the entry is
 		*	permanent (the expiration time is 0) or the expiration time is greater than the current time
 		*	If the entry is valid, the address is resolved; otherwise, try to resolve.
@@ -340,7 +111,7 @@ L2_ARP_impl::mac_addr* L2_ARP_impl::arpresolve(std::shared_ptr<std::vector<byte>
 		if (la->getLaMac() != "")
 			return &la->getLaMac();
 
-		/*	
+		/*
 		 *	At this point an ARP entry exists but it does not contain a valid Ethernet address. An ARP request
 		*	must be sent. First the pointer to the Packet is saved in la_hold, after releasing any Packet
 		*	that was already pointed to by la_hold. This means that if multiple IP datagrams are sent quickly
@@ -355,7 +126,7 @@ L2_ARP_impl::mac_addr* L2_ARP_impl::arpresolve(std::shared_ptr<std::vector<byte>
 		*	NFS timeout, and a retransmission of all six fragments.
 		*
 		* There is an arptab entry, but no Ethernet address response yet.  Replace the held mbuf with this
-		* latest one. 
+		* latest one.
 		*/
 		la->push(m, it);
 
@@ -395,12 +166,12 @@ std::shared_ptr<L2_ARP::llinfo_arp> L2_ARP_impl::arplookup(const u_long addr, bo
 	ArpCache::iterator it(arpcache.find(addr));
 	if (it != arpcache.end())
 		return it->second;
-	else if (create) 
+	else if (create)
 		return arpcache[addr] = std::shared_ptr < L2_ARP::llinfo_arp >(new L2_ARP::llinfo_arp());
 	return nullptr;
 }
 
-/*	
+/*
  *	in_arpinput Function:
  *	This function is called by arpintr to process each received ARP request or ARP reply.
  *	While ARP is conceptually simple, numerous rules add complexity to the implementation.
@@ -442,7 +213,7 @@ std::shared_ptr<L2_ARP::llinfo_arp> L2_ARP_impl::arplookup(const u_long addr, bo
  *			are added with the arp command, specifying the IP address, hardware address,
  *			and the keyword pub. We'll see the support for this in Figure 21.20 and we
  *			describe it in Section 21.12.
- *			
+ *
 * ARP for Internet protocols on 10 Mb/s Ethernet.
 * Algorithm is that given in RFC 826.
 * In addition, a sanity check is performed on the sender
@@ -456,19 +227,19 @@ std::shared_ptr<L2_ARP::llinfo_arp> L2_ARP_impl::arplookup(const u_long addr, bo
 * We no longer reply to requests for ETHERTYPE_TRAIL protocol either,
 * but formerly didn't normally send requests.
 */
-void L2_ARP_impl::in_arpinput(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it) {
-	struct ether_arp *ea(reinterpret_cast<struct ether_arp *>(&m->data()[it - m->begin()]));
-	struct in_addr *isaddr(reinterpret_cast<struct in_addr *>(ea->arp_spa));
-	struct in_addr *itaddr(reinterpret_cast<struct in_addr *>(ea->arp_tpa));
+void L2_ARP_impl::in_arpinput(std::shared_ptr<std::vector<byte>>& m, std::vector<byte>::iterator& it) {
+	struct ether_arp* ea(reinterpret_cast<struct ether_arp*>(&m->data()[it - m->begin()]));
+	struct in_addr* isaddr(reinterpret_cast<struct in_addr*>(ea->arp_spa));
+	struct in_addr* itaddr(reinterpret_cast<struct in_addr*>(ea->arp_tpa));
 	bool out(false);
 	std::shared_ptr<L2_ARP::llinfo_arp> la;
-	
+
 	if (ea->arp_sha == inet.nic()->mac())
-		out = true;	/* it's from me, ignore it. */
-	
-	/*	
+		out = true;
+
+	/*
 	 *	If the sender's hardware address is the Ethernet broadcast address, this is an error. The error is printed and
-	 *	the packet is discarded. 
+	 *	the packet is discarded.
 	 */
 	else if (ea->arp_sha == inet.nic()->etherbroadcastaddr()) {
 		out = true;
@@ -481,7 +252,7 @@ void L2_ARP_impl::in_arpinput(std::shared_ptr<std::vector<byte>> &m, std::vector
 		std::lock_guard<std::mutex> lock(inet.print_mutex);
 		std::cout << "arp: duplicate IP address " << inet_ntoa(*isaddr) << "! sent from Ethernet address : " << ea->arp_sha << std::endl;
 	}
-		
+
 	/*
 	*	arplookup searches the ARP cache for the sender's IP address (isaddr). The second argument is 1 if the target
 	*	IP address equals myaddr (meaning create a new entry if an entry doesn't exist), or not 0 otherwise (do not create
@@ -516,10 +287,10 @@ void L2_ARP_impl::in_arpinput(std::shared_ptr<std::vector<byte>> &m, std::vector
 		*	the Packet to be sent.	*/
 		if (!la->empty()) {
 			struct sockaddr sa;
-			struct L2::ether_header *eh(reinterpret_cast<struct L2::ether_header *>(sa.sa_data));
+			struct L2_impl::ether_header* eh(reinterpret_cast<struct L2_impl::ether_header*>(sa.sa_data));
 			eh->ether_shost = inet.nic()->mac();
 			eh->ether_dhost = la->getLaMac();
-			eh->ether_type = L2::ether_header::ETHERTYPE_IP;		/* if_output will swap */
+			eh->ether_type = L2_impl::ether_header::ETHERTYPE_IP;		/* if_output will swap */
 			sa.sa_family = AF_UNSPEC;
 			inet.datalink()->ether_output(la->front(), la->front_it(), &sa, nullptr);
 			la->pop();
@@ -528,7 +299,7 @@ void L2_ARP_impl::in_arpinput(std::shared_ptr<std::vector<byte>> &m, std::vector
 
 	int op(ntohs(ea->arp_op()));
 	if (op != ether_arp::arphdr::ARPOP_REQUEST || out)
-		return ;
+		return;
 
 	/*
 	*	If the target IP address equals myIPaddr, this host is the target of the request. The source hardware
@@ -536,31 +307,31 @@ void L2_ARP_impl::in_arpinput(std::shared_ptr<std::vector<byte>> &m, std::vector
 	*	the Ethernet address of the interface is copied from myMACaddr into the source hardware address.
 	*	The remainder of the ARP reply is constructed after.
 	*/
-	if ((*itaddr).s_addr == inet.nic()->ip_addr().s_addr) 
+	if ((*itaddr).s_addr == inet.nic()->ip_addr().s_addr)
 
-		/*	
+		/*
 		 *	I am the target so construct the ARP reply. The sender and target hardware addresses have
 		 *	been filled in. The sender and target IP addresses are now swapped. The	target IP address
-		 *	is contained in itaddr 
+		 *	is contained in itaddr
 		 */
-		 return SendArpReply(*isaddr, *itaddr, ea->arp_sha, inet.nic()->mac());
+		return SendArpReply(*isaddr, *itaddr, ea->arp_sha, inet.nic()->mac());
 
 	/* I am the target */
 	ea->arp_tha = ea->arp_sha;
 	ea->arp_sha = inet.nic()->mac();
-	
+
 	memcpy(ea->arp_tpa, ea->arp_spa, sizeof(ea->arp_spa));
 	memcpy(ea->arp_spa, &itaddr, sizeof(ea->arp_spa));
 
 	ea->arp_op() = htons(ether_arp::arphdr::ARPOP_REPLY);
-	ea->arp_pro() = htons(L2::ether_header::ETHERTYPE_IP); /* let's be sure! */
-	
+	ea->arp_pro() = htons(L2_impl::ether_header::ETHERTYPE_IP); /* let's be sure! */
+
 	struct sockaddr sa;
-	struct L2::ether_header *eh(reinterpret_cast<struct L2::ether_header *>(sa.sa_data));
+	struct L2_impl::ether_header* eh(reinterpret_cast<struct L2_impl::ether_header*>(sa.sa_data));
 	eh->ether_shost = inet.nic()->mac();
 	eh->ether_dhost = ea->arp_tha;
-	eh->ether_type = L2::ether_header::ETHERTYPE_ARP;		/* if_output will swap */
-	
+	eh->ether_type = L2_impl::ether_header::ETHERTYPE_ARP;		/* if_output will swap */
+
 	sa.sa_family = AF_UNSPEC;
 	return inet.datalink()->ether_output(m, it, &sa, nullptr);
 }
@@ -571,16 +342,11 @@ void L2_ARP_impl::SendArpReply(const struct in_addr& itaddr, const struct in_add
 	std::shared_ptr<std::vector<byte>> m(ether_arp::make_arp_reply(itaddr.s_addr, isaddr.s_addr, hw_tgt, hw_snd, it));
 
 	struct sockaddr sa;
-	struct L2::ether_header *eh(reinterpret_cast<struct L2::ether_header *>(sa.sa_data));
+	struct L2_impl::ether_header* eh(reinterpret_cast<struct L2_impl::ether_header*>(sa.sa_data));
 	eh->ether_shost = hw_snd;
 	eh->ether_dhost = hw_tgt;
-	eh->ether_type = L2::ether_header::ETHERTYPE_ARP;		/* if_output will swap */
-	
+	eh->ether_type = L2_impl::ether_header::ETHERTYPE_ARP;		/* if_output will swap */
+
 	sa.sa_family = AF_UNSPEC;
 	inet.datalink()->ether_output(m, it, &sa, nullptr);
 }
-
-
-
-
-

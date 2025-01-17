@@ -3,8 +3,8 @@
 #include <iomanip>
 #include <string>
 
-#include "L2_ARP.h"
-#include "../L3/L3.h"
+#include "../L3/L3_impl.h"
+#include "L2_ARP_impl.h"
 #include "../L1/NIC.h"
 #include "../infra/HWAddress.hpp"
 
