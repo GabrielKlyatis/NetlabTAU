@@ -230,6 +230,7 @@
     <ClCompile Include="infra\IPv4Address.cpp" />
     <ClCompile Include="L2\L2_ARP.cpp" />
     <ClCompile Include="L3\L3.cpp" />
+    <ClCompile Include="L4\L4_TCP.cpp" />
     <ClCompile Include="L4\L4_UDP.cpp" />
     <ClCompile Include="L5\L5_Sol.cpp" />
     <ClCompile Include="main.cpp" />
@@ -256,7 +257,6 @@
     <ClInclude Include="L3\L3.h" />
     <ClInclude Include="L0\L0_buffer.h" />
     <ClInclude Include="L3\L3_impl.h" />
-    <ClInclude Include="L3\L3_Solution.h" />
     <ClInclude Include="infra\NetworkInterface.h" />
     <ClInclude Include="L1\NIC.h" />
     <ClInclude Include="L1\NIC_Cable.h" />
@@ -265,8 +265,12 @@
     <ClInclude Include="infra\Print.h" />
     <ClInclude Include="infra\protosw.hpp" />
     <ClInclude Include="L4\L4.h" />
+    <ClInclude Include="L4\L4_TCP.h" />
+    <ClInclude Include="L4\L4_TCP_impl.h" />
     <ClInclude Include="L4\L4_UDP.hpp" />
     <ClInclude Include="L4\L4_UDP_Impl.hpp" />
+    <ClInclude Include="L4\tcp_reno.h" />
+    <ClInclude Include="L4\tcp_tahoe.h" />
     <ClInclude Include="L5\L5.h" />
     <ClInclude Include="Sniffer\tins.h" />
     <ClInclude Include="Types.h" />

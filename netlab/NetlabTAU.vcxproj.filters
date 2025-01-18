@@ -69,6 +69,9 @@
     <ClCompile Include="L3\L3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="L4\L4_TCP.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="L1\NIC.h">
@@ -131,9 +134,6 @@
     <ClInclude Include="Sniffer\tins.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="L3\L3_Solution.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="L3\L3_impl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -150,6 +150,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="L2\L2_ARP_impl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L4\L4_TCP.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L4\L4_TCP_impl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L4\tcp_reno.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="L4\tcp_tahoe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -129,4 +129,3 @@ static uint16_t read_uint16_from_iterator(std::string::const_iterator& it) {
 	}
 	return vector_size;
 }
-
