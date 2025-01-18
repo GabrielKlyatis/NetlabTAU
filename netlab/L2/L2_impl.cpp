@@ -20,7 +20,6 @@ L2::~L2() { inet.datalink(nullptr); }
 /*                         L2_impl		                                */
 /************************************************************************/
 
-
 L2_impl::L2_impl(class inet_os &inet) : L2(inet) { }
 
 void L2_impl::ether_input(std::shared_ptr<std::vector<byte>> &m, std::vector<byte>::iterator &it, struct ether_header *eh) {

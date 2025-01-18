@@ -6,44 +6,6 @@
 /*                         SOLUTION                                     */
 /************************************************************************/
 
-/*!
-	\def	NETLAB_L3_FORWARDING
-	To enable IP forwarding, currently disabled.
-*/
-#define NETLAB_L3_FORWARDING
-#ifdef NETLAB_L3_FORWARDING
-#undef NETLAB_L3_FORWARDING
-#endif
-
-/*!
-	\def	NETLAB_L3_OPTIONS
-	To enable IP options, currently disabled.
-*/
-#define NETLAB_L3_OPTIONS
-#ifdef NETLAB_L3_OPTIONS
-#undef NETLAB_L3_OPTIONS
-#endif
-
-/*!
-	\def	NETLAB_L3_MULTICAST
-	To enable IP multi casting, currently disabled.
-*/
-#define NETLAB_L3_MULTICAST
-#ifdef NETLAB_L3_MULTICAST
-#undef NETLAB_L3_MULTICAST
-#endif
-
-/*!
-	\def	NETLAB_L3_FRAGMENTATION
-	To enable IPfragmentation, currently disabled.
-*/
-#define NETLAB_L3_FRAGMENTATION
-#ifdef NETLAB_L3_FRAGMENTATION
-#undef NETLAB_L3_FRAGMENTATION
-#endif
-
-
-
 /**
 * \class L3
 * \brief Represents a Layer 3 interface (IP).

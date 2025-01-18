@@ -66,6 +66,9 @@
     <ClCompile Include="L5\L5_Sol.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="L3\L3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="L1\NIC.h">
