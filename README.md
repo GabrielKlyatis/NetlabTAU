@@ -244,6 +244,8 @@ The following list summarizes the files that should be excluded for each specifi
 
   **L5:** tls_socket.cpp
 
+Following compilation, the NetlabTAU.lib file will be inside the /Debug or /Release directory in the netlab main directory. These files should be copied to their respective counterparts inside the directory that will be zipped and sent to the students. The path inside that directory would be NetlabTAU/debug and NetlabTAU/release respectively.
+
 ---
 
 ## Tests
