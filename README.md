@@ -15,6 +15,7 @@ This project is part of the **Advanced Computer Communications Lab** at **Tel-Av
   - [Installation](#installation)
   - [Project Configuration](#project-configuration)
   - [Debug Tools](#debug-tools)
+- [Labs Modifications](#labs-modifications)
 - [Tests](#tests)
   - [General](#general)
   - [Setting Up GoogleTest](#setting-up-googletest)
@@ -194,6 +195,45 @@ nication flows within the project. You can get it [here](https://www.wireshark.o
 analyze responses. It helps developers inspect HTTP traffic by providing detailed views of requests,
 responses, headers, and status codes. This makes it ideal for testing and debugging APIs, as well
 as monitoring client-server interactions. You can get it [here](https://www.postman.com/downloads/).
+
+---
+
+## Labs Modifications
+
+To modify the various NetlabTAU experiments, switch to the **LabsModifier** branch on your local machine.
+
+The goal of this process is to produce a modified NetlabTAU.lib file, which will be included in the laboratory zip file provided to the students.
+
+To achieve this, the NetlabTAU project must be compiled as a .lib project (rather than as an executable .exe project). To verify that the configuration is correct:
+
+1. Right-click the NetlabTAU project under "Solution Explorer."
+2. Navigate to Properties.
+3. Check the relevant settings under the General tab.
+
+Each lab experiment uses different implementation source files (.cpp) that should either be included or excluded for that specific experiment. Please note that exclusions are cumulative. This means that:
+If a source file is excluded from Netlab01, it will also be excluded from subsequent experiments (Netlab02, Netlab03, etc.).
+The following list summarizes the files that should be excluded for each specific experiment.
+
+**Netlab01:**
+  L2: L2_impl.cpp
+  L3: L3_impl.cpp
+  L4: L4_ICMP_Sol.cpp
+
+**Netlab02:**
+  L2: L2_ARP_impl.cpp
+  L4: L4_UDP_Impl.cpp
+
+**Netlab03:**
+  L4: L4_TCP_impl.cpp
+
+**Netlab04:**
+  L4: tcp_tahoe.cpp, tcp_reno.cpp
+
+**Netlab05:**
+  L5: HTTP_Impl.cpp, HTTPClient_Impl.cpp, HTTPServer_Impl.cpp
+
+**Netlab06:**
+  L5: tls_socket.cpp
 
 ---
 
