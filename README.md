@@ -216,11 +216,14 @@ The following list summarizes the files that should be excluded for each specifi
 
 **Netlab01:**
   L2: L2_impl.cpp
+  
   L3: L3_impl.cpp
+  
   L4: L4_ICMP_Sol.cpp
 
 **Netlab02:**
   L2: L2_ARP_impl.cpp
+  
   L4: L4_UDP_Impl.cpp
 
 **Netlab03:**
