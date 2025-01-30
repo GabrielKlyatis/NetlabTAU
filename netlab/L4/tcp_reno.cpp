@@ -82,7 +82,7 @@ void tcp_reno::tcp_dupacks_handler(tcpcb* tp, tcp_seq& seq)
 		 	that future calls to tcp_output carry on with the next segment in sequence.
 		 */
 
-		if (L4_TCP::tcpcb::SEQ_GT(onxt, tp->snd_nxt)) {
+		if (tcpcb::SEQ_GT(onxt, tp->snd_nxt)) {
 			tp->snd_nxt = onxt;
 		}
 			

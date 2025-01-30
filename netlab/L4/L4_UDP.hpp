@@ -81,7 +81,7 @@ public:
 		udpcb& up;
 	};
 
-private:
+protected:
 	/* Unused - protosw virtual functions */
 	virtual void pr_drain() { }
 	virtual void pr_fasttimo() { }
